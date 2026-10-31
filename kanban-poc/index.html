@@ -2651,35 +2651,6 @@
       }, 250);
     }
 
-    /** Decision refs use `!` — rewrite legacy `#` id links in stored text (not #tags). */
-    function migrateDecisionRefSigilInText(text) {
-      if (!text || typeof text !== 'string') return text;
-      let out = text.replace(
-        /\[([^\]]*)\]\(#(\d+(?:\/(?:\d+|a\d+))?(?:@v\d+)?)\)/gi,
-        '[$1](!$2)',
-      );
-      out = out.replace(
-        /(^|[^\w!])#(\d+(?:\/(?:\d+|a\d+))?(?:@v\d+)?)\b/g,
-        '$1!$2',
-      );
-      return out;
-    }
-
-    function migrateAllItemRefSigils() {
-      for (const item of Object.values(items)) {
-        for (const step of item.steps) {
-          if (step.problem) step.problem = migrateDecisionRefSigilInText(step.problem);
-          if (step.answer) step.answer = migrateDecisionRefSigilInText(step.answer);
-          for (const entry of step.problemRevisions || []) {
-            entry.text = migrateDecisionRefSigilInText(entry.text);
-          }
-          for (const entry of step.answerRevisions || []) {
-            entry.text = migrateDecisionRefSigilInText(entry.text);
-          }
-        }
-      }
-    }
-
     function loadState() {
       try {
         const raw = localStorage.getItem(STORAGE_KEY);
@@ -2691,21 +2662,11 @@
         items = data.items;
         for (const item of Object.values(items)) {
           if (item?.steps?.length) item.steps = item.steps.map(normalizeStep);
-        }
-        migrateAllItemRefSigils();
-        {
-          const migratedHeads = migrateArchivedRevisionHeads();
-          const clearedArchiveTexts = normalizeArchivedRevisionTexts();
-          if (migratedHeads || clearedArchiveTexts) saveState();
-        }
-        for (const id of Object.keys(items)) {
-          if (items[id].archivedAt) delete canvasPlacements[id];
+          normalizeItemTags(item);
         }
         recomputeNextId();
         if (data.viewMode === 'board' || data.viewMode === 'list') {
           viewMode = data.viewMode;
-        } else if (data.viewMode === 'canvas') {
-          viewMode = 'list';
         }
         if (typeof data.showAllDates === 'boolean') showAllDates = data.showAllDates;
         if (typeof data.listFilterNotOnCanvas === 'boolean') {
@@ -2713,6 +2674,9 @@
         }
         if (data.canvasPlacements && typeof data.canvasPlacements === 'object') {
           canvasPlacements = data.canvasPlacements;
+        }
+        for (const id of Object.keys(canvasPlacements)) {
+          if (items[id]?.archivedAt) delete canvasPlacements[id];
         }
         if (data.canvasViewport && typeof data.canvasViewport === 'object') {
           canvasViewport = normalizeCanvasViewport(data.canvasViewport);
@@ -2722,9 +2686,8 @@
           canvasViewportUserSet = data.canvasViewportUserSet;
           if (canvasViewportUserSet) canvasViewportInitialized = true;
         }
-        migrateCanvasPlacementsToCenteredWorld();
         clampAllCanvasPlacementsToWorld();
-        migrateCanvasPlacementOrders();
+        if (window.__canvasFidx) ensureAllCanvasPlacementOrders();
         return true;
       } catch (err) {
         console.warn('Could not load from localStorage', err);
@@ -2742,12 +2705,44 @@
       return 'item-' + nextId++;
     }
 
-    function parseTags(raw) {
-      return raw.split(',').map((t) => t.trim()).filter(Boolean);
+    function itemIdNumericSuffix(id) {
+      const m = String(id ?? '').match(/item-(\d+)$/i);
+      return m ? parseInt(m[1], 10) : 0;
+    }
+
+    function compareItemIds(a, b) {
+      const idA = typeof a === 'string' ? a : a.id;
+      const idB = typeof b === 'string' ? b : b.id;
+      const na = itemIdNumericSuffix(idA);
+      const nb = itemIdNumericSuffix(idB);
+      if (na !== nb) return na - nb;
+      return idA.localeCompare(idB);
     }
 
     function normalizeTagName(name) {
       return String(name ?? '').trim().toLowerCase();
+    }
+
+    function parseTags(raw) {
+      const seen = new Set();
+      const out = [];
+      for (const part of String(raw ?? '').split(',')) {
+        const name = normalizeTagName(part);
+        if (!name || seen.has(name)) continue;
+        seen.add(name);
+        out.push(name);
+      }
+      return out;
+    }
+
+    function normalizeTagsList(tags) {
+      if (!Array.isArray(tags)) return parseTags(String(tags ?? ''));
+      return parseTags(tags.join(','));
+    }
+
+    function normalizeItemTags(item) {
+      if (!item) return;
+      item.tags = normalizeTagsList(item.tags || []);
     }
 
     function itemTagChipsHtml(tags) {
@@ -3039,7 +3034,7 @@
 
     function normalizeStep(step) {
       const answer = step.answer?.trim() || null;
-      let answerTentative = !!(step.answerTentative || step.answerMark);
+      let answerTentative = !!step.answerTentative;
       if (!answer) answerTentative = false;
       const normalized = {
         problem: step.problem,
@@ -3088,7 +3083,7 @@
     function createItem({ problem, tags = [], answer = null, steps = null }) {
       const id = uid();
       if (steps) {
-        items[id] = { id, tags, archivedAt: null, steps: steps.map(normalizeStep) };
+        items[id] = { id, tags: normalizeTagsList(tags), archivedAt: null, steps: steps.map(normalizeStep) };
         return id;
       }
       const trimmed = problem?.trim();
@@ -3096,7 +3091,7 @@
       const ans = answer ? answer.trim() : null;
       items[id] = {
         id,
-        tags,
+        tags: normalizeTagsList(tags),
         archivedAt: null,
         steps: [normalizeStep({ problem: trimmed, answer: ans })],
       };
@@ -3131,15 +3126,21 @@
       return nextRev;
     }
 
-    function archiveStepAnswer(itemId, stepIndex) {
-      const step = items[itemId]?.steps[stepIndex];
-      if (!step || step.answerArchivedAt) return;
-      if (!step.answer?.trim() && !step.answerRevisions?.length) return;
+    /** Archive current decision text (revision + hide). Returns false if nothing to archive. */
+    function archiveStepAnswerField(step) {
+      if (!step || step.answerArchivedAt) return false;
+      if (!step.answer?.trim() && !step.answerRevisions?.length) return false;
       appendFieldArchiveRevision(step, 'answer');
       step.answer = null;
       step.decidedAt = null;
       step.answerTentative = false;
       step.answerArchivedAt = new Date().toISOString();
+      return true;
+    }
+
+    function archiveStepAnswer(itemId, stepIndex) {
+      const step = items[itemId]?.steps[stepIndex];
+      if (!archiveStepAnswerField(step)) return;
       scheduleSaveState();
       render();
     }
@@ -3523,11 +3524,11 @@
     function itemsInColumn(needsDecision) {
       return liveItems()
         .filter((i) => itemNeedsDecision(i) === needsDecision)
-        .sort((a, b) => a.id.localeCompare(b.id));
+        .sort(compareItemIds);
     }
 
     function allItemsOrdered() {
-      return liveItems().sort((a, b) => a.id.localeCompare(b.id));
+      return liveItems().sort(compareItemIds);
     }
 
     function isItemPlacedOnCanvas(itemId) {
@@ -3584,7 +3585,7 @@
 
     /** @returns {{ itemId: string, stepIndex: number|null, focusAnswer: boolean, revision: number|null } | null} */
     function parseIssueRef(ref) {
-      const s = String(ref ?? '').trim().replace(/^[!#]+/, '');
+      const s = String(ref ?? '').trim().replace(/^!+/, '');
       const m = s.match(/^(?:(item-\d+)|(\d+))(?:\/(?:step-)?(\d+)|\/a(\d+))?(?:@v(\d+))?$/i);
       if (!m) {
         const itemId = normalizeIssueId(s.replace(/@v\d+$/i, ''));
@@ -3652,53 +3653,6 @@
       return fullText
         ? t
         : (field === 'answer' ? truncateLabel(t, 180) : truncateLabel(t, 160));
-    }
-
-    function migrateArchivedRevisionHeads() {
-      let changed = false;
-      for (const item of Object.values(items)) {
-        const cardArchived = !!item.archivedAt;
-        for (const step of item.steps) {
-          ensureStepRevisions(step);
-          if (step.archivedAt || cardArchived) {
-            const head = stepFieldHeadRev(step, 'problem');
-            if (!isRevisionArchivedEntry(step, 'problem', head)) {
-              appendFieldArchiveRevision(step, 'problem');
-              changed = true;
-            }
-          }
-          const answerGone = !!step.answerArchivedAt || cardArchived;
-          if (answerGone && (step.answerRevisions?.length || step.answer?.trim())) {
-            const head = stepFieldHeadRev(step, 'answer');
-            if (!isRevisionArchivedEntry(step, 'answer', head)) {
-              appendFieldArchiveRevision(step, 'answer');
-              step.answer = null;
-              step.decidedAt = null;
-              step.answerTentative = false;
-              if (cardArchived && !step.answerArchivedAt) step.answerArchivedAt = item.archivedAt;
-              changed = true;
-            }
-          }
-        }
-      }
-      return changed;
-    }
-
-    function normalizeArchivedRevisionTexts() {
-      let changed = false;
-      for (const item of Object.values(items)) {
-        for (const step of item.steps) {
-          for (const field of ['problem', 'answer']) {
-            for (const entry of stepFieldRevisions(step, field)) {
-              if (entry.archived && entry.text) {
-                entry.text = '';
-                changed = true;
-              }
-            }
-          }
-        }
-      }
-      return changed;
     }
 
     /** @returns {'missing'|'card-archived'|'step-archived'|'answer-archived'|'revision'|null} */
@@ -4323,8 +4277,8 @@
 
       // Decision refs (!) before #tags and @people — @v2 in href is a revision pin, not a mention
       html = html.replace(
-        /\[([^\]]+)\]\(([!#])(\d+)(?:\/(\d+)|\/a(\d+))?(?:@v(\d+))?\)/g,
-        (full, label, _sigil, num, stepNum, answerNum, revisionNum) => {
+        /\[([^\]]+)\]\(!(\d+)(?:\/(\d+)|\/a(\d+))?(?:@v(\d+))?\)/g,
+        (full, label, num, stepNum, answerNum, revisionNum) => {
           const ref = issueRefPartsToToken(num, stepNum, answerNum, revisionNum);
           return parseIssueRef(ref) ? renderIssueRef(ref, label) : full;
         },
@@ -4332,14 +4286,6 @@
 
       html = html.replace(
         /!(\d+)(?:\/(\d+)|\/a(\d+))?(?:@v(\d+))?/g,
-        (full, num, stepNum, answerNum, revisionNum) => {
-          const ref = issueRefPartsToToken(num, stepNum, answerNum, revisionNum);
-          return parseIssueRef(ref) ? renderIssueRef(ref) : full;
-        },
-      );
-
-      html = html.replace(
-        /#(\d+)(?:\/(\d+)|\/a(\d+))?(?:@v(\d+))?/g,
         (full, num, stepNum, answerNum, revisionNum) => {
           const ref = issueRefPartsToToken(num, stepNum, answerNum, revisionNum);
           return parseIssueRef(ref) ? renderIssueRef(ref) : full;
@@ -4595,7 +4541,7 @@
           if (a.id === editingId && b.id !== editingId) return -1;
           if (b.id === editingId && a.id !== editingId) return 1;
         }
-        return a.id.localeCompare(b.id);
+        return compareItemIds(a, b);
       });
 
       for (const item of sorted) {
@@ -5087,7 +5033,7 @@
               const problem = item.steps[0]?.problem || '';
               return num.startsWith(query) || problem.toLowerCase().includes(query.toLowerCase());
             })
-            .sort((a, b) => a.id.localeCompare(b.id))
+            .sort(compareItemIds)
             .slice(0, 8);
           mountAutocompleteMenu(ta, () => hits.map((item) => {
             const btn = document.createElement('button');
@@ -5635,7 +5581,7 @@
       placement.order = canvasGenerateKeyBetween(back, null);
     }
 
-    function migrateCanvasPlacementOrders() {
+    function ensureAllCanvasPlacementOrders() {
       for (const id of Object.keys(canvasPlacements)) {
         if (items[id]) ensureCanvasPlacementOrder(id);
       }
@@ -5669,18 +5615,9 @@
         return { scrollLeft: 0, scrollTop: 0, zoom: 1 };
       }
       const zoom = clampCanvasZoom(Number(raw.zoom) || 1);
-      if (typeof raw.scrollLeft === 'number' || typeof raw.scrollTop === 'number') {
-        return {
-          scrollLeft: Math.max(0, Number(raw.scrollLeft) || 0),
-          scrollTop: Math.max(0, Number(raw.scrollTop) || 0),
-          zoom,
-        };
-      }
-      const panX = Number(raw.panX) || 0;
-      const panY = Number(raw.panY) || 0;
       return {
-        scrollLeft: Math.max(0, -panX),
-        scrollTop: Math.max(0, -panY),
+        scrollLeft: Math.max(0, Number(raw.scrollLeft) || 0),
+        scrollTop: Math.max(0, Number(raw.scrollTop) || 0),
         zoom,
       };
     }
@@ -6522,22 +6459,6 @@
       `;
     }
 
-    function migrateCanvasPlacementsToCenteredWorld() {
-      const positions = Object.values(canvasPlacements);
-      if (!positions.length) return;
-      const maxX = Math.max(...positions.map((p) => p.x));
-      const maxY = Math.max(...positions.map((p) => p.y));
-      if (maxX > CANVAS_WORLD_MIN_W * 0.35) return;
-      const shiftX = Math.round(CANVAS_WORLD_MIN_W / 2 - 480);
-      const shiftY = Math.round(CANVAS_WORLD_MIN_H / 2 - 360);
-      for (const id of Object.keys(canvasPlacements)) {
-        canvasPlacements[id] = {
-          x: canvasPlacements[id].x + shiftX,
-          y: canvasPlacements[id].y + shiftY,
-        };
-      }
-    }
-
     function canvasTypingFocus() {
       const el = document.activeElement;
       if (!el) return false;
@@ -6658,9 +6579,7 @@
       } else if (val) {
         recordAnswerEdit(step, val);
       } else {
-        step.answer = null;
-        step.decidedAt = null;
-        step.answerTentative = false;
+        archiveStepAnswerField(step);
       }
       scheduleSaveState();
     }
@@ -7849,9 +7768,7 @@
         } else if (val) {
           recordAnswerEdit(step, val);
         } else {
-          step.answer = null;
-          step.decidedAt = null;
-          step.answerTentative = false;
+          archiveStepAnswerField(step);
         }
         render();
       };
@@ -7911,7 +7828,7 @@
         closeComposer();
         return;
       }
-      const tags = [...composerPendingTags];
+      const tags = normalizeTagsList(composerPendingTags);
       const id = createItem({ problem: text, tags });
       composerPendingTags = [];
       if (id) pendingFocus = { id, field: 'answer', step: 0 };
@@ -8189,17 +8106,6 @@
         return;
       }
 
-      if (action === 'panel-rev-jump-current') {
-        e.preventDefault();
-        e.stopPropagation();
-        const parsed = issueDrawerRefId ? parseIssueRef(issueDrawerRefId) : null;
-        const step = parsed ? panelRefStep(parsed) : null;
-        if (!parsed || !step) return;
-        issuePanelViewRev = stepFieldHeadRev(step, panelRefField(parsed));
-        populateIssueRefDrawer(issueDrawerRefId);
-        return;
-      }
-
       if (action === 'toggle-answer-tentative' && id && items[id]) {
         const stepIndex = Number(actionEl.dataset.step);
         const step = items[id].steps[stepIndex];
@@ -8366,7 +8272,7 @@
     });
 
     window.addEventListener('canvas-fidx-ready', () => {
-      migrateCanvasPlacementOrders();
+      ensureAllCanvasPlacementOrders();
     });
 
     initState();
