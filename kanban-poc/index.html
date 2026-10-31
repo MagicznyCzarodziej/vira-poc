@@ -860,17 +860,20 @@
       background: var(--tone-3);
     }
     .composer {
-      background: var(--bg);
+      background: var(--question-bg);
+      color: var(--question-text);
       border-radius: 10px;
       padding: 0.75rem;
-      box-shadow: 0 0 0 3px var(--focus-ring);
+      box-shadow:
+        0 1px 2px rgba(0, 0, 0, 0.07),
+        0 4px 14px rgba(0, 0, 0, 0.08);
     }
     .composer.linked { margin-left: 0.75rem; }
     .composer textarea {
       width: 100%;
       border: none;
       background: transparent;
-      color: var(--text);
+      color: var(--question-text);
       font: inherit;
       font-size: 0.9rem;
       resize: none;
@@ -878,30 +881,14 @@
       min-height: 2.75rem;
       cursor: text;
     }
-    .composer-meta {
-      display: flex;
-      gap: 0.5rem;
-      margin-top: 0.5rem;
-      align-items: center;
+    .composer textarea::placeholder {
+      color: color-mix(in srgb, var(--question-text) 36%, var(--question-bg));
     }
-    .composer-meta input {
-      flex: 1;
-      border: none;
-      background: var(--hover-fill);
-      border-radius: 6px;
-      padding: 0.35rem 0.5rem;
-      font: inherit;
-      font-size: 0.75rem;
-      color: var(--text);
-      outline: none;
-      cursor: text;
+    .composer .composer-tags-row {
+      padding: 0.5rem 0.75rem 0;
     }
-    .composer-meta input::placeholder { color: var(--muted); }
-    .composer-actions {
-      display: flex;
-      gap: 0.35rem;
-      margin-top: 0.5rem;
-      justify-content: flex-end;
+    .composer .composer-tags-row[hidden] {
+      display: none !important;
     }
     .btn-sm {
       font: inherit;
@@ -2379,9 +2366,17 @@
 
     /** @type {{ type: 'root' } | null} */
     let openComposer = null;
+    /** @type {string[]} */
+    let composerPendingTags = [];
 
     /** @type {HTMLElement | null} */
     let mentionMenuEl = null;
+    /** @type {HTMLTextAreaElement | null} */
+    let mentionMenuAnchorTa = null;
+    let mentionMenuHighlightIndex = 0;
+    /** Ignore hover jumps while scrolling the menu via keyboard. */
+    let mentionMenuSuppressHoverUntil = 0;
+    const autocompleteBoundTextareas = new WeakSet();
     let selectionRefToolbarEl = null;
     /** @type {HTMLTextAreaElement | null} */
     let selectionRefToolbarTa = null;
@@ -2393,6 +2388,9 @@
     let selectionRefPick = null;
     /** @type {(() => void) | null} */
     let pendingInlineEditCommit = null;
+
+    /** @type {WeakMap<HTMLTextAreaElement, () => void>} */
+    const inlineEditCommitByTa = new WeakMap();
     let refLinkPickerEl = null;
     let refLinkPickerQuery = '';
     /** @type {string[]} */
@@ -2468,6 +2466,11 @@
 
     let canvasViewportUserSet = false;
 
+    /** When set, next applyCanvasViewport restores this pan/zoom exactly (survives render). */
+    let canvasViewportLock = null;
+
+    let canvasViewportInitialized = false;
+
     /** @type {{ placed: HTMLElement, id: string, pointerId: number, offX: number, offY: number, startX: number, startY: number, dragging: boolean } | null} */
     let canvasPointerState = null;
 
@@ -2475,6 +2478,9 @@
     let canvasPanState = null;
 
     let canvasSpaceHeld = false;
+
+    /** Last pointer position while over the canvas (for C → new card). */
+    let canvasHotspot = { x: 0, y: 0, over: false };
 
     let canvasSuppressClickUntil = 0;
 
@@ -2568,6 +2574,14 @@
           if (item?.steps?.length) item.steps = item.steps.map(normalizeStep);
         }
         migrateAllItemRefSigils();
+        {
+          const migratedHeads = migrateArchivedRevisionHeads();
+          const clearedArchiveTexts = normalizeArchivedRevisionTexts();
+          if (migratedHeads || clearedArchiveTexts) saveState();
+        }
+        for (const id of Object.keys(items)) {
+          if (items[id].archivedAt) delete canvasPlacements[id];
+        }
         recomputeNextId();
         if (data.viewMode === 'board' || data.viewMode === 'list') {
           viewMode = data.viewMode;
@@ -2580,9 +2594,11 @@
         }
         if (data.canvasViewport && typeof data.canvasViewport === 'object') {
           canvasViewport = normalizeCanvasViewport(data.canvasViewport);
+          canvasViewportInitialized = true;
         }
         if (typeof data.canvasViewportUserSet === 'boolean') {
           canvasViewportUserSet = data.canvasViewportUserSet;
+          if (canvasViewportUserSet) canvasViewportInitialized = true;
         }
         migrateCanvasPlacementsToCenteredWorld();
         clampAllCanvasPlacementsToWorld();
@@ -2612,10 +2628,32 @@
       return String(name ?? '').trim().toLowerCase();
     }
 
+    function itemTagChipsHtml(tags) {
+      return tags
+        .map((t) => `<span class="tag" style="${tagStyle(t)}">${escapeHtml(t)}</span>`)
+        .join('');
+    }
+
+    function syncCardTagsRow(itemId) {
+      const item = items[itemId];
+      if (!item) return;
+      const chips = itemTagChipsHtml(item.tags);
+      const inner = chips
+        ? `<span class="tags-row-tags">${chips}</span>`
+        : '<span class="tags-add">Tags</span>';
+      document.querySelectorAll(`.card[data-id="${CSS.escape(itemId)}"] .tags-row-edit`).forEach((editEl) => {
+        if (editEl.querySelector('.inline-input.single')) return;
+        editEl.innerHTML = inner;
+      });
+    }
+
     function addTagToItemTags(itemId, tag) {
       const name = normalizeTagName(tag);
       if (!name || !items[itemId]) return;
-      if (!items[itemId].tags.includes(name)) items[itemId].tags.push(name);
+      if (items[itemId].tags.includes(name)) return;
+      items[itemId].tags.push(name);
+      syncCardTagsRow(itemId);
+      scheduleSaveState();
     }
 
     function allKnownTags() {
@@ -2624,15 +2662,6 @@
         for (const t of item.tags) set.add(t);
       }
       return [...set].sort((a, b) => a.localeCompare(b));
-    }
-
-    function appendComposerTag(tagsInput, tag) {
-      if (!tagsInput) return;
-      const name = normalizeTagName(tag);
-      if (!name) return;
-      const tags = parseTags(tagsInput.value);
-      if (tags.includes(name)) return;
-      tagsInput.value = tagsInput.value.trim() ? `${tagsInput.value}, ${name}` : name;
     }
 
     function resolveTagTargetItemId(ta) {
@@ -2645,7 +2674,9 @@
     function applyTagFromTextarea(ta, tag) {
       const target = resolveTagTargetItemId(ta);
       if (target === 'composer') {
-        appendComposerTag(ta.closest('[data-composer]')?.querySelector('[data-composer-tags]'), tag);
+        const name = normalizeTagName(tag);
+        if (name && !composerPendingTags.includes(name)) composerPendingTags.push(name);
+        syncComposerTagsRow();
         return;
       }
       if (target) addTagToItemTags(target, tag);
@@ -2676,6 +2707,27 @@
       return true;
     }
 
+    function isTypingTagAtCursor(ta) {
+      const pos = ta.selectionStart ?? ta.value.length;
+      return /#([\w.-]*)$/.test(ta.value.slice(0, pos));
+    }
+
+    /** Enter while `#tag` is active: pick menu item or create tag — do not submit the card. */
+    function tryConfirmTagAtCursor(ta) {
+      if (!isRefEditableTextarea(ta) || !isTypingTagAtCursor(ta)) return false;
+      if (mentionMenuEl && activateMentionMenuItem()) {
+        removeMentionMenu();
+        return true;
+      }
+      const pos = ta.selectionStart ?? ta.value.length;
+      const match = ta.value.slice(0, pos).match(/#([\w.-]*)$/);
+      const name = normalizeTagName(match?.[1] ?? '');
+      if (!name) return false;
+      insertHashTag(ta, name);
+      removeMentionMenu();
+      return true;
+    }
+
     const TAG_PALETTE = [
       { bg: '#e4e4e7', text: '#27272a' },
       { bg: '#d4d4d8', text: '#18181b' },
@@ -2702,7 +2754,36 @@
     }
 
     function stepResolved(step) {
+      if (step.answerArchivedAt) return false;
       return !!(step.answer && step.answer.trim());
+    }
+
+    function isItemArchived(item) {
+      return !!(item?.archivedAt);
+    }
+
+    function isStepArchived(step) {
+      return !!(step?.archivedAt);
+    }
+
+    function itemActiveSteps(item) {
+      return item.steps.filter((s) => !isStepArchived(s));
+    }
+
+    function liveItems() {
+      return Object.values(items).filter((i) => !isItemArchived(i));
+    }
+
+    function isRefLinkableStep(step) {
+      return !!step && !isStepArchived(step);
+    }
+
+    function liveAnswerText(step) {
+      return getAnswerText(step, null, { live: true });
+    }
+
+    function isRefLinkableAnswer(step) {
+      return isRefLinkableStep(step) && !!liveAnswerText(step)?.trim();
     }
 
     function stepFullyResolved(step) {
@@ -2739,11 +2820,16 @@
     function recordAnswerEdit(step, newText) {
       const trimmed = newText.trim();
       if (!trimmed) return;
+      ensureStepRevisions(step);
+      const headRev = step.answerRev;
+      const headEntry = step.answerRevisions?.find((e) => e.rev === headRev);
+      if (!headEntry?.archived && trimmed === getAnswerText(step, headRev)) {
+        return;
+      }
       if (!step.answerRevisions?.length) {
         step.answerRevisions = [];
         step.answerRev = 0;
       }
-      if (trimmed === getAnswerText(step, step.answerRev)) return;
       step.answerRev += 1;
       step.answerRevisions.push({
         rev: step.answerRev,
@@ -2752,6 +2838,7 @@
         tentative: !!step.answerTentative,
       });
       step.answer = trimmed;
+      step.answerArchivedAt = null;
       step.decidedAt = step.answerRevisions[step.answerRevisions.length - 1].at;
     }
 
@@ -2769,14 +2856,19 @@
     function getProblemText(step, rev = null) {
       ensureStepRevisions(step);
       const r = rev ?? step.problemRev;
-      return step.problemRevisions.find((entry) => entry.rev === r)?.text ?? step.problem;
+      const entry = step.problemRevisions.find((e) => e.rev === r);
+      if (entry) return entry.archived ? '' : (entry.text ?? '');
+      return step.problem;
     }
 
-    function getAnswerText(step, rev = null) {
+    function getAnswerText(step, rev = null, { live = false } = {}) {
+      if (live && step.answerArchivedAt) return null;
       if (!step.answer?.trim() && !step.answerRevisions?.length) return null;
       if (!step.answerRevisions?.length) return step.answer?.trim() || null;
       const r = rev ?? step.answerRev;
-      return step.answerRevisions.find((entry) => entry.rev === r)?.text ?? step.answer?.trim() ?? null;
+      const entry = step.answerRevisions.find((e) => e.rev === r);
+      if (entry) return entry.archived ? null : (entry.text ?? null);
+      return step.answer?.trim() ?? null;
     }
 
     function stepFieldHeadRev(step, field) {
@@ -2802,6 +2894,8 @@
         answerRevisions: step.answerRevisions,
         problemRev: step.problemRev,
         answerRev: step.answerRev,
+        archivedAt: step.archivedAt || null,
+        answerArchivedAt: step.answerArchivedAt || null,
       };
       ensureStepRevisions(normalized);
       return normalized;
@@ -2822,20 +2916,23 @@
     }
 
     function itemNeedsDecision(item) {
-      return item.steps.some((s) => !stepFullyResolved(s));
+      if (isItemArchived(item)) return false;
+      return itemActiveSteps(item).some((s) => !stepFullyResolved(s));
     }
 
     function cardStatusClass(item) {
-      const resolved = item.steps.filter(stepFullyResolved).length;
-      if (resolved === item.steps.length) return 'card-complete';
-      if (resolved === 0 && item.steps.every((s) => !stepResolved(s))) return 'card-incomplete';
+      const steps = itemActiveSteps(item);
+      if (!steps.length) return 'card-incomplete';
+      const resolved = steps.filter(stepFullyResolved).length;
+      if (resolved === steps.length) return 'card-complete';
+      if (resolved === 0 && steps.every((s) => !stepResolved(s))) return 'card-incomplete';
       return 'card-partial';
     }
 
     function createItem({ problem, tags = [], answer = null, steps = null }) {
       const id = uid();
       if (steps) {
-        items[id] = { id, tags, steps: steps.map(normalizeStep) };
+        items[id] = { id, tags, archivedAt: null, steps: steps.map(normalizeStep) };
         return id;
       }
       const trimmed = problem?.trim();
@@ -2844,6 +2941,7 @@
       items[id] = {
         id,
         tags,
+        archivedAt: null,
         steps: [normalizeStep({ problem: trimmed, answer: ans })],
       };
       return id;
@@ -2856,23 +2954,76 @@
       return true;
     }
 
-    function clearStepAnswer(itemId, stepIndex) {
+    function appendFieldArchiveRevision(step, field) {
+      ensureStepRevisions(step);
+      const isAnswer = field === 'answer';
+      const revs = stepFieldRevisions(step, field);
+      const headRev = stepFieldHeadRev(step, field);
+      const nextRev = headRev + 1;
+      revs.push({
+        rev: nextRev,
+        text: '',
+        at: new Date().toISOString(),
+        tentative: false,
+        archived: true,
+      });
+      if (isAnswer) {
+        step.answerRev = nextRev;
+      } else {
+        step.problemRev = nextRev;
+      }
+      return nextRev;
+    }
+
+    function archiveStepAnswer(itemId, stepIndex) {
       const step = items[itemId]?.steps[stepIndex];
-      if (!step || !stepResolved(step)) return;
+      if (!step || step.answerArchivedAt) return;
+      if (!step.answer?.trim() && !step.answerRevisions?.length) return;
+      appendFieldArchiveRevision(step, 'answer');
       step.answer = null;
       step.decidedAt = null;
       step.answerTentative = false;
-      step.answerRevisions = [];
-      step.answerRev = 0;
+      step.answerArchivedAt = new Date().toISOString();
+      scheduleSaveState();
       render();
     }
 
-    function removeStep(itemId, stepIndex) {
+    function archiveStep(itemId, stepIndex) {
       const item = items[itemId];
-      if (!item || item.steps.length <= 1) return;
+      if (!item) return;
       const idx = Number(stepIndex);
       if (!Number.isFinite(idx) || idx < 0 || idx >= item.steps.length) return;
-      item.steps.splice(idx, 1);
+      const step = item.steps[idx];
+      if (!step || isStepArchived(step)) return;
+      if (itemActiveSteps(item).length <= 1) return;
+      appendFieldArchiveRevision(step, 'problem');
+      step.archivedAt = new Date().toISOString();
+      scheduleSaveState();
+      render();
+    }
+
+    function archiveItem(id) {
+      const item = items[id];
+      if (!item || isItemArchived(item)) return;
+      const now = new Date().toISOString();
+      item.archivedAt = now;
+      for (const step of item.steps) {
+        if (!isStepArchived(step)) {
+          appendFieldArchiveRevision(step, 'problem');
+          step.archivedAt = now;
+        }
+        if (!step.answerArchivedAt && step.answerRevisions?.length) {
+          appendFieldArchiveRevision(step, 'answer');
+          step.answer = null;
+          step.decidedAt = null;
+          step.answerTentative = false;
+          step.answerArchivedAt = now;
+        }
+      }
+      delete followupDrafts[id];
+      delete canvasPlacements[id];
+      invalidateCanvasPlacedSizeCache(id);
+      scheduleSaveState();
       render();
     }
 
@@ -3213,13 +3364,13 @@
     }
 
     function itemsInColumn(needsDecision) {
-      return Object.values(items)
+      return liveItems()
         .filter((i) => itemNeedsDecision(i) === needsDecision)
         .sort((a, b) => a.id.localeCompare(b.id));
     }
 
     function allItemsOrdered() {
-      return Object.values(items).sort((a, b) => a.id.localeCompare(b.id));
+      return liveItems().sort((a, b) => a.id.localeCompare(b.id));
     }
 
     function renderGroupedCards(itemList, { draggableToCanvas = false } = {}) {
@@ -3243,7 +3394,8 @@
     function issueRefTitle(id) {
       const item = items[id];
       if (!item) return 'Missing decision';
-      return item.steps[0]?.problem || id;
+      const step = itemActiveSteps(item)[0] || item.steps[0];
+      return step?.problem || id;
     }
 
     function truncateLabel(text, max = 52) {
@@ -3313,15 +3465,90 @@
       return `${formatIssueRefDisplay(parsed)}${formatIssueRefSuffix(parsed)}`;
     }
 
-    function isIssueRefStale(parsed) {
-      if (parsed.stepIndex == null) return false;
+    function revisionEntry(step, field, rev) {
+      return stepFieldRevisions(step, field).find((e) => e.rev === rev) ?? null;
+    }
+
+    function isRevisionArchivedEntry(step, field, rev) {
+      return !!revisionEntry(step, field, rev)?.archived;
+    }
+
+    function revisionTimelineBody(entry, field, fullText) {
+      if (entry.archived) return '(removed)';
+      const t = entry.text ?? '';
+      return fullText
+        ? t
+        : (field === 'answer' ? truncateLabel(t, 180) : truncateLabel(t, 160));
+    }
+
+    function migrateArchivedRevisionHeads() {
+      let changed = false;
+      for (const item of Object.values(items)) {
+        const cardArchived = !!item.archivedAt;
+        for (const step of item.steps) {
+          ensureStepRevisions(step);
+          if (step.archivedAt || cardArchived) {
+            const head = stepFieldHeadRev(step, 'problem');
+            if (!isRevisionArchivedEntry(step, 'problem', head)) {
+              appendFieldArchiveRevision(step, 'problem');
+              changed = true;
+            }
+          }
+          const answerGone = !!step.answerArchivedAt || cardArchived;
+          if (answerGone && (step.answerRevisions?.length || step.answer?.trim())) {
+            const head = stepFieldHeadRev(step, 'answer');
+            if (!isRevisionArchivedEntry(step, 'answer', head)) {
+              appendFieldArchiveRevision(step, 'answer');
+              step.answer = null;
+              step.decidedAt = null;
+              step.answerTentative = false;
+              if (cardArchived && !step.answerArchivedAt) step.answerArchivedAt = item.archivedAt;
+              changed = true;
+            }
+          }
+        }
+      }
+      return changed;
+    }
+
+    function normalizeArchivedRevisionTexts() {
+      let changed = false;
+      for (const item of Object.values(items)) {
+        for (const step of item.steps) {
+          for (const field of ['problem', 'answer']) {
+            for (const entry of stepFieldRevisions(step, field)) {
+              if (entry.archived && entry.text) {
+                entry.text = '';
+                changed = true;
+              }
+            }
+          }
+        }
+      }
+      return changed;
+    }
+
+    /** @returns {'missing'|'card-archived'|'step-archived'|'answer-archived'|'revision'|null} */
+    function issueRefStaleReason(parsed) {
       const item = items[parsed.itemId];
-      const step = item?.steps[parsed.stepIndex];
-      if (!item || !step) return false;
+      if (!item) return 'missing';
+      if (isItemArchived(item)) return 'card-archived';
+      if (parsed.stepIndex == null) return null;
+      const step = item.steps[parsed.stepIndex];
+      if (!step) return 'missing';
+      if (isStepArchived(step)) return 'step-archived';
+      if (parsed.focusAnswer && step.answerArchivedAt) return 'answer-archived';
       const field = parsed.focusAnswer ? 'answer' : 'problem';
       const headRev = stepFieldHeadRev(step, field);
-      if (parsed.revision == null) return false;
-      return parsed.revision !== headRev;
+      if (parsed.revision != null && parsed.revision !== headRev) return 'revision';
+      if (parsed.revision == null && isRevisionArchivedEntry(step, field, headRev)) {
+        return parsed.focusAnswer ? 'answer-archived' : 'step-archived';
+      }
+      return null;
+    }
+
+    function isIssueRefStale(parsed) {
+      return issueRefStaleReason(parsed) != null;
     }
 
     function issueRefSameTarget(a, b) {
@@ -3458,9 +3685,31 @@
     }
 
     function issueRefPanelUpgradeHtml(parsed) {
-      if (!isIssueRefStale(parsed)) return '';
+      const reason = issueRefStaleReason(parsed);
+      if (!reason || reason === 'missing') return '';
+      if (reason === 'card-archived' || reason === 'step-archived' || reason === 'answer-archived') {
+        return '';
+      }
       const token = formatIssueRefToken(parsed);
       return `<button type="button" class="issue-ref-preview-upgrade" data-action="upgrade-issue-ref" data-issue-ref="${escapeAttr(token)}">Update link to current</button>`;
+    }
+
+    function issueRefPanelStaleNotice(parsed) {
+      const reason = issueRefStaleReason(parsed);
+      if (!reason) return '';
+      if (reason === 'missing') {
+        return '<p class="issue-ref-panel-stale">This decision is no longer in the workspace.</p>';
+      }
+      if (reason === 'card-archived') {
+        return '<p class="issue-ref-panel-stale">This card is archived. Latest revision below is the archived snapshot — history is read-only.</p>';
+      }
+      if (reason === 'step-archived') {
+        return '<p class="issue-ref-panel-stale">This question is archived. Latest revision below is the archived snapshot.</p>';
+      }
+      if (reason === 'answer-archived') {
+        return '<p class="issue-ref-panel-stale">This answer is archived. Latest revision below is the archived snapshot.</p>';
+      }
+      return '<p class="issue-ref-panel-stale">This link pins an older revision — bar on the referenced field is yellow for that snapshot, gray at latest; use “Diff linked → current” below.</p>';
     }
 
     function panelRefField(parsed) {
@@ -3544,6 +3793,7 @@
             text: entry.text,
             label: `!${num}/${sn} · question`,
             tentative: !!entry.tentative,
+            archived: !!entry.archived,
             step,
           });
         }
@@ -3557,6 +3807,7 @@
             text: entry.text,
             label: `!${num}/a${sn} · answer`,
             tentative: !!entry.tentative,
+            archived: !!entry.archived,
             step,
           });
         }
@@ -3720,14 +3971,18 @@
       if (revisions.length > 1) {
         parts.push(`<div class="issue-ref-panel-rev-stepper">
           <button type="button" class="issue-ref-panel-rev-btn" data-action="panel-rev-prev" aria-label="Previous revision"${idx <= 0 ? ' disabled' : ''}>←</button>
-          <span class="issue-ref-panel-rev-label">${viewRev === headRev ? `Latest · v${viewRev}` : `Viewing v${viewRev} · latest v${headRev}`}</span>
+          <span class="issue-ref-panel-rev-label">${viewRev === headRev
+            ? `Latest · v${viewRev}${isRevisionArchivedEntry(step, field, headRev) ? ' · archived' : ''}`
+            : `Viewing v${viewRev} · latest v${headRev}${isRevisionArchivedEntry(step, field, headRev) ? ' (archived)' : ''}`}</span>
           <button type="button" class="issue-ref-panel-rev-btn" data-action="panel-rev-next" aria-label="Next revision"${idx >= revNums.length - 1 ? ' disabled' : ''}>→</button>
         </div>`);
       } else if (viewRev != null) {
-        parts.push(`<div class="issue-ref-panel-view-rev">Revision v${viewRev}</div>`);
+        const arch = isRevisionArchivedEntry(step, field, viewRev) ? ' · archived' : '';
+        parts.push(`<div class="issue-ref-panel-view-rev">Revision v${viewRev}${arch}</div>`);
       }
-      if (isIssueRefStale(parsed)) {
-        parts.push('<p class="issue-ref-panel-stale">This link pins an older revision — bar on the referenced answer is yellow for that snapshot, gray at latest; use “Diff linked → current” below.</p>');
+      const staleNotice = issueRefPanelStaleNotice(parsed);
+      if (staleNotice) {
+        parts.push(staleNotice);
         parts.push(issueRefPanelUpgradeHtml(parsed));
       }
       if (canShowLinkedVsCurrentDiff(parsed)) {
@@ -3759,8 +4014,8 @@
         const active = activeView?.eventIndex === eventIndex;
         const head = stepFieldHeadRev(ev.step, ev.field);
         const date = ev.at ? formatDecisionDate(ev.at) : '';
-        const body = ev.text;
-        const meta = `<div class="issue-ref-preview-revision-meta">v${ev.rev} · ${escapeHtml(ev.label)}${ev.tentative ? ' · tentative' : ''}${ev.rev === head ? ' · current' : ''}</div>`;
+        const body = ev.archived ? '(removed)' : ev.text;
+        const meta = `<div class="issue-ref-preview-revision-meta">v${ev.rev} · ${escapeHtml(ev.label)}${ev.tentative ? ' · tentative' : ''}${ev.archived ? ' · archived' : ''}${ev.rev === head ? ' · current' : ''}</div>`;
         const content = `<span class="revision-timeline-content">${meta}${escapeHtml(body)}</span>`;
         const dateHtml = date
           ? `<time class="revision-timeline-date" datetime="${escapeAttr(ev.at)}">${escapeHtml(date)}</time>`
@@ -3862,8 +4117,15 @@
       const stepHint = parsed.stepIndex != null
         ? (parsed.focusAnswer ? `, answer ${parsed.stepIndex + 1}` : `, step ${parsed.stepIndex + 1}`)
         : '';
-      const staleHint = stale ? ', outdated revision' : '';
-      const staleTitle = stale ? ' title="Outdated link — click to open panel, or Shift+click to update"' : '';
+      const reason = issueRefStaleReason(parsed);
+      const staleHint = stale
+        ? (reason === 'revision' ? ', outdated revision' : ', archived')
+        : '';
+      const staleTitle = stale
+        ? (reason === 'revision'
+          ? ' title="Outdated link — click to open panel, or Shift+click to update"'
+          : ' title="Archived — click to view full history in panel"')
+        : '';
       const buttonHtml = `<button type="button" class="${linkClass}${miss}${stale}" data-action="goto-issue" data-issue-ref="${escapeHtml(token)}" aria-label="Go to decision !${escapeHtml(num)}${stepHint}${staleHint}"${staleTitle}>${inner}</button>`;
       if (issueRefPlaceholderStash) {
         const idx = issueRefPlaceholderStash.length;
@@ -3923,6 +4185,61 @@
         mentionMenuEl.remove();
         mentionMenuEl = null;
       }
+      mentionMenuAnchorTa = null;
+      mentionMenuHighlightIndex = 0;
+    }
+
+    function mentionMenuItems() {
+      if (!mentionMenuEl) return [];
+      return [...mentionMenuEl.querySelectorAll('.mention-menu-item')];
+    }
+
+    function setMentionMenuHighlight(index) {
+      const menuItems = mentionMenuItems();
+      if (!menuItems.length) return;
+      mentionMenuHighlightIndex = ((index % menuItems.length) + menuItems.length) % menuItems.length;
+      menuItems.forEach((btn, i) => {
+        const on = i === mentionMenuHighlightIndex;
+        btn.classList.toggle('active', on);
+        btn.setAttribute('aria-selected', on ? 'true' : 'false');
+      });
+      menuItems[mentionMenuHighlightIndex]?.scrollIntoView({ block: 'nearest' });
+    }
+
+    function activateMentionMenuItem(index = mentionMenuHighlightIndex) {
+      const menuItems = mentionMenuItems();
+      const btn = menuItems[index];
+      if (!btn) return false;
+      btn.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+      return true;
+    }
+
+    function tryAutocompleteMenuKeydown(e) {
+      if (!mentionMenuEl) return false;
+      const menuItems = mentionMenuItems();
+      if (!menuItems.length) return false;
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        mentionMenuSuppressHoverUntil = Date.now() + 250;
+        setMentionMenuHighlight(mentionMenuHighlightIndex + 1);
+        return true;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        mentionMenuSuppressHoverUntil = Date.now() + 250;
+        setMentionMenuHighlight(mentionMenuHighlightIndex - 1);
+        return true;
+      }
+      if ((e.key === 'Enter' && !e.shiftKey && !e.isComposing) || (e.key === 'Tab' && !e.shiftKey)) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        activateMentionMenuItem();
+        return true;
+      }
+      return false;
     }
 
     function isRefLinkPickerOpen() {
@@ -3960,7 +4277,7 @@
 
     function collectRefLinkPickerTags() {
       const counts = new Map();
-      for (const item of Object.values(items)) {
+      for (const item of liveItems()) {
         for (const tag of item.tags) {
           counts.set(tag, (counts.get(tag) || 0) + 1);
         }
@@ -4100,7 +4417,7 @@
       const groups = [];
       let rowCount = 0;
       const editingId = selectionRefPick?.itemId || null;
-      const sorted = Object.values(items).sort((a, b) => {
+      const sorted = liveItems().sort((a, b) => {
         if (editingId) {
           if (a.id === editingId && b.id !== editingId) return -1;
           if (b.id === editingId && a.id !== editingId) return 1;
@@ -4125,15 +4442,16 @@
             'card',
             `!${num}`,
             firstProblem,
-            item.steps.length === 1 ? getAnswerText(item.steps[0]) : null,
+            item.steps.length === 1 ? liveAnswerText(item.steps[0]) : null,
           ));
         }
 
         item.steps.forEach((step, index) => {
+          if (!isRefLinkableStep(step)) return;
           ensureStepRevisions(step);
           const stepNum = index + 1;
           const problem = getProblemText(step);
-          const answer = getAnswerText(step);
+          const answer = liveAnswerText(step);
           const stepHay = `!${num} ${item.tags.join(' ')} ${problem} ${answer || ''}`;
           if (refLinkPickerRowPassesKind('question') && refTargetMatchesQuery(stepHay, q)) {
             rows.push(renderRefLinkPickerRow(
@@ -4144,7 +4462,7 @@
               null,
             ));
           }
-          if (answer?.trim()
+          if (isRefLinkableAnswer(step)
             && refLinkPickerRowPassesKind('answer')
             && refTargetMatchesQuery(`!${num}/a${stepNum} ${answer} ${problem}`, q)) {
             rows.push(renderRefLinkPickerRow(
@@ -4495,9 +4813,22 @@
       mentionMenuEl.style.left = `${rect.left}px`;
       mentionMenuEl.style.top = `${rect.bottom + 4}px`;
       mentionMenuEl.style.minWidth = `${Math.min(Math.max(rect.width, 200), 320)}px`;
+      mentionMenuAnchorTa = ta;
+      mentionMenuEl.addEventListener('mouseover', (ev) => {
+        if (Date.now() < mentionMenuSuppressHoverUntil) return;
+        const item = ev.target.closest('.mention-menu-item');
+        if (!item) return;
+        const menuItems = mentionMenuItems();
+        const i = menuItems.indexOf(item);
+        if (i >= 0) setMentionMenuHighlight(i);
+      });
+      setMentionMenuHighlight(0);
     }
 
     function bindRichTextAutocomplete(ta) {
+      if (!ta || autocompleteBoundTextareas.has(ta)) return;
+      autocompleteBoundTextareas.add(ta);
+
       const showMenu = () => {
         removeMentionMenu();
         const pos = ta.selectionStart ?? ta.value.length;
@@ -4531,8 +4862,13 @@
           const answerOnly = issueStepMatch[2] === 'a';
           const query = issueStepMatch[3];
           const item = itemId ? items[itemId] : null;
-          if (item) {
+          if (item && !isItemArchived(item)) {
             mountAutocompleteMenu(ta, () => item.steps.map((step, index) => {
+              if (answerOnly) {
+                if (!isRefLinkableAnswer(step)) return null;
+              } else if (!isRefLinkableStep(step)) {
+                return null;
+              }
               const stepNum = String(index + 1);
               if (query && !stepNum.startsWith(query)) return null;
               const btn = document.createElement('button');
@@ -4547,7 +4883,7 @@
               const titleSpan = document.createElement('span');
               titleSpan.className = 'issue-menu-title';
               titleSpan.textContent = answerOnly
-                ? truncateLabel(step.answer?.trim() || '(no answer)', 56)
+                ? truncateLabel(liveAnswerText(step) || '(no answer)', 56)
                 : truncateLabel(step.problem || item.id, 56);
               btn.append(idSpan, titleSpan);
               const refToken = answerOnly
@@ -4566,7 +4902,7 @@
 
         if (issueMatch) {
           const query = issueMatch[1];
-          const hits = Object.values(items)
+          const hits = liveItems()
             .filter((item) => {
               const num = item.id.replace(/^item-/i, '');
               const problem = item.steps[0]?.problem || '';
@@ -4623,7 +4959,15 @@
       ta.addEventListener('input', showMenu);
       ta.addEventListener('blur', () => setTimeout(removeMentionMenu, 120));
       ta.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') removeMentionMenu();
+        if (e.key === 'Escape') {
+          removeMentionMenu();
+          return;
+        }
+        if (tryAutocompleteMenuKeydown(e)) return;
+        if (isEnterSubmit(e) && tryConfirmTagAtCursor(ta)) {
+          e.preventDefault();
+          e.stopImmediatePropagation();
+        }
       });
     }
 
@@ -4744,7 +5088,10 @@
       const refChrome = parsed.stepIndex == null
         ? buildIssuePanelCardHistoryChrome(item)
         : buildIssuePanelRefChrome(parsed);
-      body.innerHTML = `${refChrome}${renderCard(item, {
+      const archivedBanner = isItemArchived(item)
+        ? '<p class="issue-ref-preview-a issue-ref-preview-pending">This card is archived — shown for reference history.</p>'
+        : '';
+      body.innerHTML = `${archivedBanner}${refChrome}${renderCard(item, {
         highlightRef: panelHighlightRef(parsed),
         idPrefix: PANEL_CARD_ID_PREFIX,
       })}`;
@@ -4796,13 +5143,9 @@
         const active = entry.rev === viewRev;
         const linked = linkedRev != null && entry.rev === linkedRev;
         const date = entry.at ? formatDecisionDate(entry.at) : '';
-        const body = fullText
-          ? entry.text
-          : (field === 'answer'
-            ? truncateLabel(entry.text, 180)
-            : truncateLabel(entry.text, 160));
+        const body = revisionTimelineBody(entry, field, fullText);
         const linkedBadge = linked ? '<span class="rev-linked-badge">linked</span>' : '';
-        const meta = `<div class="issue-ref-preview-revision-meta">v${entry.rev}${linkedBadge}${entry.tentative ? ' · tentative' : ''}${entry.rev === head ? ' · current' : ''}</div>`;
+        const meta = `<div class="issue-ref-preview-revision-meta">v${entry.rev}${linkedBadge}${entry.tentative ? ' · tentative' : ''}${entry.archived ? ' · archived' : ''}${entry.rev === head ? ' · current' : ''}</div>`;
         const content = `<span class="revision-timeline-content">${meta}${escapeHtml(body)}</span>`;
         const dateHtml = date
           ? `<time class="revision-timeline-date" datetime="${escapeAttr(entry.at)}">${escapeHtml(date)}</time>`
@@ -4853,10 +5196,11 @@
       }
       const num = parsed.itemId.replace(/^item-/i, '');
       const stale = isIssueRefStale(parsed);
+      const statusLabel = isItemArchived(item) ? 'Archived' : stale ? 'Stale link' : 'Preview';
       const headHtml = `
         <div class="issue-ref-preview-head">
           <span class="issue-ref-preview-id">!${escapeHtml(num)}</span>
-          <span class="issue-ref-preview-status">${stale ? 'Stale link' : 'Preview'}</span>
+          <span class="issue-ref-preview-status">${statusLabel}</span>
         </div>`;
       const staleFooter = issuePreviewStaleFooter(parsed);
 
@@ -5059,10 +5403,7 @@
     }
 
     function deleteItem(id) {
-      delete items[id];
-      delete followupDrafts[id];
-      delete canvasPlacements[id];
-      invalidateCanvasPlacedSizeCache(id);
+      archiveItem(id);
     }
 
     function removeFromCanvas(id) {
@@ -5271,7 +5612,7 @@
       let maxY = -Infinity;
       let any = false;
       for (const id of Object.keys(canvasPlacements)) {
-        if (!items[id]) continue;
+        if (!items[id] || isItemArchived(items[id])) continue;
         const card = canvasPlacedCardBoundsWorld(id);
         if (!card) continue;
         any = true;
@@ -5936,10 +6277,20 @@
       if (!surface) return;
       bindCanvasSurfaceWheel(surface);
       requestAnimationFrame(() => {
+        if (applyCanvasViewportLock(surface)) {
+          updateCanvasZoomControlLabel();
+          updateCanvasFakeScrollbars();
+          requestAnimationFrame(() => {
+            syncCanvasSurfaceScrollImmediate(surface);
+            updateCanvasFakeScrollbars();
+          });
+          return;
+        }
         applyCanvasScrollLayout();
-        if (!canvasViewportUserSet) {
+        if (!canvasViewportInitialized && !canvasViewportUserSet) {
           centerCanvasViewport(surface);
         }
+        canvasViewportInitialized = true;
         updateCanvasZoomControlLabel();
         updateCanvasFakeScrollbars();
       });
@@ -5979,6 +6330,35 @@
       return !!el.closest('[contenteditable="true"]');
     }
 
+    function syncCanvasHotspot(clientX, clientY) {
+      if (viewMode !== 'list') {
+        canvasHotspot.over = false;
+        return;
+      }
+      const surface = canvasSurfaceEl();
+      if (!surface) {
+        canvasHotspot.over = false;
+        return;
+      }
+      const r = surface.getBoundingClientRect();
+      const inside = clientX >= r.left && clientX <= r.right
+        && clientY >= r.top && clientY <= r.bottom;
+      canvasHotspot.over = inside;
+      if (inside) {
+        canvasHotspot.x = clientX;
+        canvasHotspot.y = clientY;
+      }
+    }
+
+    function createCardOnCanvasAtPointer() {
+      if (!canvasHotspot.over || viewMode !== 'list' || !canvasSurfaceEl()) return;
+      const id = createItem({ problem: 'New decision' });
+      if (!id) return;
+      pendingFocus = { id, field: 'problem', step: 0, canvas: true };
+      placeCardOnCanvas(id, canvasHotspot.x, canvasHotspot.y);
+      popCanvasPlacedCard(id);
+    }
+
     function canvasWorldExtent() {
       return { w: CANVAS_WORLD_MIN_W, h: CANVAS_WORLD_MIN_H };
     }
@@ -5993,6 +6373,38 @@
       }
     }
 
+    function canvasActiveEditTextarea() {
+      const el = document.activeElement;
+      if (!el?.matches('textarea.inline-input, textarea[data-followup-input]')) return null;
+      return el.closest('.canvas-placed-card') ? el : null;
+    }
+
+    function shouldFlushCanvasFieldEditForTarget(target) {
+      const ta = canvasActiveEditTextarea();
+      if (!ta) return false;
+      if (ta === target || ta.contains(target)) return false;
+      if (mentionMenuEl?.contains(target)) return false;
+      if (selectionRefToolbarEl?.contains(target)) return false;
+      return true;
+    }
+
+    function flushActiveCanvasFieldEditForPointer(target) {
+      if (!shouldFlushCanvasFieldEditForTarget(target)) return false;
+      const ta = canvasActiveEditTextarea();
+      if (!ta) return false;
+      lockCanvasViewportFromSurface();
+      if (ta.matches('[data-followup-input]')) {
+        tryCommitFollowupField(ta);
+        return true;
+      }
+      removeMentionMenu();
+      pendingInlineEditCommit = null;
+      const commit = inlineEditCommitByTa.get(ta);
+      if (commit) commit();
+      else ta.blur();
+      return true;
+    }
+
     function tryStartCanvasPan(e) {
       if (viewMode !== 'list') return false;
       const surface = e.target.closest('[data-canvas-surface]');
@@ -6001,6 +6413,7 @@
       const middle = e.button === 1;
       const spacePan = canvasSpaceHeld && e.button === 0;
       const backgroundPan = e.button === 0 && !onCard;
+      if (backgroundPan && flushActiveCanvasFieldEditForPointer(e.target)) return false;
       if (!middle && !spacePan && !backgroundPan) return false;
       if (canvasPointerState || canvasPanState) return false;
 
@@ -6100,11 +6513,12 @@
     function renderCanvasSurfaceHtml() {
       const sortedIds = canvasPlacementsSortedIds();
       const placed = sortedIds
+        .filter((id) => items[id] && !isItemArchived(items[id]))
         .map((id, i) => renderCanvasPlacedCard(items[id], canvasPlacements[id], i + 1))
         .join('');
       const hint = placed
         ? ''
-        : '<p class="canvas-hint">Drag cards from the list · drag or scroll to pan · pinch or ⌘/Ctrl+scroll to zoom</p>';
+        : '<p class="canvas-hint">Drag cards from the list · C with pointer on canvas for a new card · Space+drag to pan · pinch or ⌘/Ctrl+scroll to zoom</p>';
       const { w, h } = canvasWorldExtent();
       return `
         <div class="spatial-canvas" data-canvas-surface role="region" aria-label="Decision canvas">
@@ -6435,6 +6849,7 @@
       });
 
       app.addEventListener('pointerdown', (e) => {
+        if (e.button === 0 && flushActiveCanvasFieldEditForPointer(e.target)) return;
         if (tryStartCanvasPan(e)) return;
         if (e.button !== 0) return;
         if (canvasSpaceHeld) return;
@@ -6534,7 +6949,19 @@
         }
       }, true);
 
+      window.addEventListener('pointermove', (e) => {
+        syncCanvasHotspot(e.clientX, e.clientY);
+      }, { passive: true });
+
       window.addEventListener('keydown', (e) => {
+        if ((e.key === 'c' || e.key === 'C') && !e.repeat
+          && !e.metaKey && !e.ctrlKey && !e.altKey) {
+          if (canvasTypingFocus() || isRefLinkPickerOpen()) return;
+          if (viewMode !== 'list' || !canvasSurfaceEl() || !canvasHotspot.over) return;
+          e.preventDefault();
+          createCardOnCanvasAtPointer();
+          return;
+        }
         if (e.code !== 'Space' || e.repeat) return;
         if (canvasTypingFocus()) return;
         if (viewMode !== 'list' || !canvasSurfaceEl()) return;
@@ -6555,17 +6982,32 @@
       });
     }
 
+    function composerTagChipsHtml() {
+      return itemTagChipsHtml(composerPendingTags);
+    }
+
+    function syncComposerTagsRow() {
+      const row = document.querySelector('[data-composer-tags-row]');
+      if (!row) return;
+      const chips = composerTagChipsHtml();
+      if (!chips) {
+        row.hidden = true;
+        row.replaceChildren();
+        return;
+      }
+      row.hidden = false;
+      row.innerHTML = `<span class="tags-row-tags">${chips}</span>`;
+    }
+
     function renderComposerHtml() {
+      const chips = composerTagChipsHtml();
+      const tagsRow = chips
+        ? `<div class="composer-tags-row tags-row" data-composer-tags-row><span class="tags-row-tags">${chips}</span></div>`
+        : '<div class="composer-tags-row tags-row" data-composer-tags-row hidden></div>';
       return `
         <div class="composer" data-composer="root">
-          <textarea placeholder="Question — @people, #tag (adds tag), [label](!5/a1)" autofocus data-composer-input></textarea>
-          <div class="composer-meta">
-            <input type="text" placeholder="Tags" data-composer-tags />
-          </div>
-          <div class="composer-actions">
-            <button type="button" class="btn-sm" data-composer-cancel>Cancel</button>
-            <button type="button" class="btn-sm primary" data-composer-save>Add</button>
-          </div>
+          ${tagsRow}
+          <textarea placeholder="Type anything, @mention, !reference, #tag" autofocus data-composer-input></textarea>
         </div>
       `;
     }
@@ -6592,7 +7034,9 @@
 
     function tryCommitFollowupField(followup) {
       if (!followup?.matches('[data-followup-input]')) return;
+      if (!document.body.contains(followup)) return;
       if (!followup.value.trim()) return;
+      lockCanvasViewportFromSurface();
       commitFollowup(followup.dataset.id, followup.value, {
         inPanel: !!followup.closest('.issue-ref-panel-body'),
         ta: followup,
@@ -6616,7 +7060,7 @@
 
     function renderTagsHtml(item, { readOnly = false } = {}) {
       const num = item.id.replace(/^item-/i, '');
-      const chips = item.tags.map((t) => `<span class="tag" style="${tagStyle(t)}">${escapeHtml(t)}</span>`).join('');
+      const chips = itemTagChipsHtml(item.tags);
       const editAttrs = readOnly ? '' : ` data-editable="tags" data-id="${item.id}"`;
       const tagsInner = chips
         ? `<span class="tags-row-tags">${chips}</span>`
@@ -6655,14 +7099,15 @@
         const pRev = fieldRevAtHistoryEvent(historyEvents, index, 'problem', historyEventIndex);
         problemText = pRev != null ? getProblemText(step, pRev) : getProblemText(step);
         const aRev = fieldRevAtHistoryEvent(historyEvents, index, 'answer', historyEventIndex);
-        answerText = aRev != null ? getAnswerText(step, aRev) : null;
+        answerText = aRev != null ? getAnswerText(step, aRev, { live: false }) : null;
       } else {
+        const answerLive = !inRefPanel;
         problemText = refStep && !highlightRef.focusAnswer && pinRev != null
           ? getProblemText(step, pinRev)
           : getProblemText(step);
         answerText = refStep && highlightRef.focusAnswer && pinRev != null
-          ? getAnswerText(step, pinRev)
-          : getAnswerText(step);
+          ? getAnswerText(step, pinRev, { live: answerLive })
+          : getAnswerText(step, null, { live: answerLive });
       }
       const answerEmpty = !answerText?.trim();
       const showAsAnswered = historyEventIndex != null
@@ -6682,7 +7127,7 @@
         ? ''
         : ` data-editable="${field}" data-id="${item.id}" data-step="${index}"`;
       const answerClearBtn = !inRefPanel && !answerEmpty
-        ? `<button type="button" class="field-remove-btn" data-action="clear-answer" data-id="${item.id}" data-step="${index}" aria-label="Remove answer">×</button>`
+        ? `<button type="button" class="field-remove-btn" data-action="clear-answer" data-id="${item.id}" data-step="${index}" aria-label="Archive answer">×</button>`
         : '';
       const answerMetaHtml = inRefPanel
         ? (dateHtml ? `<div class="answer-meta">${dateHtml}</div>` : '')
@@ -6694,15 +7139,15 @@
                 ${dateHtml}
               </div>`;
       const answerHtml = answerEmpty
-        ? `<div class="answer-block${inRefPanel ? '' : ' editable'} empty${highlightAnswer ? ' highlight' : ''}${refBarOnAnswer ? refTargetBar : ''}" id="${idPrefix}answer-${item.id}-${index}"${fieldEditAttrs('answer')}>${inRefPanel ? '' : 'Decision'}</div>`
+        ? `<div class="answer-block${inRefPanel ? '' : ' editable'} empty${highlightAnswer ? ' highlight' : ''}${refBarOnAnswer ? refTargetBar : ''}" id="${idPrefix}answer-${item.id}-${index}"${fieldEditAttrs('answer')}>${inRefPanel ? '' : 'Add decision'}</div>`
         : `<div class="answer-block${step.answerTentative ? ' answer-marked' : ''}${highlightAnswer ? ' highlight' : ''}${refBarOnAnswer ? refTargetBar : ''}" id="${idPrefix}answer-${item.id}-${index}">
             <div class="answer-inner">
               <span class="answer-text${inRefPanel ? '' : ' editable'}"${fieldEditAttrs('answer')}>${formatRichText(answerText)}</span>
               ${answerMetaHtml}
             </div>
           </div>`;
-      const stepRemoveBtn = !inRefPanel && item.steps.length > 1
-        ? `<button type="button" class="field-remove-btn field-remove-btn--problem" data-action="remove-step" data-id="${item.id}" data-step="${index}" aria-label="Remove question">×</button>`
+      const stepRemoveBtn = !inRefPanel && !isStepArchived(step) && itemActiveSteps(item).length > 1
+        ? `<button type="button" class="field-remove-btn field-remove-btn--problem" data-action="remove-step" data-id="${item.id}" data-step="${index}" aria-label="Archive question">×</button>`
         : '';
       const problemHtml = `<div class="problem-row">${stepRemoveBtn}<div class="problem${inRefPanel ? '' : ' editable'}${refBarOnProblem ? refTargetBar : ''}"${fieldEditAttrs('problem')}>${formatRichText(problemText)}</div></div>`;
       const stepHighlight = highlightStep && !highlightRef?.focusAnswer ? ' highlight' : '';
@@ -6721,6 +7166,7 @@
       const historyEvents = historyEventIndex != null ? collectCardHistoryEvents(item) : null;
       const timeline = item.steps
         .map((step, i) => {
+          if (!inRefPanel && isStepArchived(step)) return '';
           if (historyEvents && !stepVisibleAtHistoryEvent(historyEvents, i, historyEventIndex)) return '';
           return renderTimelineStep(item, step, i, { highlightRef, idPrefix, historyEvents, historyEventIndex });
         })
@@ -6741,7 +7187,7 @@
                 ${renderTagsHtml(item, { readOnly: inRefPanel })}
                 ${inCanvasSurface
                   ? `<button type="button" class="btn-delete" data-action="remove-from-canvas" data-id="${item.id}" aria-label="Remove from canvas">×</button>`
-                  : `<button type="button" class="btn-delete" data-action="delete" data-id="${item.id}" aria-label="Delete">×</button>`}
+                  : `<button type="button" class="btn-delete" data-action="delete" data-id="${item.id}" aria-label="Archive card">×</button>`}
               </div>
               <div class="timeline">${timeline}</div>
               ${inRefPanel ? '' : `<div class="followup-slot">
@@ -6821,9 +7267,48 @@
       `;
     }
 
+    function lockCanvasViewportFromSurface() {
+      if (viewMode !== 'list') return;
+      if (canvasViewportLock) return;
+      const surface = canvasSurfaceEl();
+      const fromState = {
+        scrollLeft: canvasViewport.scrollLeft,
+        scrollTop: canvasViewport.scrollTop,
+        zoom: canvasViewport.zoom,
+      };
+      if (!surface) {
+        canvasViewportLock = fromState;
+        canvasViewportUserSet = true;
+        return;
+      }
+      const fromSurface = {
+        scrollLeft: surface.scrollLeft,
+        scrollTop: surface.scrollTop,
+        zoom: canvasViewport.zoom,
+      };
+      const surfaceUnset = !fromSurface.scrollLeft && !fromSurface.scrollTop
+        && (fromState.scrollLeft || fromState.scrollTop);
+      canvasViewportLock = surfaceUnset ? fromState : fromSurface;
+      canvasViewport.scrollLeft = canvasViewportLock.scrollLeft;
+      canvasViewport.scrollTop = canvasViewportLock.scrollTop;
+      canvasViewportUserSet = true;
+    }
+
+    function applyCanvasViewportLock(surface) {
+      if (!canvasViewportLock || !surface) return false;
+      canvasViewport.scrollLeft = canvasViewportLock.scrollLeft;
+      canvasViewport.scrollTop = canvasViewportLock.scrollTop;
+      canvasViewport.zoom = canvasViewportLock.zoom;
+      canvasViewportLock = null;
+      applyCanvasScrollLayout({ syncOverlays: false });
+      syncCanvasSurfaceScrollImmediate(surface);
+      return true;
+    }
+
     function render() {
       removeIssuePreview();
       clearWorkspaceLinkHover();
+      lockCanvasViewportFromSurface();
       invalidateCanvasPlacedSizeCache();
       const drawerRef = issueDrawerRefId;
       const app = document.getElementById('app');
@@ -6850,15 +7335,13 @@
         finishEditableHandoff(document.getElementById('app'));
       } else {
         const composerInput = document.querySelector('[data-composer-input]');
-        if (composerInput) {
-          composerInput.focus();
-          bindRichTextAutocomplete(composerInput);
-        }
+        if (composerInput) composerInput.focus();
       }
 
       if (drawerRef) populateIssueRefDrawer(drawerRef);
 
       syncAutoGrowTextareas(document.getElementById('app'));
+      document.querySelectorAll(REF_EDITABLE_TEXTAREA_SEL).forEach((ta) => bindRichTextAutocomplete(ta));
       if (viewMode === 'list') {
         bindCanvasInteractions();
         applyCanvasViewport();
@@ -6950,6 +7433,7 @@
       ta.setSelectionRange(ta.value.length, ta.value.length);
 
       const commit = () => {
+        inlineEditCommitByTa.delete(ta);
         consumeTrailingHashTag(ta);
         const val = ta.value.trim();
         if (isProblem) {
@@ -6964,6 +7448,8 @@
         }
         render();
       };
+
+      inlineEditCommitByTa.set(ta, commit);
 
       bindRichTextAutocomplete(ta);
 
@@ -6982,32 +7468,53 @@
         }, 0);
       });
       ta.addEventListener('keydown', (e) => {
-        if (isEnterSubmit(e)) {
-          e.preventDefault();
-          ta.blur();
-        }
         if (e.key === 'Escape') {
           removeMentionMenu();
           pendingFocus = null;
           render();
+          return;
+        }
+        if (mentionMenuEl && mentionMenuAnchorTa === ta) return;
+        if (isEnterSubmit(e) && tryConfirmTagAtCursor(ta)) {
+          e.preventDefault();
+          return;
+        }
+        if (isEnterSubmit(e)) {
+          e.preventDefault();
+          ta.blur();
         }
       });
     }
 
     function closeComposer() {
       openComposer = null;
+      composerPendingTags = [];
       render();
     }
 
     function saveComposer(composerEl) {
+      if (!openComposer || !composerEl) return;
       const input = composerEl.querySelector('[data-composer-input]');
+      if (!input) return;
       consumeTrailingHashTag(input);
-      const text = input.value;
-      const tags = parseTags(composerEl.querySelector('[data-composer-tags]').value);
+      const text = input.value.trim();
+      if (!text) {
+        closeComposer();
+        return;
+      }
+      const tags = [...composerPendingTags];
       const id = createItem({ problem: text, tags });
+      composerPendingTags = [];
       if (id) pendingFocus = { id, field: 'answer', step: 0 };
       openComposer = null;
       render();
+    }
+
+    function tryCommitComposerField(input) {
+      if (!input?.matches('[data-composer-input]') || !openComposer) return;
+      const composer = input.closest('[data-composer]');
+      if (!composer) return;
+      saveComposer(composer);
     }
 
     document.querySelector('.header-right').addEventListener('click', (e) => {
@@ -7140,6 +7647,7 @@
       }
 
       if (action === 'add-root') {
+        composerPendingTags = [];
         openComposer = { type: 'root' };
         render();
         return;
@@ -7259,12 +7767,12 @@
       }
 
       if (action === 'clear-answer' && id && items[id]) {
-        clearStepAnswer(id, Number(actionEl.dataset.step));
+        archiveStepAnswer(id, Number(actionEl.dataset.step));
         return;
       }
 
       if (action === 'remove-step' && id && items[id]) {
-        removeStep(id, Number(actionEl.dataset.step));
+        archiveStep(id, Number(actionEl.dataset.step));
         return;
       }
 
@@ -7287,24 +7795,9 @@
       }
 
       if (action === 'delete' && id && items[id]) {
-        const openParsed = issueDrawerRefId ? parseIssueRef(issueDrawerRefId) : null;
-        if (openParsed?.itemId === id) closeIssueRefDrawer();
         deleteItem(id);
-        render();
       }
     });
-
-    document.getElementById('app-body').addEventListener('click', (e) => {
-      if (e.target.closest('[data-composer-save]')) {
-        const composer = e.target.closest('[data-composer]');
-        if (composer) saveComposer(composer);
-        return;
-      }
-      if (e.target.closest('[data-composer-cancel]')) {
-        closeComposer();
-      }
-    });
-
 
     document.getElementById('app-body').addEventListener('mousedown', (e) => {
       const ta = e.target.closest('textarea');
@@ -7338,13 +7831,26 @@
     });
 
     document.getElementById('app-body').addEventListener('focusout', (e) => {
-      if (!e.target.matches('[data-followup-input]')) return;
-      const followup = e.target;
+      const composerInput = e.target.matches('[data-composer-input]') ? e.target : null;
+      const followup = e.target.matches('[data-followup-input]') ? e.target : null;
+      if (!composerInput && !followup) return;
       setTimeout(() => {
-        const handoff = pendingEditableHandoff;
-        if (document.body.contains(followup)) {
-          tryCommitFollowupField(followup);
+        if (composerInput) {
+          const active = document.activeElement;
+          const composer = composerInput.closest('[data-composer]');
+          if (composer?.contains(active)) return;
+          if (mentionMenuEl && mentionMenuAnchorTa === composerInput) return;
+          if (isRefLinkPickerOpen() || selectionRefPick) return;
+          tryCommitComposerField(composerInput);
+          return;
         }
+        const handoff = pendingEditableHandoff;
+        if (mentionMenuEl && mentionMenuAnchorTa === followup) return;
+        if (isRefLinkPickerOpen() || selectionRefPick) {
+          if (handoff && pendingEditableHandoff) finishEditableHandoff();
+          return;
+        }
+        tryCommitFollowupField(followup);
         if (handoff && pendingEditableHandoff) {
           finishEditableHandoff();
         }
@@ -7354,6 +7860,11 @@
     document.getElementById('app-body').addEventListener('keydown', (e) => {
       const followup = e.target.closest('[data-followup-input]');
       if (followup && isEnterSubmit(e)) {
+        if (e.defaultPrevented) return;
+        if (tryConfirmTagAtCursor(followup)) {
+          e.preventDefault();
+          return;
+        }
         e.preventDefault();
         tryCommitFollowupField(followup);
         return;
@@ -7361,7 +7872,13 @@
 
       const composer = e.target.closest('[data-composer]');
       if (!composer) return;
-      if (isEnterSubmit(e) && e.target.closest('[data-composer-input], [data-composer-tags]')) {
+      const composerInput = e.target.closest('[data-composer-input]');
+      if (composerInput && isEnterSubmit(e)) {
+        if (e.defaultPrevented) return;
+        if (tryConfirmTagAtCursor(composerInput)) {
+          e.preventDefault();
+          return;
+        }
         e.preventDefault();
         saveComposer(composer);
         return;
