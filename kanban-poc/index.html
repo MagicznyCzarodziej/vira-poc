@@ -509,14 +509,61 @@
       word-break: break-word;
     }
     .tags-row {
-      display: none;
+      display: flex;
       flex-wrap: wrap;
-      gap: 0.3rem;
-      margin-top: 0.5rem;
-      margin-bottom: 0;
+      gap: 0.35rem 0.55rem;
+      margin: 0;
       align-items: center;
-      padding-left: var(--card-text-x);
-      padding-right: calc(var(--card-text-x) + 1.5rem);
+      padding: 0.45rem var(--card-text-x) 0.4rem;
+      padding-right: calc(var(--card-text-x) + 1.75rem);
+    }
+    .tags-row-edit {
+      flex: 1 1 auto;
+      min-width: 0;
+      display: inline-flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.35rem;
+    }
+    .tags-row-edit .inline-input.single {
+      flex: 1 1 6rem;
+      min-width: 4rem;
+      width: auto;
+      max-width: 100%;
+    }
+    .tags-row-tags {
+      display: inline-flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.35rem;
+      min-width: 0;
+    }
+    .tags-row .card-id {
+      font: inherit;
+      font-size: 0.72rem;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.02em;
+      color: var(--text);
+      margin: 0;
+      padding: 0;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+    .tags-row .card-id:hover,
+    .tags-row .card-id:focus-visible {
+      text-decoration: underline;
+      outline: none;
+    }
+    .tags-row:not(:has(.tag)) .tags-add {
+      display: none;
+    }
+    .card:hover .tags-row:not(:has(.tag)) .tags-add,
+    .card:focus-within .tags-row:not(:has(.tag)) .tags-add {
+      display: inline;
     }
     .followup-input {
       display: none;
@@ -538,9 +585,6 @@
     .followup-input:not(:placeholder-shown) {
       display: block;
     }
-    .card:has(.timeline:hover) .followup-input:not(:focus):placeholder-shown {
-      display: none;
-    }
     .followup-input:focus {
       display: block;
       background: var(--bg);
@@ -553,16 +597,13 @@
       padding: 0.12rem 0.4rem;
       border-radius: 4px;
     }
-    .tags-row[data-editable] {
+    .tags-row-edit[data-editable] {
       cursor: text;
       border-radius: 6px;
-      padding-top: 2px;
-      padding-bottom: 2px;
-      padding-left: var(--card-text-x);
-      padding-right: calc(var(--card-text-x) + 1.5rem);
-      margin: 0.5rem 0 0;
+      padding: 0.1rem 0.25rem;
+      margin: -0.1rem -0.25rem;
     }
-    .tags-row[data-editable]:hover { background: var(--hover-fill); }
+    .tags-row-edit[data-editable]:hover { background: var(--hover-fill); }
     .tags-add {
       font-size: 0.75rem;
       color: var(--muted);
@@ -715,20 +756,6 @@
       gap: 1rem;
     }
     .composer-in-card { margin-top: 0.5rem; }
-    body.qa-inset .card {
-      padding: 0 0.85rem;
-    }
-    body.qa-inset .timeline-step {
-      border-radius: 0;
-    }
-    body.qa-inset .tags-row,
-    body.qa-inset .tags-row[data-editable] {
-      padding-left: 0;
-      padding-right: 1.5rem;
-    }
-    body.qa-inset .btn-delete {
-      right: 0;
-    }
     .mention {
       font-weight: 600;
       background: rgba(0, 0, 0, 0.08);
@@ -1465,6 +1492,18 @@
     .issue-ref-panel-revisions-toggle:hover {
       background: var(--tone-2);
     }
+    .issue-ref-panel-history-block {
+      margin-top: 0.65rem;
+    }
+    .issue-ref-panel-history-block:first-of-type {
+      margin-top: 0.15rem;
+    }
+    .issue-ref-panel-history-label {
+      margin: 0 0 0.2rem;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--muted);
+    }
     .issue-ref-panel-revisions-title {
       margin: 0.35rem 0 0.25rem;
       font-size: 0.68rem;
@@ -1645,8 +1684,7 @@
           <button type="button" class="view-tab active" data-view="list">List</button>
         </nav>
         <button type="button" class="view-tab dates-toggle" data-action="toggle-dates" aria-pressed="false">Dates</button>
-        <button type="button" class="view-tab dates-toggle" data-action="toggle-qa-inset" aria-pressed="false">Inset</button>
-        <span class="badge-proto">PoC · in-memory</span>
+        <span class="badge-proto">PoC · saved locally</span>
       </div>
     </header>
     <div class="app-body" id="app-body">
@@ -1725,6 +1763,9 @@
 
     let issuePanelShowOlderRevisions = false;
 
+    /** @type {{ eventIndex: number, snapshotAt: string, stepIndex: number, field: 'problem' | 'answer', rev: number } | null} */
+    let issuePanelCardHistoryView = null;
+
     /** @type {Record<string, string>} */
     let followupDrafts = {};
 
@@ -1738,8 +1779,100 @@
 
     let showAllDates = false;
 
-    /** Full-bleed Q/A bands vs card horizontal padding */
-    let qaInset = false;
+    const STORAGE_KEY = 'kanban-poc:v1';
+    const STORAGE_VERSION = 1;
+
+    /** @type {ReturnType<typeof setTimeout> | null} */
+    let saveStateTimer = null;
+
+    function recomputeNextId() {
+      let max = 0;
+      for (const id of Object.keys(items)) {
+        const m = id.match(/^item-(\d+)$/i);
+        if (m) max = Math.max(max, parseInt(m[1], 10));
+      }
+      nextId = max + 1;
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+          version: STORAGE_VERSION,
+          nextId,
+          items,
+          viewMode,
+          showAllDates,
+        }));
+      } catch (err) {
+        console.warn('Could not save to localStorage', err);
+      }
+    }
+
+    function scheduleSaveState() {
+      if (saveStateTimer) clearTimeout(saveStateTimer);
+      saveStateTimer = setTimeout(() => {
+        saveStateTimer = null;
+        saveState();
+      }, 250);
+    }
+
+    /** Decision refs use `!` — rewrite legacy `#` id links in stored text (not #tags). */
+    function migrateDecisionRefSigilInText(text) {
+      if (!text || typeof text !== 'string') return text;
+      let out = text.replace(
+        /\[([^\]]*)\]\(#(\d+(?:\/(?:\d+|a\d+))?(?:@v\d+)?)\)/gi,
+        '[$1](!$2)',
+      );
+      out = out.replace(
+        /(^|[^\w!])#(\d+(?:\/(?:\d+|a\d+))?(?:@v\d+)?)\b/g,
+        '$1!$2',
+      );
+      return out;
+    }
+
+    function migrateAllItemRefSigils() {
+      for (const item of Object.values(items)) {
+        for (const step of item.steps) {
+          if (step.problem) step.problem = migrateDecisionRefSigilInText(step.problem);
+          if (step.answer) step.answer = migrateDecisionRefSigilInText(step.answer);
+          for (const entry of step.problemRevisions || []) {
+            entry.text = migrateDecisionRefSigilInText(entry.text);
+          }
+          for (const entry of step.answerRevisions || []) {
+            entry.text = migrateDecisionRefSigilInText(entry.text);
+          }
+        }
+      }
+    }
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return false;
+        const data = JSON.parse(raw);
+        if (!data || data.version !== STORAGE_VERSION || !data.items || typeof data.items !== 'object') {
+          return false;
+        }
+        items = data.items;
+        for (const item of Object.values(items)) {
+          if (item?.steps?.length) item.steps = item.steps.map(normalizeStep);
+        }
+        migrateAllItemRefSigils();
+        recomputeNextId();
+        if (data.viewMode === 'board' || data.viewMode === 'list') viewMode = data.viewMode;
+        if (typeof data.showAllDates === 'boolean') showAllDates = data.showAllDates;
+        return true;
+      } catch (err) {
+        console.warn('Could not load from localStorage', err);
+        return false;
+      }
+    }
+
+    function initState() {
+      if (loadState()) return;
+      seed();
+      saveState();
+    }
 
     function uid() {
       return 'item-' + nextId++;
@@ -1747,6 +1880,74 @@
 
     function parseTags(raw) {
       return raw.split(',').map((t) => t.trim()).filter(Boolean);
+    }
+
+    function normalizeTagName(name) {
+      return String(name ?? '').trim().toLowerCase();
+    }
+
+    function addTagToItemTags(itemId, tag) {
+      const name = normalizeTagName(tag);
+      if (!name || !items[itemId]) return;
+      if (!items[itemId].tags.includes(name)) items[itemId].tags.push(name);
+    }
+
+    function allKnownTags() {
+      const set = new Set();
+      for (const item of Object.values(items)) {
+        for (const t of item.tags) set.add(t);
+      }
+      return [...set].sort((a, b) => a.localeCompare(b));
+    }
+
+    function appendComposerTag(tagsInput, tag) {
+      if (!tagsInput) return;
+      const name = normalizeTagName(tag);
+      if (!name) return;
+      const tags = parseTags(tagsInput.value);
+      if (tags.includes(name)) return;
+      tagsInput.value = tagsInput.value.trim() ? `${tagsInput.value}, ${name}` : name;
+    }
+
+    function resolveTagTargetItemId(ta) {
+      if (ta.matches('[data-composer-input]')) return 'composer';
+      if (ta.dataset.refItemId) return ta.dataset.refItemId;
+      if (ta.matches('[data-followup-input]')) return ta.dataset.id;
+      return null;
+    }
+
+    function applyTagFromTextarea(ta, tag) {
+      const target = resolveTagTargetItemId(ta);
+      if (target === 'composer') {
+        appendComposerTag(ta.closest('[data-composer]')?.querySelector('[data-composer-tags]'), tag);
+        return;
+      }
+      if (target) addTagToItemTags(target, tag);
+    }
+
+    /** `#tag` shortcut: add to the card (or composer) tag list only — not kept in body text. */
+    function insertHashTag(ta, tagName) {
+      const pos = ta.selectionStart ?? ta.value.length;
+      const before = ta.value.slice(0, pos);
+      const match = before.match(/#([\w.-]*)$/);
+      if (!match) return;
+      const start = pos - match[0].length;
+      const tag = normalizeTagName(tagName);
+      if (!tag) return;
+      ta.value = `${ta.value.slice(0, start)}${ta.value.slice(pos)}`;
+      ta.focus();
+      ta.setSelectionRange(start, start);
+      autoGrowTextarea(ta);
+      applyTagFromTextarea(ta, tag);
+    }
+
+    function consumeTrailingHashTag(ta) {
+      const pos = ta.selectionStart ?? ta.value.length;
+      const before = ta.value.slice(0, pos);
+      const match = before.match(/#([\w][\w.-]*)$/);
+      if (!match?.[1]) return false;
+      insertHashTag(ta, match[1]);
+      return true;
     }
 
     const TAG_PALETTE = [
@@ -2043,7 +2244,7 @@
       });
 
       items[archId].steps[1].problem =
-        `How do list sync and checkout stay consistent when we split? See [List API versioning](#${refNum(apiId)}).`;
+        `How do list sync and checkout stay consistent when we split? See [List API versioning](!${refNum(apiId)}).`;
 
       const rolloutId = createItem({
         tags: ['allegro', 'rollout'],
@@ -2089,8 +2290,8 @@
         tags: ['allegro', 'fixtures'],
         steps: [
           {
-            problem: 'Fixture: #refs and answer revisions for Allegro shared shopping lists.',
-            answer: `Topic [list beta rollout](#${nRollout}). Pinned [90-day Smart trial](#${nRollout}/a3@v2). Latest [no Smart in beta](#${nRollout}/a3@v3). API: [#${nApi}](#${nApi}).`,
+            problem: 'Fixture: !refs and answer revisions for Allegro shared shopping lists.',
+            answer: `Topic [list beta rollout](!${nRollout}). Pinned [90-day Smart trial](!${nRollout}/a3@v2). Latest [no Smart in beta](!${nRollout}/a3@v3). API: [!${nApi}](!${nApi}).`,
             decidedAt: '2026-10-31T00:00:00.000Z',
           },
         ],
@@ -2144,7 +2345,7 @@
 
     /** @returns {{ itemId: string, stepIndex: number|null, focusAnswer: boolean, revision: number|null } | null} */
     function parseIssueRef(ref) {
-      const s = String(ref ?? '').trim().replace(/^#+/, '');
+      const s = String(ref ?? '').trim().replace(/^[!#]+/, '');
       const m = s.match(/^(?:(item-\d+)|(\d+))(?:\/(?:step-)?(\d+)|\/a(\d+))?(?:@v(\d+))?$/i);
       if (!m) {
         const itemId = normalizeIssueId(s.replace(/@v\d+$/i, ''));
@@ -2187,10 +2388,10 @@
     function formatIssueRefDisplay(parsed) {
       const num = parsed.itemId.replace(/^item-/i, '');
       if (parsed.focusAnswer && parsed.stepIndex != null) {
-        return `#${num}/a${parsed.stepIndex + 1}`;
+        return `!${num}/a${parsed.stepIndex + 1}`;
       }
-      if (parsed.stepIndex != null) return `#${num}/${parsed.stepIndex + 1}`;
-      return `#${num}`;
+      if (parsed.stepIndex != null) return `!${num}/${parsed.stepIndex + 1}`;
+      return `!${num}`;
     }
 
     /** Stored ref string including @v when pinned. */
@@ -2199,12 +2400,14 @@
     }
 
     function isIssueRefStale(parsed) {
-      if (parsed.revision == null || parsed.stepIndex == null) return false;
+      if (parsed.stepIndex == null) return false;
       const item = items[parsed.itemId];
       const step = item?.steps[parsed.stepIndex];
       if (!item || !step) return false;
       const field = parsed.focusAnswer ? 'answer' : 'problem';
-      return parsed.revision !== stepFieldHeadRev(step, field);
+      const headRev = stepFieldHeadRev(step, field);
+      if (parsed.revision == null) return false;
+      return parsed.revision !== headRev;
     }
 
     function issueRefSameTarget(a, b) {
@@ -2222,15 +2425,18 @@
       const needles = new Set([formatIssueRefInText({ ...parsed, revision: parsed.revision })]);
       if (parsed.focusAnswer && parsed.stepIndex != null) {
         const sn = parsed.stepIndex + 1;
+        needles.add(`!${num}/a${sn}${suffix}`);
         needles.add(`#${num}/a${sn}${suffix}`);
         needles.add(`item-${num}/a${sn}${suffix}`);
         needles.add(`${num}/a${sn}${suffix}`);
       } else if (parsed.stepIndex != null) {
         const sn = parsed.stepIndex + 1;
+        needles.add(`!${num}/${sn}${suffix}`);
         needles.add(`#${num}/${sn}${suffix}`);
         needles.add(`item-${num}/${sn}${suffix}`);
         needles.add(`${num}/${sn}${suffix}`);
       } else {
+        needles.add(`!${num}${suffix}`);
         needles.add(`#${num}${suffix}`);
         needles.add(`item-${num}${suffix}`);
         needles.add(`${num}${suffix}`);
@@ -2241,8 +2447,8 @@
     function issueRefNewHrefForNeedle(needle, newParsed) {
       const newDisplay = formatIssueRefInText(newParsed);
       if (needle.startsWith('item-')) return formatIssueRefToken(newParsed);
-      if (needle.startsWith('#')) return newDisplay;
-      return newDisplay.replace(/^#/, '');
+      if (needle.startsWith('!') || needle.startsWith('#')) return newDisplay;
+      return newDisplay.replace(/^!/, '');
     }
 
     function replaceIssueRefRevisionInText(text, parsed, newRevision, { unpinAtHead = false } = {}) {
@@ -2323,11 +2529,11 @@
       const before = field === 'answer'
         ? (getAnswerText(step) ?? step.answer ?? '')
         : (getProblemText(step) ?? step.problem ?? '');
-      const updated = replaceIssueRefRevisionInText(before, parsed, headRev, { unpinAtHead: true });
+      const updated = replaceIssueRefRevisionInText(before, parsed, headRev, { unpinAtHead: false });
       if (updated === before) return false;
       setStepFieldHeadText(step, field, updated);
       if (issueDrawerRefId && issueRefSameTarget(drawerParsed, parsed)) {
-        issueDrawerRefId = formatIssueRefToken({ ...parsed, revision: null });
+        issueDrawerRefId = formatIssueRefToken({ ...parsed, revision: headRev });
       }
       issuePanelViewRev = headRev;
       issuePanelDiffOpen = false;
@@ -2393,8 +2599,107 @@
     }
 
     function panelHighlightRef(parsed) {
+      if (parsed.stepIndex == null && issuePanelCardHistoryView) {
+        const { eventIndex, snapshotAt, stepIndex, field, rev } = issuePanelCardHistoryView;
+        return {
+          itemId: parsed.itemId,
+          stepIndex,
+          focusAnswer: field === 'answer',
+          displayRevision: rev,
+          cardHistoryEventIndex: eventIndex,
+          cardHistorySnapshotAt: snapshotAt,
+        };
+      }
       const viewRev = ensurePanelViewRev(parsed);
       return viewRev == null ? parsed : { ...parsed, displayRevision: viewRev };
+    }
+
+    function collectCardHistoryEvents(item) {
+      const num = item.id.replace(/^item-/i, '');
+      /** @type {{ stepIndex: number, field: 'problem' | 'answer', rev: number, at: string, text: string, label: string, tentative: boolean, step: object }[]} */
+      const events = [];
+      item.steps.forEach((step, stepIndex) => {
+        ensureStepRevisions(step);
+        const sn = stepIndex + 1;
+        for (const entry of stepFieldRevisions(step, 'problem')) {
+          events.push({
+            stepIndex,
+            field: 'problem',
+            rev: entry.rev,
+            at: entry.at || '',
+            text: entry.text,
+            label: `!${num}/${sn} · question`,
+            tentative: !!entry.tentative,
+            step,
+          });
+        }
+        for (const entry of stepFieldRevisions(step, 'answer')) {
+          if (!entry.text?.trim() && entry.rev > 1) continue;
+          events.push({
+            stepIndex,
+            field: 'answer',
+            rev: entry.rev,
+            at: entry.at || '',
+            text: entry.text,
+            label: `!${num}/a${sn} · answer`,
+            tentative: !!entry.tentative,
+            step,
+          });
+        }
+      });
+      events.sort((a, b) => {
+        if (a.at !== b.at) return a.at.localeCompare(b.at);
+        if (a.stepIndex !== b.stepIndex) return a.stepIndex - b.stepIndex;
+        if (a.field !== b.field) return a.field === 'problem' ? -1 : 1;
+        return a.rev - b.rev;
+      });
+      return events;
+    }
+
+    function cardHistoryViewFromEvent(ev, eventIndex) {
+      return {
+        eventIndex,
+        snapshotAt: ev.at,
+        stepIndex: ev.stepIndex,
+        field: ev.field,
+        rev: ev.rev,
+      };
+    }
+
+    function firstHistoryEventIndexForStep(events, stepIndex) {
+      const idx = events.findIndex((e) => e.stepIndex === stepIndex);
+      return idx === -1 ? Infinity : idx;
+    }
+
+    function stepVisibleAtHistoryEvent(events, stepIndex, eventIndex) {
+      return firstHistoryEventIndexForStep(events, stepIndex) <= eventIndex;
+    }
+
+    function fieldRevAtHistoryEvent(events, stepIndex, field, eventIndex) {
+      let rev = null;
+      events.forEach((ev, i) => {
+        if (i > eventIndex) return;
+        if (ev.stepIndex === stepIndex && ev.field === field) rev = ev.rev;
+      });
+      return rev;
+    }
+
+    function isSameCardHistorySelection(view, ev) {
+      return view
+        && view.stepIndex === ev.stepIndex
+        && view.field === ev.field
+        && view.rev === ev.rev;
+    }
+
+    function initIssuePanelCardHistoryView(item) {
+      const events = collectCardHistoryEvents(item);
+      if (!events.length) {
+        issuePanelCardHistoryView = null;
+        return;
+      }
+      const lastIdx = events.length - 1;
+      issuePanelCardHistoryView = cardHistoryViewFromEvent(events[lastIdx], lastIdx);
+      issuePanelViewRev = events[lastIdx].rev;
     }
 
     function stepPanelViewRev(parsed, delta) {
@@ -2533,11 +2838,60 @@
       return `<div class="issue-ref-panel-ref-meta">${parts.join('')}</div>`;
     }
 
-    function issueRefRevisionForInsert(step, parsed) {
+    function renderCardHistoryTimelineHtml(item, activeView) {
+      const events = collectCardHistoryEvents(item);
+      if (!events.length) return '';
+      const items = events.map((ev, eventIndex) => {
+        const active = activeView?.eventIndex === eventIndex;
+        const head = stepFieldHeadRev(ev.step, ev.field);
+        const date = ev.at ? formatDecisionDate(ev.at) : '';
+        const body = ev.text;
+        const meta = `<div class="issue-ref-preview-revision-meta">v${ev.rev} · ${escapeHtml(ev.label)}${ev.tentative ? ' · tentative' : ''}${ev.rev === head ? ' · current' : ''}</div>`;
+        const content = `<span class="revision-timeline-content">${meta}${escapeHtml(body)}</span>`;
+        const dateHtml = date
+          ? `<time class="revision-timeline-date" datetime="${escapeAttr(ev.at)}">${escapeHtml(date)}</time>`
+          : '<span class="revision-timeline-date" aria-hidden="true"></span>';
+        const node = `<span class="revision-timeline-node"><span class="revision-timeline-stem-top" aria-hidden="true"></span><span class="revision-timeline-marker" aria-hidden="true"></span><span class="revision-timeline-stem-bottom" aria-hidden="true"></span></span>`;
+        const className = `revision-timeline-item${active ? ' is-active' : ''}`;
+        return `<button type="button" class="${className}" data-action="panel-rev-select" data-card-history="1" data-event-index="${eventIndex}" data-rev="${ev.rev}" data-field="${ev.field}" data-step="${ev.stepIndex}" data-history-at="${escapeAttr(ev.at)}">${dateHtml}${node}${content}</button>`;
+      }).join('');
+      return `<div class="revision-timeline issue-ref-panel-card-history-timeline">${items}</div>`;
+    }
+
+    function buildIssuePanelCardHistoryChrome(item) {
+      const timeline = renderCardHistoryTimelineHtml(item, issuePanelCardHistoryView);
+      if (!timeline) return '';
+      return `<div class="issue-ref-panel-ref-meta issue-ref-panel-card-history">
+        <p class="issue-ref-panel-revisions-title">Card history</p>
+        ${timeline}
+      </div>`;
+    }
+
+    /** Pin @v to the current head revision for the referenced field (mutates parsed). */
+    function pinCurrentIssueRefRevision(parsed) {
+      if (!parsed) return parsed;
+      const item = items[parsed.itemId];
+      if (!item?.steps?.length) return parsed;
+
+      let step = null;
+      /** @type {'problem' | 'answer'} */
+      let field = 'problem';
+
+      if (parsed.focusAnswer && parsed.stepIndex != null) {
+        step = item.steps[parsed.stepIndex];
+        field = 'answer';
+      } else if (parsed.stepIndex != null) {
+        step = item.steps[parsed.stepIndex];
+        field = 'problem';
+      } else {
+        step = item.steps[0];
+        field = item.steps.length === 1 && getAnswerText(item.steps[0]) ? 'answer' : 'problem';
+      }
+
+      if (!step) return parsed;
       ensureStepRevisions(step);
-      if (parsed.focusAnswer) return step.answerRev || null;
-      if (parsed.stepIndex != null) return step.problemRev || null;
-      return null;
+      parsed.revision = stepFieldHeadRev(step, field);
+      return parsed;
     }
 
     function issueRefRevisionExists(step, parsed) {
@@ -2596,7 +2950,7 @@
         : '';
       const staleHint = stale ? ', outdated revision' : '';
       const staleTitle = stale ? ' title="Outdated link — click to open panel, or Shift+click to update"' : '';
-      const buttonHtml = `<button type="button" class="${linkClass}${miss}${stale}" data-action="goto-issue" data-issue-ref="${escapeHtml(token)}" aria-label="Go to decision #${escapeHtml(num)}${stepHint}${staleHint}"${staleTitle}>${inner}</button>`;
+      const buttonHtml = `<button type="button" class="${linkClass}${miss}${stale}" data-action="goto-issue" data-issue-ref="${escapeHtml(token)}" aria-label="Go to decision !${escapeHtml(num)}${stepHint}${staleHint}"${staleTitle}>${inner}</button>`;
       if (issueRefPlaceholderStash) {
         const idx = issueRefPlaceholderStash.length;
         issueRefPlaceholderStash.push(buttonHtml);
@@ -2618,12 +2972,20 @@
       issueRefPlaceholderStash = [];
       let html = escapeHtml(text);
 
-      // Refs before @mentions — @v2 in (#11/a3@v2) is a revision pin, not a person mention
+      // Decision refs (!) before #tags and @people — @v2 in href is a revision pin, not a mention
       html = html.replace(
-        /\[([^\]]+)\]\(#(\d+)(?:\/(\d+)|\/a(\d+))?(?:@v(\d+))?\)/g,
-        (full, label, num, stepNum, answerNum, revisionNum) => {
+        /\[([^\]]+)\]\(([!#])(\d+)(?:\/(\d+)|\/a(\d+))?(?:@v(\d+))?\)/g,
+        (full, label, _sigil, num, stepNum, answerNum, revisionNum) => {
           const ref = issueRefPartsToToken(num, stepNum, answerNum, revisionNum);
           return parseIssueRef(ref) ? renderIssueRef(ref, label) : full;
+        },
+      );
+
+      html = html.replace(
+        /!(\d+)(?:\/(\d+)|\/a(\d+))?(?:@v(\d+))?/g,
+        (full, num, stepNum, answerNum, revisionNum) => {
+          const ref = issueRefPartsToToken(num, stepNum, answerNum, revisionNum);
+          return parseIssueRef(ref) ? renderIssueRef(ref) : full;
         },
       );
 
@@ -2766,7 +3128,7 @@
             <button type="button" class="issue-ref-panel-close" data-action="close-ref-link-picker" aria-label="Close">×</button>
           </div>
           <div class="ref-link-picker-search-wrap">
-            <input type="search" class="ref-link-picker-search" id="ref-link-picker-search" placeholder="Search words, #id, questions, answers…" autocomplete="off" />
+            <input type="search" class="ref-link-picker-search" id="ref-link-picker-search" placeholder="Search words, !id, tags, questions…" autocomplete="off" />
           </div>
           <div class="ref-link-picker-filters">
             <span class="ref-link-picker-filter-label">Filter by tag</span>
@@ -2842,12 +3204,12 @@
           : '';
         const rows = [];
         const firstProblem = item.steps[0] ? getProblemText(item.steps[0]) : '';
-        const cardHay = `#${num} ${item.tags.join(' ')} ${firstProblem}`;
+        const cardHay = `!${num} ${item.tags.join(' ')} ${firstProblem}`;
         if (refLinkPickerRowPassesKind('card') && refTargetMatchesQuery(cardHay, q)) {
           rows.push(renderRefLinkPickerRow(
             item.id,
             'card',
-            `#${num}`,
+            `!${num}`,
             firstProblem,
             item.steps.length === 1 ? getAnswerText(item.steps[0]) : null,
           ));
@@ -2858,23 +3220,23 @@
           const stepNum = index + 1;
           const problem = getProblemText(step);
           const answer = getAnswerText(step);
-          const stepHay = `#${num} ${item.tags.join(' ')} ${problem} ${answer || ''}`;
+          const stepHay = `!${num} ${item.tags.join(' ')} ${problem} ${answer || ''}`;
           if (refLinkPickerRowPassesKind('question') && refTargetMatchesQuery(stepHay, q)) {
             rows.push(renderRefLinkPickerRow(
               `${item.id}/${stepNum}`,
               'question',
-              `#${num}/${stepNum}`,
+              `!${num}/${stepNum}`,
               problem,
               null,
             ));
           }
           if (answer?.trim()
             && refLinkPickerRowPassesKind('answer')
-            && refTargetMatchesQuery(`#${num}/a${stepNum} ${answer} ${problem}`, q)) {
+            && refTargetMatchesQuery(`!${num}/a${stepNum} ${answer} ${problem}`, q)) {
             rows.push(renderRefLinkPickerRow(
               `${item.id}/a${stepNum}`,
               'answer',
-              `#${num}/a${stepNum}`,
+              `!${num}/a${stepNum}`,
               problem,
               answer,
             ));
@@ -2885,7 +3247,7 @@
           rowCount += rows.length;
           groups.push(`<div class="ref-link-picker-group">
             <div class="ref-link-picker-group-head">
-              <button type="button" class="ref-link-picker-card-id" data-action="ref-picker-filter-id" data-ref-query="#${escapeAttr(num)}">#${escapeHtml(num)}</button>
+              <button type="button" class="ref-link-picker-card-id" data-action="ref-picker-filter-id" data-ref-query="!${escapeAttr(num)}">!${escapeHtml(num)}</button>
               ${editingBadge}${tagChips}
             </div>
             ${rows.join('')}
@@ -2930,12 +3292,7 @@
     function buildIssueRefMarkdown(refToken, label) {
       const parsed = parseIssueRef(refToken);
       if (!parsed) return null;
-      const item = items[parsed.itemId];
-      const step = parsed.stepIndex != null ? item?.steps[parsed.stepIndex] : null;
-      if (step) {
-        const rev = issueRefRevisionForInsert(step, parsed);
-        if (rev != null) parsed.revision = rev;
-      }
+      pinCurrentIssueRefRevision(parsed);
       const linkLabel = (label.trim() || issueRefAutocompleteLabel(parsed)).replace(/[\[\]]/g, '');
       return `[${linkLabel}](${formatIssueRefInText(parsed)})`;
     }
@@ -3025,17 +3382,12 @@
     function insertIssueRef(ta, refToken) {
       const pos = ta.selectionStart ?? ta.value.length;
       const before = ta.value.slice(0, pos);
-      const match = before.match(/#\d*(?:\/(?:a?\d*))?(?:@v?\d*)?$/);
+      const match = before.match(/!\d*(?:\/(?:a?\d*))?(?:@v?\d*)?$/);
       if (!match) return;
       const start = pos - match[0].length;
       const parsed = parseIssueRef(refToken);
       if (!parsed) return;
-      const item = items[parsed.itemId];
-      const step = parsed.stepIndex != null ? item?.steps[parsed.stepIndex] : null;
-      if (step) {
-        const rev = issueRefRevisionForInsert(step, parsed);
-        if (rev != null) parsed.revision = rev;
-      }
+      pinCurrentIssueRefRevision(parsed);
       const label = issueRefAutocompleteLabel(parsed);
       const token = `[${label}](${formatIssueRefInText(parsed)}) `;
       ta.value = `${ta.value.slice(0, start)}${token}${ta.value.slice(pos)}`;
@@ -3047,12 +3399,7 @@
     function replaceTextareaRangeWithIssueRef(ta, start, end, label, refToken) {
       const parsed = parseIssueRef(refToken);
       if (!parsed) return false;
-      const item = items[parsed.itemId];
-      const step = parsed.stepIndex != null ? item?.steps[parsed.stepIndex] : null;
-      if (step) {
-        const rev = issueRefRevisionForInsert(step, parsed);
-        if (rev != null) parsed.revision = rev;
-      }
+      pinCurrentIssueRefRevision(parsed);
       const linkLabel = (label.trim() || issueRefAutocompleteLabel(parsed)).replace(/[\[\]]/g, '');
       const token = `[${linkLabel}](${formatIssueRefInText(parsed)})`;
       ta.value = `${ta.value.slice(0, start)}${token}${ta.value.slice(end)}`;
@@ -3158,8 +3505,9 @@
         const pos = ta.selectionStart ?? ta.value.length;
         const before = ta.value.slice(0, pos);
         const mentionMatch = before.match(/@([\w.-]*)$/);
-        const issueStepMatch = before.match(/#(\d+)\/(a?)(\d*)$/);
-        const issueMatch = before.match(/#(\d*)$/);
+        const issueStepMatch = before.match(/!(\d+)\/(a?)(\d*)$/);
+        const issueMatch = before.match(/!(\d*)$/);
+        const tagMatch = before.match(/#([\w.-]*)$/);
 
         if (mentionMatch) {
           const query = mentionMatch[1].toLowerCase();
@@ -3196,8 +3544,8 @@
               const idSpan = document.createElement('span');
               idSpan.className = 'issue-menu-id';
               idSpan.textContent = answerOnly
-                ? `#${item.id.replace('item-', '')}/a${stepNum}`
-                : `#${item.id.replace('item-', '')}/${stepNum}`;
+                ? `!${item.id.replace('item-', '')}/a${stepNum}`
+                : `!${item.id.replace('item-', '')}/${stepNum}`;
               const titleSpan = document.createElement('span');
               titleSpan.className = 'issue-menu-title';
               titleSpan.textContent = answerOnly
@@ -3235,7 +3583,7 @@
             btn.setAttribute('role', 'option');
             const idSpan = document.createElement('span');
             idSpan.className = 'issue-menu-id';
-            idSpan.textContent = `#${item.id.replace('item-', '')}`;
+            idSpan.textContent = `!${item.id.replace('item-', '')}`;
             const titleSpan = document.createElement('span');
             titleSpan.className = 'issue-menu-title';
             titleSpan.textContent = truncateLabel(item.steps[0]?.problem || item.id);
@@ -3243,6 +3591,30 @@
             btn.addEventListener('mousedown', (e) => {
               e.preventDefault();
               insertIssueRef(ta, item.id);
+              removeMentionMenu();
+            });
+            return btn;
+          }));
+          return;
+        }
+
+        if (tagMatch) {
+          const query = tagMatch[1].toLowerCase();
+          const hits = allKnownTags()
+            .filter((t) => t.toLowerCase().startsWith(query))
+            .slice(0, 8);
+          const options = query && !hits.includes(normalizeTagName(query))
+            ? [normalizeTagName(query), ...hits]
+            : hits;
+          mountAutocompleteMenu(ta, () => options.map((name) => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'mention-menu-item';
+            btn.setAttribute('role', 'option');
+            btn.textContent = `#${name}`;
+            btn.addEventListener('mousedown', (e) => {
+              e.preventDefault();
+              insertHashTag(ta, name);
               removeMentionMenu();
             });
             return btn;
@@ -3294,9 +3666,12 @@
       }
       const shell = ensureIssueDrawerShell();
       const num = parsed.itemId.replace(/^item-/i, '');
-      shell.querySelector('.issue-ref-panel-title').textContent = `#${num}`;
+      shell.querySelector('.issue-ref-panel-title').textContent = `!${num}`;
       const body = shell.querySelector('.issue-ref-panel-body');
-      body.innerHTML = `${buildIssuePanelRefChrome(parsed)}${renderCard(item, {
+      const refChrome = parsed.stepIndex == null
+        ? buildIssuePanelCardHistoryChrome(item)
+        : buildIssuePanelRefChrome(parsed);
+      body.innerHTML = `${refChrome}${renderCard(item, {
         highlightRef: panelHighlightRef(parsed),
         idPrefix: PANEL_CARD_ID_PREFIX,
       })}`;
@@ -3309,11 +3684,16 @@
       if (refId !== issueDrawerRefId) {
         issuePanelViewRev = null;
         issuePanelShowOlderRevisions = false;
+        issuePanelCardHistoryView = null;
         issuePanelUpgradeSource = upgradeSource;
       } else if (upgradeSource) {
         issuePanelUpgradeSource = upgradeSource;
       }
       issueDrawerRefId = refId;
+      const parsed = parseIssueRef(refId);
+      if (parsed && parsed.stepIndex == null && items[parsed.itemId]) {
+        initIssuePanelCardHistoryView(items[parsed.itemId]);
+      }
       const shell = ensureIssueDrawerShell();
       populateIssueRefDrawer(refId);
       shell.hidden = false;
@@ -3326,11 +3706,12 @@
       issuePanelViewRev = null;
       issuePanelDiffOpen = false;
       issuePanelShowOlderRevisions = false;
+      issuePanelCardHistoryView = null;
       if (issueDrawerEl) issueDrawerEl.hidden = true;
       syncIssueRefPanelOpenClass();
     }
 
-    function renderRevisionHistoryHtml(step, field, activeRev, { selectable = false, fullText = false, linkedRev = null, minRev = null } = {}) {
+    function renderRevisionHistoryHtml(step, field, activeRev, { selectable = false, fullText = false, linkedRev = null, minRev = null, stepIndex = null } = {}) {
       const revisions = stepFieldRevisions(step, field);
       if (!revisions.length) return '';
       const head = stepFieldHeadRev(step, field);
@@ -3356,7 +3737,8 @@
         const node = `<span class="revision-timeline-node"><span class="revision-timeline-stem-top" aria-hidden="true"></span><span class="revision-timeline-marker" aria-hidden="true"></span><span class="revision-timeline-stem-bottom" aria-hidden="true"></span></span>`;
         const className = `revision-timeline-item${active ? ' is-active' : ''}${linked ? ' is-linked-rev' : ''}`;
         if (selectable) {
-          return `<button type="button" class="${className}" data-action="panel-rev-select" data-rev="${entry.rev}">${dateHtml}${node}${content}</button>`;
+          const stepAttr = stepIndex != null ? ` data-step="${stepIndex}"` : '';
+          return `<button type="button" class="${className}" data-action="panel-rev-select" data-rev="${entry.rev}" data-field="${field}"${stepAttr}>${dateHtml}${node}${content}</button>`;
         }
         return `<div class="${className}">${dateHtml}${node}${content}</div>`;
       }).join('');
@@ -3400,7 +3782,7 @@
       const stale = isIssueRefStale(parsed);
       const headHtml = `
         <div class="issue-ref-preview-head">
-          <span class="issue-ref-preview-id">#${escapeHtml(num)}</span>
+          <span class="issue-ref-preview-id">!${escapeHtml(num)}</span>
           <span class="issue-ref-preview-status">${stale ? 'Stale link' : 'Preview'}</span>
         </div>`;
       const staleFooter = issuePreviewStaleFooter(parsed);
@@ -3611,7 +3993,7 @@
     function renderComposerHtml() {
       return `
         <div class="composer" data-composer="root">
-          <textarea placeholder="Question — @people, [label](#5/a1)" autofocus data-composer-input></textarea>
+          <textarea placeholder="Question — @people, #tag (adds tag), [label](!5/a1)" autofocus data-composer-input></textarea>
           <div class="composer-meta">
             <input type="text" placeholder="Tags" data-composer-tags />
           </div>
@@ -3623,8 +4005,9 @@
       `;
     }
 
-    function commitFollowup(itemId, text, { inPanel = false } = {}) {
-      const trimmed = text.trim();
+    function commitFollowup(itemId, text, { inPanel = false, ta = null } = {}) {
+      if (ta) consumeTrailingHashTag(ta);
+      const trimmed = (ta ? ta.value : text).trim();
       if (!trimmed || !items[itemId]) return;
       addStep(itemId, trimmed);
       delete followupDrafts[itemId];
@@ -3634,11 +4017,19 @@
     }
 
     function renderTagsHtml(item, { readOnly = false } = {}) {
+      const num = item.id.replace(/^item-/i, '');
       const chips = item.tags.map((t) => `<span class="tag" style="${tagStyle(t)}">${escapeHtml(t)}</span>`).join('');
       const editAttrs = readOnly ? '' : ` data-editable="tags" data-id="${item.id}"`;
+      const tagsInner = chips
+        ? `<span class="tags-row-tags">${chips}</span>`
+        : (readOnly ? '' : '<span class="tags-add">Tags</span>');
+      const tagsBlock = readOnly
+        ? tagsInner
+        : `<div class="tags-row-edit"${editAttrs}>${tagsInner}</div>`;
       return `
-        <div class="tags-row"${editAttrs}>
-          ${chips || (readOnly ? '' : '<span class="tags-add">Tags</span>')}
+        <div class="tags-row" aria-label="Decision !${escapeAttr(num)}">
+          <button type="button" class="card-id" data-action="open-card-history" data-id="${escapeAttr(item.id)}" aria-label="Open card history for !${escapeAttr(num)}">!${escapeHtml(num)}</button>
+          ${tagsBlock}
         </div>
       `;
     }
@@ -3648,7 +4039,7 @@
       return highlightRef.stepIndex === index;
     }
 
-    function renderTimelineStep(item, step, index, { highlightRef = null, idPrefix = '' } = {}) {
+    function renderTimelineStep(item, step, index, { highlightRef = null, idPrefix = '', historyEvents = null, historyEventIndex = null } = {}) {
       const inRefPanel = idPrefix === PANEL_CARD_ID_PREFIX;
       const refStep = inRefPanel && stepMatchesHighlight(highlightRef, index);
       const refField = highlightRef?.focusAnswer ? 'answer' : 'problem';
@@ -3660,14 +4051,25 @@
         : null;
       const viewRev = pinRev ?? headRevForStep;
       const viewingSnapshot = refStep && viewRev != null && headRevForStep != null && viewRev !== headRevForStep;
-      const problemText = refStep && !highlightRef.focusAnswer && pinRev != null
-        ? getProblemText(step, pinRev)
-        : getProblemText(step);
-      const answerText = refStep && highlightRef.focusAnswer && pinRev != null
-        ? getAnswerText(step, pinRev)
-        : getAnswerText(step);
+      let problemText;
+      let answerText;
+      if (historyEvents && historyEventIndex != null) {
+        const pRev = fieldRevAtHistoryEvent(historyEvents, index, 'problem', historyEventIndex);
+        problemText = pRev != null ? getProblemText(step, pRev) : getProblemText(step);
+        const aRev = fieldRevAtHistoryEvent(historyEvents, index, 'answer', historyEventIndex);
+        answerText = aRev != null ? getAnswerText(step, aRev) : null;
+      } else {
+        problemText = refStep && !highlightRef.focusAnswer && pinRev != null
+          ? getProblemText(step, pinRev)
+          : getProblemText(step);
+        answerText = refStep && highlightRef.focusAnswer && pinRev != null
+          ? getAnswerText(step, pinRev)
+          : getAnswerText(step);
+      }
       const answerEmpty = !answerText?.trim();
-      const showAsAnswered = stepFullyResolved(step) || (!answerEmpty && pinRev != null && highlightRef?.focusAnswer);
+      const showAsAnswered = historyEventIndex != null
+        ? !answerEmpty
+        : (stepFullyResolved(step) || (!answerEmpty && pinRev != null && highlightRef?.focusAnswer));
       const highlightStep = !inRefPanel && stepMatchesHighlight(highlightRef, index);
       const highlightAnswer = highlightStep && highlightRef?.focusAnswer;
       const dateHtml = step.decidedAt
@@ -3707,7 +4109,14 @@
 
     function renderCard(item, { highlightRef = null, idPrefix = '' } = {}) {
       const inRefPanel = idPrefix === PANEL_CARD_ID_PREFIX;
-      const timeline = item.steps.map((step, i) => renderTimelineStep(item, step, i, { highlightRef, idPrefix })).join('');
+      const historyEventIndex = inRefPanel ? highlightRef?.cardHistoryEventIndex : null;
+      const historyEvents = historyEventIndex != null ? collectCardHistoryEvents(item) : null;
+      const timeline = item.steps
+        .map((step, i) => {
+          if (historyEvents && !stepVisibleAtHistoryEvent(historyEvents, i, historyEventIndex)) return '';
+          return renderTimelineStep(item, step, i, { highlightRef, idPrefix, historyEvents, historyEventIndex });
+        })
+        .join('');
       const draft = followupDrafts[item.id] || '';
       const cardHighlight = idPrefix && highlightRef && highlightRef.stepIndex == null ? ' highlight' : '';
 
@@ -3715,6 +4124,7 @@
         <article class="card ${cardStatusClass(item)}${cardHighlight}${inRefPanel ? ' card-readonly' : ''}" data-id="${item.id}" id="${idPrefix}card-${item.id}">
           <div class="card-top">
             <div class="card-main">
+              ${renderTagsHtml(item, { readOnly: inRefPanel })}
               <div class="timeline">${timeline}</div>
               ${inRefPanel ? '' : `<textarea
                 class="followup-input"
@@ -3723,7 +4133,6 @@
                 placeholder="Follow-up question"
                 rows="1"
               >${escapeHtml(draft)}</textarea>`}
-              ${renderTagsHtml(item, { readOnly: inRefPanel })}
             </div>
             <button type="button" class="btn-delete" data-action="delete" data-id="${item.id}" aria-label="Delete">×</button>
           </div>
@@ -3791,7 +4200,6 @@
       app.innerHTML = viewMode === 'board' ? renderBoardView() : renderListView();
 
       document.body.classList.toggle('show-dates', showAllDates);
-      document.body.classList.toggle('qa-inset', qaInset);
       document.querySelectorAll('.view-tab[data-view]').forEach((tab) => {
         tab.classList.toggle('active', tab.dataset.view === viewMode);
       });
@@ -3800,12 +4208,6 @@
         datesBtn.classList.toggle('active', showAllDates);
         datesBtn.setAttribute('aria-pressed', String(showAllDates));
       }
-      const insetBtn = document.querySelector('[data-action="toggle-qa-inset"]');
-      if (insetBtn) {
-        insetBtn.classList.toggle('active', qaInset);
-        insetBtn.setAttribute('aria-pressed', String(qaInset));
-      }
-
       document.getElementById('state-json').textContent = JSON.stringify(items, null, 2);
 
       if (pendingFocus) {
@@ -3830,6 +4232,7 @@
       if (drawerRef) populateIssueRefDrawer(drawerRef);
 
       syncAutoGrowTextareas(document.getElementById('app'));
+      scheduleSaveState();
     }
 
     function setView(mode) {
@@ -3895,6 +4298,7 @@
       ta.setSelectionRange(ta.value.length, ta.value.length);
 
       const commit = () => {
+        consumeTrailingHashTag(ta);
         const val = ta.value.trim();
         if (isProblem) {
           if (!val) { render(); return; }
@@ -3939,7 +4343,9 @@
     }
 
     function saveComposer(composerEl) {
-      const text = composerEl.querySelector('[data-composer-input]').value;
+      const input = composerEl.querySelector('[data-composer-input]');
+      consumeTrailingHashTag(input);
+      const text = input.value;
       const tags = parseTags(composerEl.querySelector('[data-composer-tags]').value);
       const id = createItem({ problem: text, tags });
       if (id) pendingFocus = { id, field: 'answer', step: 0 };
@@ -3950,11 +4356,6 @@
     document.querySelector('.header-right').addEventListener('click', (e) => {
       if (e.target.closest('[data-action="toggle-dates"]')) {
         showAllDates = !showAllDates;
-        render();
-        return;
-      }
-      if (e.target.closest('[data-action="toggle-qa-inset"]')) {
-        qaInset = !qaInset;
         render();
         return;
       }
@@ -4102,11 +4503,34 @@
         return;
       }
 
+      if (action === 'open-card-history') {
+        e.preventDefault();
+        e.stopPropagation();
+        const itemId = actionEl.dataset.id;
+        if (!itemId || !items[itemId]) return;
+        openIssueRefDrawer(itemId);
+        return;
+      }
+
       if (action === 'panel-rev-select') {
         e.preventDefault();
         e.stopPropagation();
         const rev = Number(actionEl.dataset.rev);
         if (!Number.isFinite(rev) || !issueDrawerRefId) return;
+        const parsed = parseIssueRef(issueDrawerRefId);
+        if (parsed?.stepIndex == null && actionEl.dataset.cardHistory === '1') {
+          const eventIndex = Number(actionEl.dataset.eventIndex);
+          const stepIndex = Number(actionEl.dataset.step);
+          const field = actionEl.dataset.field === 'answer' ? 'answer' : 'problem';
+          if (!Number.isFinite(eventIndex) || !Number.isFinite(stepIndex)) return;
+          issuePanelCardHistoryView = {
+            eventIndex,
+            snapshotAt: actionEl.dataset.historyAt || '',
+            stepIndex,
+            field,
+            rev,
+          };
+        }
         issuePanelViewRev = rev;
         populateIssueRefDrawer(issueDrawerRefId);
         return;
@@ -4187,6 +4611,7 @@
         e.preventDefault();
         commitFollowup(followup.dataset.id, followup.value, {
           inPanel: !!followup.closest('.issue-ref-panel-body'),
+          ta: followup,
         });
         return;
       }
@@ -4217,7 +4642,15 @@
       closeIssueRefDrawer();
     });
 
-    seed();
+    window.addEventListener('beforeunload', () => {
+      if (saveStateTimer) {
+        clearTimeout(saveStateTimer);
+        saveStateTimer = null;
+      }
+      saveState();
+    });
+
+    initState();
     render();
   </script>
 </body>
