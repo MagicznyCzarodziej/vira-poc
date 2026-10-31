@@ -38,6 +38,7 @@
       --app-header-h: 3.25rem;
       --issue-ref-panel-w: min(32rem, 44vw);
       --canvas-bg: #e5e5e7;
+      --canvas-drag-border: rgba(59, 130, 246, 0.62);
     }
     * { box-sizing: border-box; }
     body {
@@ -54,6 +55,10 @@
       display: flex;
       flex-direction: column;
       min-height: 100vh;
+    }
+    .app-shell:has(#app.list) {
+      height: 100vh;
+      overflow: hidden;
     }
     .app-body {
       display: flex;
@@ -88,6 +93,35 @@
       display: flex;
       align-items: center;
       gap: 1rem;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .header-proto-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+    .header-proto-btn {
+      font: inherit;
+      font-size: 0.68rem;
+      font-weight: 500;
+      padding: 0.35rem 0.55rem;
+      border: 1px solid var(--tone-2);
+      border-radius: 6px;
+      background: var(--bg);
+      color: var(--muted);
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .header-proto-btn:hover {
+      color: var(--text);
+      border-color: var(--tone-3);
+      background: var(--tone-1);
+    }
+    .header-proto-btn--danger:hover {
+      color: #b91c1c;
+      border-color: rgba(185, 28, 28, 0.35);
+      background: #fef2f2;
     }
     .view-tabs {
       display: flex;
@@ -129,47 +163,48 @@
     }
     main { padding: 1.25rem 1.5rem 2.5rem; margin: 0; max-width: none; }
     main:has(#app.board),
-    main:has(#app.canvas) {
+    main:has(#app.list) {
       max-width: none;
       margin: 0;
       width: 100%;
     }
-    main:has(#app.canvas) {
+    main:has(#app.list) {
       display: flex;
       flex-direction: column;
       flex: 1 1 auto;
       min-height: 0;
+      overflow: hidden;
     }
     .main-layout {
       width: fit-content;
       max-width: 100%;
     }
-    .main-layout:has(#app.canvas) {
+    .main-layout:has(#app.list) {
       width: 100%;
       flex: 1 1 auto;
       min-height: 0;
-      display: flex;
-      flex-direction: column;
-    }
-    .main-layout:has(#app.list) {
       margin-left: 0;
       margin-right: 0;
+      display: flex;
+      flex-direction: column;
     }
     .main-layout > #app {
       flex: 1 1 auto;
       min-width: 0;
     }
     .main-layout > #app.list {
-      flex: 0 0 500px;
-      width: 500px;
-      max-width: 100%;
-    }
-    .main-layout > #app.canvas {
       flex: 1 1 auto;
       width: 100%;
       min-height: 0;
       display: flex;
       flex-direction: column;
+    }
+    #app.list .workspace-view {
+      flex: 1 1 auto;
+      min-height: 0;
+    }
+    #app.list .workspace-canvas {
+      min-height: 0;
     }
     @media (max-width: 840px) {
       .app-body {
@@ -200,7 +235,7 @@
     }
     .board {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 400px 400px;
       gap: 1.25rem;
       align-items: start;
     }
@@ -325,6 +360,17 @@
     .card-top {
       min-height: 1.5rem;
     }
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding-right: var(--card-text-x);
+    }
+    .card-header .tags-row {
+      flex: 1 1 auto;
+      min-width: 0;
+      padding-right: 0;
+    }
     .card-main {
       min-width: 0;
       display: flex;
@@ -336,9 +382,9 @@
       transition: opacity 0.15s ease, background 0.15s ease, color 0.15s ease;
     }
     .btn-delete {
-      position: absolute;
-      top: 0.35rem;
-      right: var(--card-text-x);
+      position: relative;
+      flex-shrink: 0;
+      align-self: center;
       z-index: 1;
       width: 24px;
       height: 24px;
@@ -639,7 +685,6 @@
       margin: 0;
       align-items: flex-start;
       padding: 0.45rem var(--card-text-x) 0.4rem;
-      padding-right: calc(var(--card-text-x) + 1.75rem);
     }
     .tags-row-edit {
       flex: 1 1 auto;
@@ -892,7 +937,7 @@
       gap: 0.5rem;
     }
     .list-header {
-      padding: 0.25rem 0.85rem 0.5rem;
+      padding: 0.25rem 0.75rem 0.5rem 6px;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -906,6 +951,96 @@
     .list-body > .add-trigger,
     .list-body > .composer {
       margin-top: 1rem;
+    }
+    .workspace-view {
+      display: flex;
+      gap: 1rem;
+      align-items: stretch;
+      flex: 1 1 auto;
+      min-height: 0;
+      width: 100%;
+    }
+    .workspace-list {
+      flex: 0 0 min(420px, 36vw);
+      max-width: 480px;
+      min-width: 260px;
+      min-height: 0;
+      align-self: stretch;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .workspace-list .list-view {
+      flex: 1 1 auto;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .workspace-list .list-header {
+      flex-shrink: 0;
+    }
+    .workspace-list .list-body {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+      /* left/top inset so dashed drag outline (offset 4px) is not clipped by overflow */
+      padding: 6px 0.75rem 0.85rem 6px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--tone-3) var(--surface);
+    }
+    .workspace-list .list-body::-webkit-scrollbar {
+      width: 7px;
+    }
+    .workspace-list .list-body::-webkit-scrollbar-track {
+      background: var(--surface);
+    }
+    .workspace-list .list-body::-webkit-scrollbar-thumb {
+      background: var(--tone-3);
+      border-radius: 999px;
+      border: 1px solid var(--surface);
+      background-clip: padding-box;
+    }
+    .workspace-list .list-body::-webkit-scrollbar-thumb:hover {
+      background: var(--faint);
+      border: 1px solid var(--surface);
+      background-clip: padding-box;
+    }
+    .workspace-list .list-cards .card[draggable="true"] {
+      cursor: grab;
+    }
+    .workspace-list .list-cards .card[draggable="true"]:hover {
+      outline: 2px dashed var(--canvas-drag-border);
+      outline-offset: 4px;
+    }
+    .workspace-list .list-cards .card[draggable="true"]:active {
+      cursor: grabbing;
+    }
+    .workspace-list .list-cards .card,
+    .canvas-placed-card .card {
+      transition: transform 0.14s ease, filter 0.14s ease, box-shadow 0.14s ease;
+    }
+    .workspace-list .list-cards .card.is-workspace-link-hover,
+    .canvas-placed-card.is-workspace-link-hover .card {
+      transform: translateY(-2px) scale(1.012);
+      filter: brightness(1.08) saturate(1.22);
+      box-shadow: 0 10px 22px rgba(0, 0, 0, 0.14);
+    }
+    .canvas-placed-card.is-workspace-link-hover {
+      z-index: 3;
+    }
+    .workspace-canvas {
+      flex: 1 1 auto;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      align-self: stretch;
+    }
+    .workspace-canvas .spatial-canvas {
+      flex: 1 1 auto;
+      min-height: 0;
     }
     .list-cards {
       display: flex;
@@ -974,7 +1109,7 @@
       flex: 1 1 auto;
       min-width: 0;
       width: 100%;
-      min-height: calc(100vh - var(--app-header-h) - 5rem);
+      min-height: 0;
       overflow: auto;
       border-radius: 12px;
       border: 1px dashed var(--tone-2);
@@ -1013,17 +1148,18 @@
     .canvas-placed-card .card input {
       user-select: text;
     }
-    @media (max-width: 720px) {
-      .canvas-view {
+    @media (max-width: 900px) {
+      .workspace-view {
         flex-direction: column;
         min-height: auto;
       }
-      .canvas-tray {
+      .workspace-list {
         flex: none;
         max-width: none;
-        max-height: 12rem;
+        width: 100%;
+        max-height: 45vh;
       }
-      .spatial-canvas {
+      .workspace-canvas .spatial-canvas {
         min-height: 50vh;
       }
     }
@@ -1955,9 +2091,12 @@
         <nav class="view-tabs" aria-label="View">
           <button type="button" class="view-tab" data-view="board">Board</button>
           <button type="button" class="view-tab active" data-view="list">List</button>
-          <button type="button" class="view-tab" data-view="canvas">Canvas</button>
         </nav>
         <button type="button" class="view-tab dates-toggle" data-action="toggle-dates" aria-pressed="false">Dates</button>
+        <div class="header-proto-actions" aria-label="PoC data">
+          <button type="button" class="header-proto-btn" data-action="add-random-cards">Random cards</button>
+          <button type="button" class="header-proto-btn header-proto-btn--danger" data-action="remove-all-cards">Clear all</button>
+        </div>
         <span class="badge-proto">PoC · saved locally</span>
       </div>
     </header>
@@ -2052,6 +2191,7 @@
     let pendingEditableHandoff = null;
 
     const PANEL_CARD_ID_PREFIX = 'panel-';
+    const CANVAS_CARD_ID_PREFIX = 'canvas-';
 
     /** @type {'board' | 'list' | 'canvas'} */
     let viewMode = 'list';
@@ -2149,8 +2289,10 @@
         }
         migrateAllItemRefSigils();
         recomputeNextId();
-        if (data.viewMode === 'board' || data.viewMode === 'list' || data.viewMode === 'canvas') {
+        if (data.viewMode === 'board' || data.viewMode === 'list') {
           viewMode = data.viewMode;
+        } else if (data.viewMode === 'canvas') {
+          viewMode = 'list';
         }
         if (typeof data.showAllDates === 'boolean') showAllDates = data.showAllDates;
         if (data.canvasPlacements && typeof data.canvasPlacements === 'object') {
@@ -2445,6 +2587,65 @@
       render();
     }
 
+    const RANDOM_CARD_PROBLEMS = [
+      'Should notifications batch overnight or send immediately?',
+      'Default sort for shared lists: recently edited or alphabetical?',
+      'Allow guests to edit lists without an account?',
+      'Show stock availability on list items by default?',
+      'Merge duplicate items automatically when titles match?',
+      'Require two-person approval before deleting a household list?',
+      'Expose list history to all collaborators or admins only?',
+      'Use optimistic UI for drag reorder on slow networks?',
+    ];
+    const RANDOM_CARD_ANSWERS = [
+      'Batch between 22:00–07:00 local time; urgent @mentions bypass.',
+      'Recently edited; user can switch per list in settings.',
+      'Read-only link for guests; edit requires sign-in.',
+      'Yes for SKUs we can resolve; hide badge when unknown.',
+      'Suggest merge inline; never auto-merge without confirmation.',
+      'No — single owner can delete; audit log retained 90 days.',
+      'Admins only for now; revisit with enterprise tier.',
+    ];
+    const RANDOM_CARD_TAGS = ['allegro', 'product', 'ux', 'api', 'ops', 'mobile', 'privacy'];
+
+    function pickRandom(list) {
+      return list[Math.floor(Math.random() * list.length)];
+    }
+
+    function randomTags() {
+      const count = 1 + Math.floor(Math.random() * 2);
+      const pool = [...RANDOM_CARD_TAGS].sort(() => Math.random() - 0.5);
+      return pool.slice(0, count);
+    }
+
+    function addRandomCards(count = 8) {
+      for (let i = 0; i < count; i += 1) {
+        const withAnswer = Math.random() > 0.4;
+        createItem({
+          problem: `${pickRandom(RANDOM_CARD_PROBLEMS)} #${Math.random().toString(36).slice(2, 6)}`,
+          tags: randomTags(),
+          answer: withAnswer ? pickRandom(RANDOM_CARD_ANSWERS) : null,
+        });
+      }
+      openComposer = null;
+      render();
+    }
+
+    function removeAllCards() {
+      if (!Object.keys(items).length) return;
+      if (!window.confirm('Remove all decisions and canvas placements?')) return;
+      closeIssueRefDrawer();
+      removeIssuePreview();
+      items = {};
+      canvasPlacements = {};
+      followupDrafts = {};
+      openComposer = null;
+      pendingFocus = null;
+      pendingEditableHandoff = null;
+      recomputeNextId();
+      render();
+    }
+
     function seed() {
       const refNum = (id) => id.replace(/^item-/i, '');
 
@@ -2623,9 +2824,9 @@
       return Object.values(items).sort((a, b) => a.id.localeCompare(b.id));
     }
 
-    function renderGroupedCards(itemList) {
+    function renderGroupedCards(itemList, { draggableToCanvas = false } = {}) {
       if (!itemList.length) return '';
-      const cards = itemList.map((item) => renderCard(item)).join('');
+      const cards = itemList.map((item) => renderCard(item, { draggableToCanvas })).join('');
       return `<div class="list-cards">${cards}</div>`;
     }
 
@@ -3628,11 +3829,13 @@
       if (ta.matches('[data-followup-input]')) {
         pick.mode = 'followup';
         pick.itemId = ta.dataset.id;
+        Object.assign(pick, editSurfaceFromElement(ta));
         return pick;
       }
       pick.itemId = ta.dataset.refItemId;
       pick.field = ta.dataset.refField;
       pick.stepIndex = Number(ta.dataset.refStep);
+      Object.assign(pick, editSurfaceFromElement(ta));
       return pick;
     }
 
@@ -3660,7 +3863,14 @@
 
       if (pick.mode === 'followup' && pick.itemId) {
         followupDrafts[pick.itemId] = newText;
-        const ta = document.querySelector(`[data-followup-input][data-id="${pick.itemId}"]`);
+        let ta = pick.ta && document.body.contains(pick.ta) ? pick.ta : null;
+        if (!ta) {
+          const host = editableHostForItem(document.getElementById('app'), pick.itemId, {
+            panel: pick.panel,
+            canvas: pick.canvas,
+          });
+          ta = host?.querySelector(`[data-followup-input][data-id="${pick.itemId}"]`) || null;
+        }
         if (ta) {
           ta.value = newText;
           autoGrowTextarea(ta);
@@ -3677,7 +3887,13 @@
         }
         if (pick.field === 'problem') recordProblemEdit(step, newText);
         else recordAnswerEdit(step, newText);
-        pendingFocus = { id: pick.itemId, field: pick.field, step: pick.stepIndex };
+        pendingFocus = {
+          id: pick.itemId,
+          field: pick.field,
+          step: pick.stepIndex,
+          panel: !!pick.panel,
+          canvas: !!pick.canvas,
+        };
         render();
       }
     }
@@ -4375,6 +4591,12 @@
       delete canvasPlacements[id];
     }
 
+    function removeFromCanvas(id) {
+      delete canvasPlacements[id];
+      scheduleSaveState();
+      render();
+    }
+
     const CANVAS_CARD_WIDTH = 420;
     const CANVAS_DROP_OFFSET_Y = 24;
 
@@ -4402,48 +4624,95 @@
       render();
     }
 
-    function renderCanvasTrayItem(item) {
-      const num = item.id.replace(/^item-/i, '');
-      const q = truncateLabel(getProblemText(item.steps[0]) || '', 88);
-      const onCanvas = !!canvasPlacements[item.id];
-      return `
-        <div class="canvas-tray-item${onCanvas ? ' is-on-canvas' : ''}" draggable="true" data-canvas-drag-id="${escapeAttr(item.id)}" aria-grabbed="false">
-          <span class="canvas-tray-id">!${escapeHtml(num)}</span>
-          <span class="canvas-tray-q">${escapeHtml(q)}</span>
-        </div>
-      `;
-    }
-
     function renderCanvasPlacedCard(item, pos) {
       return `
         <div class="canvas-placed-card" data-canvas-placed="${escapeAttr(item.id)}" style="left:${pos.x}px;top:${pos.y}px">
-          ${renderCard(item)}
+          ${renderCard(item, { idPrefix: CANVAS_CARD_ID_PREFIX })}
         </div>
       `;
     }
 
-    function renderCanvasView() {
-      const ordered = allItemsOrdered();
-      const tray = ordered.length
-        ? ordered.map((item) => renderCanvasTrayItem(item)).join('')
-        : '<p class="canvas-tray-q" style="margin:0">No cards yet</p>';
+    function editSurfaceFromElement(el) {
+      return {
+        panel: !!el?.closest('.issue-ref-panel-body'),
+        canvas: !!el?.closest('.canvas-placed-card'),
+      };
+    }
+
+    function editableHostForItem(app, itemId, { panel = false, canvas = false } = {}) {
+      const root = app || document.getElementById('app');
+      if (!root) return null;
+      if (panel) return root.querySelector('.issue-ref-panel-body') || root;
+      if (canvas) {
+        const placed = root.querySelector(`.canvas-placed-card[data-canvas-placed="${itemId}"]`);
+        if (placed) return placed;
+      }
+      return root.querySelector('.workspace-list') || root;
+    }
+
+    function findEditableField(app, { id, field, step = 0, panel = false, canvas = false }) {
+      const host = editableHostForItem(app, id, { panel, canvas });
+      if (!host) return null;
+      if (field === 'tags') return host.querySelector(`[data-editable="tags"][data-id="${id}"]`);
+      return host.querySelector(`[data-editable="${field}"][data-id="${id}"][data-step="${step}"]`);
+    }
+
+    function renderCanvasSurfaceHtml() {
       const placed = Object.entries(canvasPlacements)
         .filter(([id]) => items[id])
         .map(([id, pos]) => renderCanvasPlacedCard(items[id], pos))
         .join('');
       const hint = placed ? '' : '<p class="canvas-hint">Drag cards from the list onto the canvas</p>';
       return `
-        <section class="canvas-view">
-          <aside class="canvas-tray" aria-label="Cards to place">
-            <p class="canvas-tray-title">Cards</p>
-            ${tray}
-          </aside>
-          <div class="spatial-canvas" data-canvas-surface role="region" aria-label="Decision canvas">
-            ${hint}
-            ${placed}
-          </div>
-        </section>
+        <div class="spatial-canvas" data-canvas-surface role="region" aria-label="Decision canvas">
+          ${hint}
+          ${placed}
+        </div>
       `;
+    }
+
+    let workspaceLinkHover = null;
+
+    function clearWorkspaceLinkHover() {
+      workspaceLinkHover = null;
+      document.querySelectorAll('.is-workspace-link-hover').forEach((el) => {
+        el.classList.remove('is-workspace-link-hover');
+      });
+    }
+
+    function workspaceLinkFromNode(node) {
+      if (!node?.closest) return null;
+      const listCard = node.closest('.workspace-list .list-cards .card[data-id]');
+      if (listCard) return { id: listCard.dataset.id, surface: 'list' };
+      const canvasWrap = node.closest('.canvas-placed-card[data-canvas-placed]');
+      if (canvasWrap) return { id: canvasWrap.dataset.canvasPlaced, surface: 'canvas' };
+      return null;
+    }
+
+    function workspaceLinkItemIdFromNode(node) {
+      return workspaceLinkFromNode(node)?.id ?? null;
+    }
+
+    function applyWorkspaceLinkHover(link) {
+      if (!link?.id || !canvasPlacements[link.id]) {
+        clearWorkspaceLinkHover();
+        return;
+      }
+      if (
+        workspaceLinkHover
+        && workspaceLinkHover.id === link.id
+        && workspaceLinkHover.surface === link.surface
+      ) {
+        return;
+      }
+      clearWorkspaceLinkHover();
+      workspaceLinkHover = { id: link.id, surface: link.surface };
+      const app = document.getElementById('app');
+      if (!app) return;
+      const peerSelector = link.surface === 'list'
+        ? `.canvas-placed-card[data-canvas-placed="${link.id}"]`
+        : `.workspace-list .list-cards .card[data-id="${link.id}"]`;
+      app.querySelector(peerSelector)?.classList.add('is-workspace-link-hover');
     }
 
     function bindCanvasInteractions() {
@@ -4451,19 +4720,45 @@
       canvasInteractionsBound = true;
       const app = document.getElementById('app');
 
+      app.addEventListener('mouseover', (e) => {
+        if (viewMode !== 'list') return;
+        const link = workspaceLinkFromNode(e.target);
+        if (!link) {
+          if (workspaceLinkHover) clearWorkspaceLinkHover();
+          return;
+        }
+        applyWorkspaceLinkHover(link);
+      });
+
+      app.addEventListener('mouseout', (e) => {
+        if (viewMode !== 'list' || !workspaceLinkHover) return;
+        const from = workspaceLinkFromNode(e.target);
+        if (!from || from.id !== workspaceLinkHover.id || from.surface !== workspaceLinkHover.surface) return;
+        const to = e.relatedTarget ? workspaceLinkFromNode(e.relatedTarget) : null;
+        if (to?.id === workspaceLinkHover.id) return;
+        clearWorkspaceLinkHover();
+      });
+
       app.addEventListener('dragstart', (e) => {
-        const tile = e.target.closest('.canvas-tray-item');
-        if (!tile) return;
-        const id = tile.dataset.canvasDragId;
-        if (!id) return;
+        const source = e.target.closest('[data-canvas-drag-id]');
+        if (!source) return;
+        if (e.target.closest('textarea, input, button, [data-editable]')) {
+          e.preventDefault();
+          return;
+        }
+        const id = source.dataset.canvasDragId;
+        if (!id || canvasPlacements[id]) {
+          e.preventDefault();
+          return;
+        }
         e.dataTransfer.setData('text/plain', id);
         e.dataTransfer.effectAllowed = 'copyMove';
-        tile.setAttribute('aria-grabbed', 'true');
+        if (source.hasAttribute('aria-grabbed')) source.setAttribute('aria-grabbed', 'true');
       });
 
       app.addEventListener('dragend', (e) => {
-        const tile = e.target.closest('.canvas-tray-item');
-        if (tile) tile.setAttribute('aria-grabbed', 'false');
+        const source = e.target.closest('[data-canvas-drag-id]');
+        if (source?.hasAttribute('aria-grabbed')) source.setAttribute('aria-grabbed', 'false');
       });
 
       app.addEventListener('dragover', (e) => {
@@ -4539,6 +4834,7 @@
           state.placed.classList.remove('is-dragging');
           scheduleSaveState();
         }
+        clearWorkspaceLinkHover();
         canvasPointerState = null;
       };
       app.addEventListener('pointerup', endCanvasPointer, true);
@@ -4575,7 +4871,14 @@
       delete followupDrafts[itemId];
       if (focusAnswer) {
         const stepIndex = items[itemId].steps.length - 1;
-        pendingFocus = { id: itemId, field: 'answer', step: stepIndex, panel: inPanel };
+        const inCanvas = !!ta?.closest('.canvas-placed-card');
+        pendingFocus = {
+          id: itemId,
+          field: 'answer',
+          step: stepIndex,
+          panel: inPanel,
+          canvas: inCanvas && !inPanel,
+        };
       }
       render();
     }
@@ -4594,9 +4897,13 @@
       if (!pendingEditableHandoff || !root) return;
       const h = pendingEditableHandoff;
       pendingEditableHandoff = null;
-      const el = h.field === 'tags'
-        ? root.querySelector(`[data-editable="tags"][data-id="${h.id}"]`)
-        : root.querySelector(`[data-editable="${h.field}"][data-id="${h.id}"][data-step="${h.step}"]`);
+      const el = findEditableField(root, {
+        id: h.id,
+        field: h.field,
+        step: h.step,
+        panel: !!h.panel,
+        canvas: !!h.canvas,
+      });
       if (el) startInlineEdit(el, h.field, h.id, h.step);
     }
 
@@ -4700,8 +5007,9 @@
       `;
     }
 
-    function renderCard(item, { highlightRef = null, idPrefix = '' } = {}) {
+    function renderCard(item, { highlightRef = null, idPrefix = '', draggableToCanvas = false } = {}) {
       const inRefPanel = idPrefix === PANEL_CARD_ID_PREFIX;
+      const inCanvasSurface = idPrefix === CANVAS_CARD_ID_PREFIX;
       const historyEventIndex = inRefPanel ? highlightRef?.cardHistoryEventIndex : null;
       const historyEvents = historyEventIndex != null ? collectCardHistoryEvents(item) : null;
       const timeline = item.steps
@@ -4712,12 +5020,21 @@
         .join('');
       const draft = followupDrafts[item.id] || '';
       const cardHighlight = idPrefix && highlightRef && highlightRef.stepIndex == null ? ' highlight' : '';
+      const onCanvas = !!canvasPlacements[item.id];
+      const canvasDragAttrs = draggableToCanvas && !inRefPanel && !onCanvas
+        ? ` draggable="true" data-canvas-drag-id="${escapeAttr(item.id)}"`
+        : '';
 
       return `
-        <article class="card ${cardStatusClass(item)}${cardHighlight}${inRefPanel ? ' card-readonly' : ''}" data-id="${item.id}" id="${idPrefix}card-${item.id}">
+        <article class="card ${cardStatusClass(item)}${cardHighlight}${inRefPanel ? ' card-readonly' : ''}" data-id="${item.id}" id="${idPrefix}card-${item.id}"${canvasDragAttrs}>
           <div class="card-top">
             <div class="card-main">
-              ${renderTagsHtml(item, { readOnly: inRefPanel })}
+              <div class="card-header">
+                ${renderTagsHtml(item, { readOnly: inRefPanel })}
+                ${inCanvasSurface
+                  ? `<button type="button" class="btn-delete" data-action="remove-from-canvas" data-id="${item.id}" aria-label="Remove from canvas">×</button>`
+                  : `<button type="button" class="btn-delete" data-action="delete" data-id="${item.id}" aria-label="Delete">×</button>`}
+              </div>
               <div class="timeline">${timeline}</div>
               ${inRefPanel ? '' : `<div class="followup-slot">
                 <div class="followup-slot-inner">
@@ -4731,7 +5048,6 @@
                 </div>
               </div>`}
             </div>
-            <button type="button" class="btn-delete" data-action="delete" data-id="${item.id}" aria-label="Delete">×</button>
           </div>
         </article>
       `;
@@ -4771,19 +5087,26 @@
     function renderListView() {
       const ordered = allItemsOrdered();
       const showRootComposer = openComposer?.type === 'root';
-      const cards = renderGroupedCards(ordered);
+      const cards = renderGroupedCards(ordered, { draggableToCanvas: true });
       const addBlock = showRootComposer
         ? renderComposerHtml()
         : `<button type="button" class="add-trigger" data-action="add-root">New decision</button>`;
 
       return `
-        <section class="list-view">
-          <div class="list-header">
-            <span>All items</span>
+        <section class="workspace-view">
+          <div class="workspace-list">
+            <section class="list-view">
+              <div class="list-header">
+                <span>All items</span>
+              </div>
+              <div class="list-body">
+                ${cards || '<p style="color:var(--muted);font-size:0.85rem;margin:0">No items yet</p>'}
+                ${addBlock}
+              </div>
+            </section>
           </div>
-          <div class="list-body">
-            ${cards || '<p style="color:var(--muted);font-size:0.85rem;margin:0">No items yet</p>'}
-            ${addBlock}
+          <div class="workspace-canvas">
+            ${renderCanvasSurfaceHtml()}
           </div>
         </section>
       `;
@@ -4791,14 +5114,11 @@
 
     function render() {
       removeIssuePreview();
+      clearWorkspaceLinkHover();
       const drawerRef = issueDrawerRefId;
       const app = document.getElementById('app');
       app.className = viewMode;
-      app.innerHTML = viewMode === 'board'
-        ? renderBoardView()
-        : viewMode === 'canvas'
-          ? renderCanvasView()
-          : renderListView();
+      app.innerHTML = viewMode === 'board' ? renderBoardView() : renderListView();
 
       document.body.classList.toggle('show-dates', showAllDates);
       document.querySelectorAll('.view-tab[data-view]').forEach((tab) => {
@@ -4812,15 +5132,9 @@
       document.getElementById('state-json').textContent = JSON.stringify(items, null, 2);
 
       if (pendingFocus) {
-        const { id, field, step = 0, panel = false } = pendingFocus;
+        const { id, field, step = 0, panel = false, canvas = false } = pendingFocus;
         pendingFocus = null;
-        const scope = panel
-          ? document.querySelector('.issue-ref-panel-body')
-          : document.getElementById('app');
-        const queryRoot = scope || document;
-        const el = field === 'tags'
-          ? queryRoot.querySelector(`[data-editable="tags"][data-id="${id}"]`)
-          : queryRoot.querySelector(`[data-editable="${field}"][data-id="${id}"][data-step="${step}"]`);
+        const el = findEditableField(document.getElementById('app'), { id, field, step, panel, canvas });
         if (el) startInlineEdit(el, field, id, step);
       } else if (pendingEditableHandoff) {
         finishEditableHandoff(document.getElementById('app'));
@@ -4835,12 +5149,12 @@
       if (drawerRef) populateIssueRefDrawer(drawerRef);
 
       syncAutoGrowTextareas(document.getElementById('app'));
-      if (viewMode === 'canvas') bindCanvasInteractions();
+      if (viewMode === 'list') bindCanvasInteractions();
       scheduleSaveState();
     }
 
     function setView(mode) {
-      if (mode !== 'board' && mode !== 'list' && mode !== 'canvas') return;
+      if (mode !== 'board' && mode !== 'list') return;
       viewMode = mode;
       render();
     }
@@ -4989,6 +5303,14 @@
         render();
         return;
       }
+      if (e.target.closest('[data-action="add-random-cards"]')) {
+        addRandomCards();
+        return;
+      }
+      if (e.target.closest('[data-action="remove-all-cards"]')) {
+        removeAllCards();
+        return;
+      }
       const tab = e.target.closest('[data-view]');
       if (tab) setView(tab.dataset.view);
     });
@@ -5014,6 +5336,7 @@
         id: editable.dataset.id,
         field: editable.dataset.editable,
         step: editable.dataset.editable === 'tags' ? 0 : Number(editable.dataset.step),
+        ...editSurfaceFromElement(editable),
       };
       e.preventDefault();
       active.blur();
@@ -5024,6 +5347,7 @@
 
       const editable = e.target.closest('[data-editable]');
       if (editable && !editable.closest('.issue-ref-panel-body') && !e.target.closest('textarea, input, [data-action]')) {
+        pendingEditableHandoff = null;
         const id = editable.dataset.id;
         const field = editable.dataset.editable;
         const step = field === 'tags' ? 0 : Number(editable.dataset.step);
@@ -5222,6 +5546,11 @@
 
       if (action === 'remove-step' && id && items[id]) {
         removeStep(id, Number(actionEl.dataset.step));
+        return;
+      }
+
+      if (action === 'remove-from-canvas' && id) {
+        removeFromCanvas(id);
         return;
       }
 
