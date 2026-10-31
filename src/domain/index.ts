@@ -56,7 +56,9 @@ export {
   issueRefAutocompleteLabel,
   issueRefExists,
   issueRefStaleReason,
+  issueRefHrefNeedles,
   issueRefPartsToToken,
+  issueRefSameTarget,
   normalizeIssueId,
   parseIssueRef,
   pinCurrentIssueRefRevision,
@@ -64,6 +66,7 @@ export {
   replaceIssueRefRevisionInText,
   revisionFieldText,
   truncateLabel,
+  locateIssueRefSource,
 } from "./refs.ts";
 export { diffWordsOps } from "./diff.ts";
 export {
@@ -72,6 +75,13 @@ export {
   stepVisibleAtHistoryEvent,
 } from "./history.ts";
 export type { HistoryEvent } from "./history.ts";
+export { normalizeRefTokenForField, type IssueRefSuggestContext } from "./refFieldTokens.ts";
+export {
+  refLinkRows,
+  type RefLinkGroup,
+  type RefLinkKind,
+  type RefLinkRow,
+} from "./refLinkRows.ts";
 export {
   assignOrderAtFront,
   clampPlacement,

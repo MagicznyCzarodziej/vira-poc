@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { WORLD_H, WORLD_W, isItemArchived, sortedPlacementIds } from "../../domain/index.ts";
-import { useDocument } from "../../store/useDocument.ts";
+import { useDocument } from "../../store/index.ts";
 import { CardView } from "../CardView.tsx";
 import { IconCard } from "../Icons.tsx";
 import { bindCanvasGestures } from "./bindCanvasGestures.ts";

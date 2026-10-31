@@ -21,4 +21,5 @@ export {
   pinCurrentIssueRefRevision,
   refTargetStep,
   revisionFieldText,
+  locateIssueRefSource,
 } from "./refResolve.ts";

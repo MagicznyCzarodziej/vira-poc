@@ -11,7 +11,7 @@ import {
   type IssueRef,
   type StaleReason,
 } from "../../domain/index.ts";
-import { useDocument } from "../../store/useDocument.ts";
+import { useDocument } from "../../store/index.ts";
 
 type Piece =
   | { kind: "text"; text: string }

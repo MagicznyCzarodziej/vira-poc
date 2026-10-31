@@ -6,8 +6,8 @@ import {
   type Card,
   type HistoryEvent,
 } from "../../domain/index.ts";
-import { useDocument } from "../../store/useDocument.ts";
-import { usePanels } from "../../store/usePanels.ts";
+import { useDocument } from "../../store/index.ts";
+import { usePanels } from "../../store/index.ts";
 import { bindIssueRefActions } from "./history/issueRefActions.ts";
 import { FieldRevisionChrome, TimelineChrome } from "./history/FieldRevisionChrome.tsx";
 import { PanelCard } from "./history/PanelCard.tsx";

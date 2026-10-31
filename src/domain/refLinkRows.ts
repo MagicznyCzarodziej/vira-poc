@@ -1,13 +1,7 @@
-import {
-  cardNumber,
-  compareItemIds,
-  getProblemText,
-  isRefLinkableAnswer,
-  isRefLinkableStep,
-  liveAnswerText,
-  liveItems,
-  type Card,
-} from "../../domain/index.ts";
+import { compareItemIds, liveAnswerText, liveItems, cardNumber } from "./steps.ts";
+import { getProblemText } from "./stepRevisions.ts";
+import { isRefLinkableAnswer, isRefLinkableStep } from "./stepStatus.ts";
+import type { Card } from "./types.ts";
 
 export type RefLinkKind = "all" | "answer" | "question" | "card";
 

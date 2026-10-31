@@ -98,3 +98,23 @@ export function revisionFieldText(step: Step, field: FieldName, rev: number | nu
   if (rev == null) return "";
   return field === "answer" ? (getAnswerText(step, rev) || "") : (getProblemText(step, rev) || "");
 }
+
+export function locateIssueRefSource(
+  items: Record<string, Card>,
+  parsed: IssueRef,
+): { itemId: string; stepIndex: number; field: FieldName } | null {
+  if (parsed.revision == null) return null;
+  for (const item of Object.values(items)) {
+    for (let stepIndex = 0; stepIndex < item.steps.length; stepIndex++) {
+      const step = item.steps[stepIndex];
+      if (!step) continue;
+      for (const field of ["problem", "answer"] as const) {
+        const text = field === "answer" ? (step.answer ?? "") : step.problem;
+        if (text.includes(`@v${parsed.revision}`)) {
+          return { itemId: item.id, stepIndex, field };
+        }
+      }
+    }
+  }
+  return null;
+}

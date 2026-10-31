@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizeRefTokenForField } from "./issueRefSuggestions.ts";
+import { normalizeRefTokenForField } from "./refFieldTokens.ts";
 
 describe("normalizeRefTokenForField", () => {
   it("maps question-shaped tokens to answer refs in answer fields", () => {

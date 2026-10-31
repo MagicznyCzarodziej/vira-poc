@@ -1,8 +1,8 @@
 import { buildIssueRefMarkdown, type FieldName } from "../../domain/index.ts";
-import { normalizeRefTokenForField } from "../text/issueRefSuggestions.ts";
+import { normalizeRefTokenForField } from "../../domain/index.ts";
 import { armEditHandoff } from "../card/AutoTextarea.tsx";
-import { useDocument } from "../../store/useDocument.ts";
-import { usePanels, type PickerSession } from "../../store/usePanels.ts";
+import { useDocument } from "../../store/index.ts";
+import { usePanels, type PickerSession } from "../../store/index.ts";
 
 type OpenDetail = Partial<PickerSession> & {
   textarea?: HTMLTextAreaElement;

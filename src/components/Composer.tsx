@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { tagStyle } from "../domain/index.ts";
-import { useDocument } from "../store/useDocument.ts";
-import { pickerOpen, usePanels } from "../store/usePanels.ts";
+import { pickerOpen, useDocument, usePanels } from "../store/index.ts";
 import { bindAutocomplete, isTypingTag, menuIsOpen } from "./text/useAutocomplete.ts";
 import { useLayoutEffect, useRef } from "react";
 

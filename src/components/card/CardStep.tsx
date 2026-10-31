@@ -11,7 +11,7 @@ import {
   type HistoryEvent,
   type Step,
 } from "../../domain/index.ts";
-import { useDocument, type EditTarget, type Surface } from "../../store/useDocument.ts";
+import { useDocument, type EditTarget, type Surface } from "../../store/index.ts";
 import { IconTrash } from "../Icons.tsx";
 import { RichText } from "../text/RichText.tsx";
 import { refPickModeActive } from "../text/bindRefPickFromCard.ts";

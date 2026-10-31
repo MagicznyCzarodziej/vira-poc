@@ -1,5 +1,5 @@
 import { CARD_WIDTH, DROP_OFFSET_Y, clampPlacement, clampZoom } from "../../domain/index.ts";
-import { useDocument } from "../../store/useDocument.ts";
+import { useDocument } from "../../store/index.ts";
 import { refPickModeActive, tryConsumeRefPick } from "../text/bindRefPickFromCard.ts";
 import { bindCanvasReveal } from "./bindCanvasReveal.ts";
 import { bindCanvasDrop, type SpawnGesture } from "./canvasDrop.ts";

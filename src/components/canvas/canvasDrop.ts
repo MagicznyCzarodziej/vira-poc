@@ -1,5 +1,5 @@
 import { CARD_WIDTH, DROP_OFFSET_Y } from "../../domain/index.ts";
-import { useDocument } from "../../store/useDocument.ts";
+import { useDocument } from "../../store/index.ts";
 
 export const SPAWN = "__canvas_new_card__";
 

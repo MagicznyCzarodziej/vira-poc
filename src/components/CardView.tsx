@@ -3,8 +3,8 @@ import {
   cardStatusClass,
   type Card,
 } from "../domain/index.ts";
-import { collectCardHistoryEvents } from "../domain/history.ts";
-import { useDocument, type EditTarget, type Surface } from "../store/useDocument.ts";
+import { collectCardHistoryEvents } from "../domain/index.ts";
+import { useDocument, type EditTarget, type Surface } from "../store/index.ts";
 import { refPickModeActive } from "./text/bindRefPickFromCard.ts";
 import { armEditHandoff } from "./card/AutoTextarea.tsx";
 import { CardStep } from "./card/CardStep.tsx";

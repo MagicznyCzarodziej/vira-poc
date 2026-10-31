@@ -1,4 +1,4 @@
-import { issueRefHrefNeedles, issueRefSameTarget } from "../../../domain/refs.ts";
+import { issueRefHrefNeedles, issueRefSameTarget } from "../../../domain/index.ts";
 import {
   formatIssueRefToken,
   getAnswerText,
@@ -13,8 +13,8 @@ import {
   type IssueRef,
 } from "../../../domain/index.ts";
 import { requestCanvasReveal } from "../../canvas/flyToCard.ts";
-import { useDocument } from "../../../store/useDocument.ts";
-import { usePanels } from "../../../store/usePanels.ts";
+import { useDocument } from "../../../store/index.ts";
+import { usePanels } from "../../../store/index.ts";
 import { revealCardInList } from "./revealCardInList.ts";
 
 type FieldSource = { itemId: string; stepIndex: number; field: FieldName };

@@ -1,6 +1,6 @@
 import { type RefObject } from "react";
 import { CARD_WIDTH, DROP_OFFSET_Y, clampZoom } from "../../domain/index.ts";
-import { useDocument } from "../../store/useDocument.ts";
+import { useDocument } from "../../store/index.ts";
 
 export function zoomCanvas(surfaceRef: RefObject<HTMLDivElement | null>, factor: number): void {
   const surface = surfaceRef.current;
