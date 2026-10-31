@@ -1,5 +1,5 @@
 import { tagStyle, truncateLabel } from "../../domain/index.ts";
-import type { RefLinkGroup } from "./refLinkRows.ts";
+import type { RefLinkGroup } from "../../domain/index.ts";
 
 type RefLinkResultsProps = {
   rows: RefLinkGroup[] | null;

@@ -1,4 +1,4 @@
-import { useDocument } from "../../store/useDocument.ts";
+import { useDocument } from "../../store/index.ts";
 import { flyViewportToCard, placedCardBounds, takePendingReveal } from "./flyToCard.ts";
 
 export function bindCanvasReveal(surface: HTMLElement): () => void {

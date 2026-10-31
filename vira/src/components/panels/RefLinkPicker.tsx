@@ -1,10 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { liveItems, tagStyle } from "../../domain/index.ts";
-import { useDocument } from "../../store/useDocument.ts";
-import { usePanels } from "../../store/usePanels.ts";
+import { liveItems, refLinkRows, tagStyle, type RefLinkKind } from "../../domain/index.ts";
+import { useDocument, usePanels } from "../../store/index.ts";
 import { capturePickerSession, insertRefToken } from "./insertRefLink.ts";
 import { RefLinkResults } from "./RefLinkResults.tsx";
-import { refLinkRows, type RefLinkKind } from "./refLinkRows.ts";
 
 export function RefLinkPicker() {
   const picker = usePanels((state) => state.picker);

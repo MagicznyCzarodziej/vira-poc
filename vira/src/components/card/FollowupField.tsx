@@ -1,4 +1,4 @@
-import { useDocument, type Surface } from "../../store/useDocument.ts";
+import { useDocument, type Surface } from "../../store/index.ts";
 import { armEditHandoff, AutoTextarea } from "./AutoTextarea.tsx";
 
 export function FollowupField({ itemId, surface, draft }: { itemId: string; surface: Surface; draft: string }) {

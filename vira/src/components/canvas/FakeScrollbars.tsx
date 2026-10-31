@@ -1,5 +1,5 @@
 import { useEffect, useState, type PointerEvent as ReactPointerEvent, type RefObject } from "react";
-import { useDocument } from "../../store/useDocument.ts";
+import { useDocument } from "../../store/index.ts";
 import { axisMetrics, unionBounds, type Axis } from "./scrollbarMetrics.ts";
 
 const FADE_MS = 280;

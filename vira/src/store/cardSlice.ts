@@ -7,32 +7,14 @@ import {
   createCard,
   normalizeTagName,
   recomputeNextId,
+  locateIssueRefSource,
   replaceIssueRefRevisionInText,
   setStepFieldHeadText,
   toggleAnswerTentative,
-  type Card,
   type FieldName,
-  type IssueRef,
 } from "../domain/index.ts";
 import type { DocumentState } from "./documentTypes.ts";
 import { bagOf, schedule } from "./documentPersistence.ts";
-
-function findRefSource(items: Record<string, Card>, parsed: IssueRef): { itemId: string; stepIndex: number; field: FieldName } | null {
-  const needles = parsed.revision == null ? [] : [String(parsed.revision)];
-  for (const item of Object.values(items)) {
-    for (let stepIndex = 0; stepIndex < item.steps.length; stepIndex++) {
-      const step = item.steps[stepIndex];
-      if (!step) continue;
-      for (const field of ["problem", "answer"] as const) {
-        const text = field === "answer" ? (step.answer ?? "") : step.problem;
-        if (parsed.revision != null && text.includes(`@v${parsed.revision}`) && needles.length) {
-          return { itemId: item.id, stepIndex, field };
-        }
-      }
-    }
-  }
-  return null;
-}
 
 type CardSlice = Pick<
   DocumentState,
@@ -157,7 +139,7 @@ export const createCardSlice: StateCreator<DocumentState, [], [], CardSlice> = (
     if (!target) return false;
     const field: FieldName = parsed.focusAnswer ? "answer" : "problem";
     const head = field === "answer" ? target.answerRev : target.problemRev;
-    const located = source ?? findRefSource(get().items, parsed);
+    const located = source ?? locateIssueRefSource(get().items, parsed);
     if (!located) return false;
     const card = get().items[located.itemId];
     const step = card?.steps[located.stepIndex];

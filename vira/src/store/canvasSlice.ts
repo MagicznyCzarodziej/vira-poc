@@ -5,30 +5,10 @@ import { bagOf, schedule } from "./documentPersistence.ts";
 
 type CanvasSlice = Pick<
   DocumentState,
-  | "setView"
-  | "toggleDates"
-  | "setListFilter"
-  | "removeFromCanvas"
-  | "placeAtWorld"
-  | "bringToFront"
-  | "movePlacement"
-  | "setViewport"
-  | "clearReveal"
+  "removeFromCanvas" | "placeAtWorld" | "bringToFront" | "movePlacement" | "setViewport"
 >;
 
 export const createCanvasSlice: StateCreator<DocumentState, [], [], CanvasSlice> = (set, get) => ({
-  setView: (viewMode) => {
-    set({ viewMode });
-    schedule(get);
-  },
-  toggleDates: () => {
-    set({ showAllDates: !get().showAllDates });
-    schedule(get);
-  },
-  setListFilter: (listFilterNotOnCanvas) => {
-    set({ listFilterNotOnCanvas });
-    schedule(get);
-  },
   removeFromCanvas: (id) => {
     const canvasPlacements = { ...get().canvasPlacements };
     delete canvasPlacements[id];
@@ -63,5 +43,4 @@ export const createCanvasSlice: StateCreator<DocumentState, [], [], CanvasSlice>
     });
     schedule(get);
   },
-  clearReveal: () => set({ revealId: null }),
 });

@@ -1,4 +1,4 @@
-import { useDocument } from "../store/useDocument.ts";
+import { useDocument } from "../store/index.ts";
 
 export function Header() {
   const viewMode = useDocument((state) => state.viewMode);

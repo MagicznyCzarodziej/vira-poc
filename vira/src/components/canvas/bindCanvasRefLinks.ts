@@ -1,5 +1,5 @@
 import { type RefObject } from "react";
-import { useDocument } from "../../store/useDocument.ts";
+import { useDocument } from "../../store/index.ts";
 
 export function bindCanvasRefLinks(
   root: HTMLElement,

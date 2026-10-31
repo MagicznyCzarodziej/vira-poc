@@ -1,5 +1,5 @@
 import { compareItemIdsNewestFirst, itemNeedsDecision, liveItems } from "../domain/index.ts";
-import { useDocument } from "../store/useDocument.ts";
+import { useDocument } from "../store/index.ts";
 import { CardView } from "./CardView.tsx";
 import { Composer, NewDecisionButton } from "./Composer.tsx";
 

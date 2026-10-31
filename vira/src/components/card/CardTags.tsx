@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { tagStyle, type Card } from "../../domain/index.ts";
-import { useDocument } from "../../store/useDocument.ts";
+import { useDocument } from "../../store/index.ts";
 import { editHandoffArmed } from "./AutoTextarea.tsx";
 
 function TagEditor({ initial, onCommit, onCancel }: { initial: string; onCommit: (value: string) => void; onCancel: () => void }) {

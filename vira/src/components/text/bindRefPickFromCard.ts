@@ -1,7 +1,7 @@
 import { isRefLinkableAnswer, isRefLinkableStep, type Card } from "../../domain/index.ts";
 import { armEditHandoff } from "../card/AutoTextarea.tsx";
-import { useDocument } from "../../store/useDocument.ts";
-import { pickerOpen, usePanels } from "../../store/usePanels.ts";
+import { useDocument } from "../../store/index.ts";
+import { pickerOpen, usePanels } from "../../store/index.ts";
 import { insertRefToken } from "../panels/insertRefLink.ts";
 import { completeIssueRefAtCursor, isTypingIssueRef } from "./autocompleteSuggestions.ts";
 import { menuIsOpen } from "./mentionMenu.ts";

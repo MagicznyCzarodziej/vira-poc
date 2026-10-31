@@ -4,8 +4,9 @@ import {
   buildIssueRefMarkdown,
   normalizeTagName,
 } from "../../domain/index.ts";
-import { useDocument } from "../../store/useDocument.ts";
-import { issueRefButtons, normalizeRefTokenForField, type IssueRefSuggestContext } from "./issueRefSuggestions.ts";
+import { useDocument } from "../../store/index.ts";
+import { normalizeRefTokenForField, type IssueRefSuggestContext } from "../../domain/index.ts";
+import { issueRefButtons } from "./issueRefSuggestions.ts";
 import { closeMenu } from "./mentionMenu.ts";
 import type { AutocompleteOptions } from "./useAutocomplete.ts";
 
