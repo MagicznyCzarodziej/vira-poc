@@ -1018,6 +1018,40 @@
     .workspace-list .list-cards .card[draggable="true"]:active {
       cursor: grabbing;
     }
+    @keyframes canvas-list-drag-blocked-shake {
+      0%, 100% { transform: translateX(0); }
+      33% { transform: translateX(-3px); }
+      66% { transform: translateX(3px); }
+    }
+    @keyframes canvas-list-drag-blocked-flash {
+      0% { background-color: transparent; }
+      18% { background-color: rgba(161, 161, 170, 0.48); }
+      45% { background-color: rgba(113, 113, 122, 0.36); }
+      100% { background-color: rgba(113, 113, 122, 0.3); }
+    }
+    .workspace-list .list-cards .card.canvas-list-drag-blocked.is-list-drag-blocked {
+      position: relative;
+      z-index: 4;
+      animation: canvas-list-drag-blocked-shake 0.28s ease;
+      transition: none;
+    }
+    .workspace-list .list-cards .card.canvas-list-drag-blocked.is-list-drag-blocked::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      pointer-events: none;
+      z-index: 40;
+      animation: canvas-list-drag-blocked-flash 0.28s ease forwards;
+    }
+    .workspace-list .list-cards .card.canvas-list-drag-blocked.is-list-drag-blocked * {
+      cursor: not-allowed !important;
+      user-select: none;
+    }
+    body.canvas-list-drag-blocked-active {
+      cursor: not-allowed !important;
+      user-select: none;
+    }
     .workspace-list .list-cards .card,
     .canvas-placed-card .card {
       transition: transform 0.14s ease, filter 0.14s ease, box-shadow 0.14s ease;
@@ -1081,9 +1115,87 @@
     .canvas-zoom-btn--label:hover {
       color: var(--text);
     }
-    .workspace-canvas .spatial-canvas {
+    .canvas-frame {
+      position: relative;
       flex: 1 1 auto;
       min-height: 0;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    .canvas-frame .spatial-canvas {
+      flex: 1 1 auto;
+      min-height: 0;
+    }
+    .canvas-edge-indicators {
+      position: absolute;
+      inset: 0;
+      z-index: 4;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    .canvas-edge-tick {
+      position: absolute;
+      background: rgba(37, 99, 235, 0.88);
+      box-shadow: 0 0 6px rgba(37, 99, 235, 0.45);
+      border-radius: 999px;
+      opacity: 0;
+      animation: canvas-edge-tick-in 0.12s ease forwards;
+    }
+    @keyframes canvas-edge-tick-in {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    .canvas-edge-tick--top {
+      top: 1px;
+      height: 3px;
+    }
+    .canvas-edge-tick--bottom {
+      bottom: 1px;
+      height: 3px;
+    }
+    .canvas-edge-tick--left {
+      left: 1px;
+      width: 3px;
+    }
+    .canvas-edge-tick--right {
+      right: 1px;
+      width: 3px;
+    }
+    .canvas-edge-corner {
+      position: absolute;
+      width: 9px;
+      height: 9px;
+      box-sizing: border-box;
+      border-color: rgba(37, 99, 235, 0.9);
+      border-style: solid;
+      opacity: 0;
+      animation: canvas-edge-tick-in 0.12s ease forwards;
+      filter: drop-shadow(0 0 4px rgba(37, 99, 235, 0.35));
+    }
+    .canvas-edge-corner--tl {
+      top: 0;
+      left: 0;
+      border-width: 3px 0 0 3px;
+      border-radius: 2px 0 0 0;
+    }
+    .canvas-edge-corner--tr {
+      top: 0;
+      right: 0;
+      border-width: 3px 3px 0 0;
+      border-radius: 0 2px 0 0;
+    }
+    .canvas-edge-corner--bl {
+      bottom: 0;
+      left: 0;
+      border-width: 0 0 3px 3px;
+      border-radius: 0 0 0 2px;
+    }
+    .canvas-edge-corner--br {
+      bottom: 0;
+      right: 0;
+      border-width: 0 3px 3px 0;
+      border-radius: 0 0 2px 0;
     }
     .list-cards {
       display: flex;
@@ -1153,12 +1265,34 @@
       min-width: 0;
       width: 100%;
       min-height: 0;
-      overflow: hidden;
+      overflow: auto;
       border-radius: 12px;
       border: 1px dashed var(--tone-2);
       background: var(--canvas-bg);
       cursor: grab;
-      touch-action: none;
+      touch-action: pan-x pan-y;
+      scrollbar-width: thin;
+      scrollbar-color: var(--tone-3) var(--canvas-bg);
+    }
+    .spatial-canvas::-webkit-scrollbar {
+      width: 10px;
+      height: 10px;
+    }
+    .spatial-canvas::-webkit-scrollbar-track {
+      background: var(--canvas-bg);
+    }
+    .spatial-canvas::-webkit-scrollbar-thumb {
+      background: var(--tone-3);
+      border-radius: 999px;
+      border: 2px solid var(--canvas-bg);
+      background-clip: padding-box;
+    }
+    .spatial-canvas::-webkit-scrollbar-thumb:hover {
+      background: var(--faint);
+    }
+    .canvas-scroll-content {
+      position: relative;
+      overflow: hidden;
     }
     .spatial-canvas.is-panning {
       cursor: grabbing;
@@ -1203,6 +1337,29 @@
     .canvas-placed-card .card {
       user-select: none;
       box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
+    }
+    @keyframes canvas-placed-reveal-pop {
+      0% {
+        transform: translateY(0) scale(1);
+        box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
+      }
+      40% {
+        transform: translateY(-8px) scale(1.05);
+        box-shadow: 0 20px 44px rgba(0, 0, 0, 0.22);
+        filter: brightness(1.06) saturate(1.08);
+      }
+      100% {
+        transform: translateY(0) scale(1);
+        box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
+        filter: none;
+      }
+    }
+    .canvas-placed-card.is-canvas-reveal-pop {
+      z-index: 24;
+    }
+    .canvas-placed-card.is-canvas-reveal-pop .card {
+      animation: canvas-placed-reveal-pop 0.45s cubic-bezier(0.34, 1.4, 0.64, 1);
+      transition: none;
     }
     .canvas-placed-card .card textarea,
     .canvas-placed-card .card input {
@@ -2264,15 +2421,17 @@
     /** @type {Record<string, { x: number, y: number, order?: string }>} */
     let canvasPlacements = {};
 
-    /** @type {{ panX: number, panY: number, zoom: number }} */
-    let canvasViewport = { panX: 0, panY: 0, zoom: 1 };
+    /** @type {{ scrollLeft: number, scrollTop: number, zoom: number }} */
+    let canvasViewport = { scrollLeft: 0, scrollTop: 0, zoom: 1 };
+
+    let canvasScrollSyncing = false;
 
     let canvasViewportUserSet = false;
 
     /** @type {{ placed: HTMLElement, id: string, pointerId: number, offX: number, offY: number, startX: number, startY: number, dragging: boolean } | null} */
     let canvasPointerState = null;
 
-    /** @type {{ surface: HTMLElement, pointerId: number, startX: number, startY: number, startPanX: number, startPanY: number } | null} */
+    /** @type {{ surface: HTMLElement, pointerId: number, startX: number, startY: number, startScrollLeft: number, startScrollTop: number } | null} */
     let canvasPanState = null;
 
     let canvasSpaceHeld = false;
@@ -2382,6 +2541,7 @@
           canvasViewportUserSet = data.canvasViewportUserSet;
         }
         migrateCanvasPlacementsToCenteredWorld();
+        clampAllCanvasPlacementsToWorld();
         migrateCanvasPlacementOrders();
         return true;
       } catch (err) {
@@ -2723,7 +2883,7 @@
       removeIssuePreview();
       items = {};
       canvasPlacements = {};
-      canvasViewport = { panX: 0, panY: 0, zoom: 1 };
+      canvasViewport = { scrollLeft: 0, scrollTop: 0, zoom: 1 };
       canvasViewportUserSet = false;
       followupDrafts = {};
       openComposer = null;
@@ -4686,9 +4846,10 @@
 
     const CANVAS_CARD_WIDTH = 420;
     const CANVAS_DROP_OFFSET_Y = 24;
-    const CANVAS_WORLD_MIN_W = 7200;
-    const CANVAS_WORLD_MIN_H = 5400;
-    const CANVAS_ZOOM_MIN = 0.2;
+    const CANVAS_CARD_EST_H = 360;
+    const CANVAS_WORLD_MIN_W = 30000;
+    const CANVAS_WORLD_MIN_H = 30000;
+    const CANVAS_ZOOM_MIN = 0.05;
     const CANVAS_ZOOM_MAX = 2.5;
 
     // Layer order uses fractional indexing (Figma / Evan Wallace) — one string key per
@@ -4756,22 +4917,279 @@
     }
 
     function normalizeCanvasViewport(raw) {
-      if (raw && typeof raw.zoom === 'number') {
+      if (!raw || typeof raw !== 'object') {
+        return { scrollLeft: 0, scrollTop: 0, zoom: 1 };
+      }
+      const zoom = clampCanvasZoom(Number(raw.zoom) || 1);
+      if (typeof raw.scrollLeft === 'number' || typeof raw.scrollTop === 'number') {
         return {
-          panX: Number(raw.panX) || 0,
-          panY: Number(raw.panY) || 0,
-          zoom: clampCanvasZoom(Number(raw.zoom) || 1),
+          scrollLeft: Math.max(0, Number(raw.scrollLeft) || 0),
+          scrollTop: Math.max(0, Number(raw.scrollTop) || 0),
+          zoom,
         };
       }
-      const scrollLeft = Number(raw?.scrollLeft) || 0;
-      const scrollTop = Number(raw?.scrollTop) || 0;
-      return { panX: -scrollLeft, panY: -scrollTop, zoom: 1 };
+      const panX = Number(raw.panX) || 0;
+      const panY = Number(raw.panY) || 0;
+      return {
+        scrollLeft: Math.max(0, -panX),
+        scrollTop: Math.max(0, -panY),
+        zoom,
+      };
     }
 
-    function applyCanvasWorldTransform(world = canvasWorldEl()) {
-      if (!world) return;
-      const { panX, panY, zoom } = canvasViewport;
-      world.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom})`;
+    function canvasScrollContentEl() {
+      return canvasSurfaceEl()?.querySelector('[data-canvas-scroll-content]') ?? null;
+    }
+
+    function canvasScaledWorldSize() {
+      const { w, h } = canvasWorldExtent();
+      const zoom = canvasViewport.zoom;
+      return {
+        w: Math.max(1, Math.ceil(w * zoom)),
+        h: Math.max(1, Math.ceil(h * zoom)),
+      };
+    }
+
+    function canvasWorldPadding() {
+      return { padX: 0, padY: 0 };
+    }
+
+    function canvasMaxScroll(surface) {
+      const scaled = canvasScaledWorldSize();
+      return {
+        maxLeft: Math.max(0, scaled.w - surface.clientWidth),
+        maxTop: Math.max(0, scaled.h - surface.clientHeight),
+      };
+    }
+
+    function clampCanvasViewportScroll(surface) {
+      const { maxLeft, maxTop } = canvasMaxScroll(surface);
+      canvasViewport.scrollLeft = Math.min(Math.max(0, canvasViewport.scrollLeft), maxLeft);
+      canvasViewport.scrollTop = Math.min(Math.max(0, canvasViewport.scrollTop), maxTop);
+    }
+
+    function applyCanvasScrollLayout() {
+      const surface = canvasSurfaceEl();
+      const world = canvasWorldEl();
+      const scrollContent = canvasScrollContentEl();
+      if (!surface || !world || !scrollContent) return;
+
+      const { w, h } = canvasWorldExtent();
+      world.style.width = `${w}px`;
+      world.style.height = `${h}px`;
+
+      const zoom = canvasViewport.zoom;
+      world.style.transform = `scale(${zoom})`;
+      world.style.transformOrigin = '0 0';
+      world.style.marginLeft = '0';
+      world.style.marginTop = '0';
+
+      const scaled = canvasScaledWorldSize();
+      scrollContent.style.width = `${scaled.w}px`;
+      scrollContent.style.height = `${scaled.h}px`;
+
+      clampCanvasViewportScroll(surface);
+
+      canvasScrollSyncing = true;
+      surface.scrollLeft = canvasViewport.scrollLeft;
+      surface.scrollTop = canvasViewport.scrollTop;
+      canvasScrollSyncing = false;
+      updateCanvasEdgeIndicators();
+    }
+
+    function canvasViewportWorldRect(surface = canvasSurfaceEl()) {
+      if (!surface) return null;
+      const zoom = canvasViewport.zoom;
+      const x0 = canvasViewport.scrollLeft / zoom;
+      const y0 = canvasViewport.scrollTop / zoom;
+      return {
+        x0,
+        y0,
+        x1: x0 + surface.clientWidth / zoom,
+        y1: y0 + surface.clientHeight / zoom,
+      };
+    }
+
+    const CANVAS_EDGE_TICK_MIN = 8;
+    const CANVAS_EDGE_CORNER_INSET = 11;
+
+    function canvasEdgeProjectHorizontal(card, surface) {
+      const zoom = canvasViewport.zoom;
+      const sl = canvasViewport.scrollLeft;
+      const vw = surface.clientWidth;
+      let x0 = card.minX * zoom - sl;
+      let x1 = card.maxX * zoom - sl;
+      if (x1 < 0 || x0 > vw) {
+        const cx = ((card.minX + card.maxX) / 2) * zoom - sl;
+        const c = Math.max(0, Math.min(vw, cx));
+        return { left: c - CANVAS_EDGE_TICK_MIN / 2, width: CANVAS_EDGE_TICK_MIN };
+      }
+      x0 = Math.max(0, Math.min(vw, x0));
+      x1 = Math.max(0, Math.min(vw, x1));
+      let width = x1 - x0;
+      let left = x0;
+      if (width < CANVAS_EDGE_TICK_MIN) {
+        const mid = (x0 + x1) / 2;
+        left = Math.max(0, Math.min(vw - CANVAS_EDGE_TICK_MIN, mid - CANVAS_EDGE_TICK_MIN / 2));
+        width = CANVAS_EDGE_TICK_MIN;
+      }
+      return { left, width };
+    }
+
+    function canvasEdgeProjectVertical(card, surface) {
+      const zoom = canvasViewport.zoom;
+      const st = canvasViewport.scrollTop;
+      const vh = surface.clientHeight;
+      let y0 = card.minY * zoom - st;
+      let y1 = card.maxY * zoom - st;
+      if (y1 < 0 || y0 > vh) {
+        const cy = ((card.minY + card.maxY) / 2) * zoom - st;
+        const c = Math.max(0, Math.min(vh, cy));
+        return { top: c - CANVAS_EDGE_TICK_MIN / 2, height: CANVAS_EDGE_TICK_MIN };
+      }
+      y0 = Math.max(0, Math.min(vh, y0));
+      y1 = Math.max(0, Math.min(vh, y1));
+      let height = y1 - y0;
+      let top = y0;
+      if (height < CANVAS_EDGE_TICK_MIN) {
+        const mid = (y0 + y1) / 2;
+        top = Math.max(0, Math.min(vh - CANVAS_EDGE_TICK_MIN, mid - CANVAS_EDGE_TICK_MIN / 2));
+        height = CANVAS_EDGE_TICK_MIN;
+      }
+      return { top, height };
+    }
+
+    function appendCanvasEdgeTick(root, side, style) {
+      const el = document.createElement('span');
+      el.className = `canvas-edge-tick canvas-edge-tick--${side}`;
+      Object.assign(el.style, style);
+      root.appendChild(el);
+    }
+
+    function appendCanvasEdgeCorner(root, corner) {
+      const el = document.createElement('span');
+      el.className = `canvas-edge-corner canvas-edge-corner--${corner}`;
+      root.appendChild(el);
+    }
+
+    function canvasPlacedCardBoundsWorld(id) {
+      const p = canvasPlacements[id];
+      if (!p) return null;
+      const world = canvasWorldEl();
+      const el = world?.querySelector(`[data-canvas-placed="${id}"]`);
+      const w = el?.offsetWidth || CANVAS_CARD_WIDTH;
+      const h = el?.offsetHeight || CANVAS_CARD_EST_H;
+      return {
+        minX: p.x,
+        minY: p.y,
+        maxX: p.x + w,
+        maxY: p.y + h,
+      };
+    }
+
+    function canvasEdgeTrimHorizontalSpan(span, surface, trimStart, trimEnd) {
+      const vw = surface.clientWidth;
+      let left = span.left;
+      let right = span.left + span.width;
+      if (trimStart) left = Math.max(left, CANVAS_EDGE_CORNER_INSET);
+      if (trimEnd) right = Math.min(right, vw - CANVAS_EDGE_CORNER_INSET);
+      const width = right - left;
+      if (width < CANVAS_EDGE_TICK_MIN) return null;
+      return { left, width };
+    }
+
+    function canvasEdgeTrimVerticalSpan(span, surface, trimStart, trimEnd) {
+      const vh = surface.clientHeight;
+      let top = span.top;
+      let bottom = span.top + span.height;
+      if (trimStart) top = Math.max(top, CANVAS_EDGE_CORNER_INSET);
+      if (trimEnd) bottom = Math.min(bottom, vh - CANVAS_EDGE_CORNER_INSET);
+      const height = bottom - top;
+      if (height < CANVAS_EDGE_TICK_MIN) return null;
+      return { top, height };
+    }
+
+    function updateCanvasEdgeIndicators() {
+      const surface = canvasSurfaceEl();
+      const root = document.querySelector('[data-canvas-edge-indicators]');
+      if (!surface || !root) return;
+
+      root.replaceChildren();
+      const view = canvasViewportWorldRect(surface);
+      if (!view) return;
+
+      for (const id of Object.keys(canvasPlacements)) {
+        if (!items[id]) continue;
+        const card = canvasPlacedCardBoundsWorld(id);
+        if (!card) continue;
+
+        const offTop = card.maxY <= view.y0;
+        const offBottom = card.minY >= view.y1;
+        const offLeft = card.maxX <= view.x0;
+        const offRight = card.minX >= view.x1;
+
+        if (offTop && offLeft) appendCanvasEdgeCorner(root, 'tl');
+        if (offTop && offRight) appendCanvasEdgeCorner(root, 'tr');
+        if (offBottom && offLeft) appendCanvasEdgeCorner(root, 'bl');
+        if (offBottom && offRight) appendCanvasEdgeCorner(root, 'br');
+
+        if (offTop) {
+          const trimmed = canvasEdgeTrimHorizontalSpan(
+            canvasEdgeProjectHorizontal(card, surface),
+            surface,
+            offLeft,
+            offRight,
+          );
+          if (trimmed) {
+            appendCanvasEdgeTick(root, 'top', {
+              left: `${trimmed.left}px`,
+              width: `${trimmed.width}px`,
+            });
+          }
+        }
+        if (offBottom) {
+          const trimmed = canvasEdgeTrimHorizontalSpan(
+            canvasEdgeProjectHorizontal(card, surface),
+            surface,
+            offLeft,
+            offRight,
+          );
+          if (trimmed) {
+            appendCanvasEdgeTick(root, 'bottom', {
+              left: `${trimmed.left}px`,
+              width: `${trimmed.width}px`,
+            });
+          }
+        }
+        if (offLeft) {
+          const trimmed = canvasEdgeTrimVerticalSpan(
+            canvasEdgeProjectVertical(card, surface),
+            surface,
+            offTop,
+            offBottom,
+          );
+          if (trimmed) {
+            appendCanvasEdgeTick(root, 'left', {
+              top: `${trimmed.top}px`,
+              height: `${trimmed.height}px`,
+            });
+          }
+        }
+        if (offRight) {
+          const trimmed = canvasEdgeTrimVerticalSpan(
+            canvasEdgeProjectVertical(card, surface),
+            surface,
+            offTop,
+            offBottom,
+          );
+          if (trimmed) {
+            appendCanvasEdgeTick(root, 'right', {
+              top: `${trimmed.top}px`,
+              height: `${trimmed.height}px`,
+            });
+          }
+        }
+      }
     }
 
     function updateCanvasZoomControlLabel() {
@@ -4799,32 +5217,105 @@
     }
 
     function syncCanvasViewport() {
-      applyCanvasWorldTransform();
+      applyCanvasScrollLayout();
       updateCanvasZoomControlLabel();
       scheduleSaveState();
     }
 
-    function centerCanvasViewport(surface, world) {
+    function alignCanvasScrollAfterLayout(surface) {
+      const scaled = canvasScaledWorldSize();
+      if (scaled.w <= surface.clientWidth && scaled.h <= surface.clientHeight) {
+        canvasViewport.scrollLeft = 0;
+        canvasViewport.scrollTop = 0;
+      } else {
+        canvasViewport.scrollLeft = Math.max(
+          0,
+          Math.round((scaled.w - surface.clientWidth) / 2),
+        );
+        canvasViewport.scrollTop = Math.max(
+          0,
+          Math.round((scaled.h - surface.clientHeight) / 2),
+        );
+      }
+      clampCanvasViewportScroll(surface);
+      canvasScrollSyncing = true;
+      surface.scrollLeft = canvasViewport.scrollLeft;
+      surface.scrollTop = canvasViewport.scrollTop;
+      canvasScrollSyncing = false;
+    }
+
+    function centerCanvasViewport(surface) {
+      applyCanvasScrollLayout();
+      alignCanvasScrollAfterLayout(surface);
+    }
+
+    function popCanvasPlacedCard(itemId) {
+      const world = canvasWorldEl();
+      const placed = world?.querySelector(`[data-canvas-placed="${itemId}"]`);
+      const card = placed?.querySelector('.card');
+      if (!placed || !card) return;
+      placed.classList.remove('is-canvas-reveal-pop');
+      void card.offsetWidth;
+      placed.classList.add('is-canvas-reveal-pop');
+      const onEnd = (e) => {
+        if (e.target !== card) return;
+        placed.classList.remove('is-canvas-reveal-pop');
+        card.removeEventListener('animationend', onEnd);
+      };
+      card.addEventListener('animationend', onEnd);
+    }
+
+    function centerCanvasViewportOnCard(itemId) {
+      const surface = canvasSurfaceEl();
+      if (!surface || !itemId || !canvasPlacements[itemId]) return;
+      applyCanvasScrollLayout();
+      const bounds = canvasPlacedCardBoundsWorld(itemId);
+      if (!bounds) return;
       const zoom = canvasViewport.zoom;
-      canvasViewport.panX = Math.round((surface.clientWidth - world.offsetWidth * zoom) / 2);
-      canvasViewport.panY = Math.round((surface.clientHeight - world.offsetHeight * zoom) / 2);
+      const centerX = (bounds.minX + bounds.maxX) / 2;
+      const centerY = (bounds.minY + bounds.maxY) / 2;
+      canvasViewport.scrollLeft = centerX * zoom - surface.clientWidth / 2;
+      canvasViewport.scrollTop = centerY * zoom - surface.clientHeight / 2;
+      clampCanvasViewportScroll(surface);
+      canvasScrollSyncing = true;
+      surface.scrollLeft = canvasViewport.scrollLeft;
+      surface.scrollTop = canvasViewport.scrollTop;
+      canvasScrollSyncing = false;
+      canvasViewportUserSet = true;
+      updateCanvasEdgeIndicators();
+      popCanvasPlacedCard(itemId);
     }
 
     function canvasZoomAt(clientX, clientY, scaleFactor) {
       const surface = canvasSurfaceEl();
-      if (!surface || !scaleFactor) return;
+      const world = canvasWorldEl();
+      if (!surface || !world || !scaleFactor) return;
       const rect = surface.getBoundingClientRect();
       const mx = clientX - rect.left;
       const my = clientY - rect.top;
-      const { panX, panY, zoom } = canvasViewport;
-      const worldX = (mx - panX) / zoom;
-      const worldY = (my - panY) / zoom;
+      const zoom = canvasViewport.zoom;
+      const { padX, padY } = canvasWorldPadding(surface, world);
+      const worldX = (surface.scrollLeft + mx - padX) / zoom;
+      const worldY = (surface.scrollTop + my - padY) / zoom;
       const newZoom = clampCanvasZoom(zoom * scaleFactor);
       canvasViewport.zoom = newZoom;
-      canvasViewport.panX = mx - worldX * newZoom;
-      canvasViewport.panY = my - worldY * newZoom;
+      applyCanvasScrollLayout();
+      const { padX: nextPadX, padY: nextPadY } = canvasWorldPadding(surface, world);
+      canvasViewport.scrollLeft = Math.max(0, worldX * newZoom + nextPadX - mx);
+      canvasViewport.scrollTop = Math.max(0, worldY * newZoom + nextPadY - my);
       canvasViewportUserSet = true;
-      syncCanvasViewport();
+      const scaled = canvasScaledWorldSize();
+      if (scaled.w <= surface.clientWidth && scaled.h <= surface.clientHeight) {
+        canvasViewport.scrollLeft = 0;
+        canvasViewport.scrollTop = 0;
+      }
+      clampCanvasViewportScroll(surface);
+      canvasScrollSyncing = true;
+      surface.scrollLeft = canvasViewport.scrollLeft;
+      surface.scrollTop = canvasViewport.scrollTop;
+      canvasScrollSyncing = false;
+      updateCanvasZoomControlLabel();
+      scheduleSaveState();
     }
 
     function onCanvasWheel(e) {
@@ -4834,20 +5325,39 @@
         e.preventDefault();
         const factor = Math.exp(-e.deltaY * 0.002);
         canvasZoomAt(e.clientX, e.clientY, factor);
-        return;
       }
-      if (e.deltaX === 0 && e.deltaY === 0) return;
-      e.preventDefault();
-      canvasViewport.panX -= e.deltaX;
-      canvasViewport.panY -= e.deltaY;
+    }
+
+    function onCanvasSurfaceScroll() {
+      if (canvasScrollSyncing) return;
+      const surface = canvasSurfaceEl();
+      if (!surface) return;
+      canvasViewport.scrollLeft = surface.scrollLeft;
+      canvasViewport.scrollTop = surface.scrollTop;
+      clampCanvasViewportScroll(surface);
+      if (surface.scrollLeft !== canvasViewport.scrollLeft) {
+        canvasScrollSyncing = true;
+        surface.scrollLeft = canvasViewport.scrollLeft;
+        surface.scrollTop = canvasViewport.scrollTop;
+        canvasScrollSyncing = false;
+      }
       canvasViewportUserSet = true;
-      syncCanvasViewport();
+      updateCanvasEdgeIndicators();
+      scheduleSaveState();
     }
 
     function bindCanvasSurfaceWheel(surface) {
       if (surface.dataset.wheelBound) return;
       surface.dataset.wheelBound = '1';
       surface.addEventListener('wheel', onCanvasWheel, { passive: false });
+      surface.addEventListener('scroll', onCanvasSurfaceScroll, { passive: true });
+      if (!surface.dataset.resizeBound) {
+        surface.dataset.resizeBound = '1';
+        new ResizeObserver(() => {
+          if (canvasPanState) return;
+          applyCanvasScrollLayout();
+        }).observe(surface);
+      }
     }
 
     function applyCanvasViewport() {
@@ -4855,12 +5365,12 @@
       if (!surface) return;
       bindCanvasSurfaceWheel(surface);
       requestAnimationFrame(() => {
-        const world = surface.querySelector('.canvas-world');
-        if (world && !canvasViewportUserSet) {
-          centerCanvasViewport(surface, world);
+        applyCanvasScrollLayout();
+        if (!canvasViewportUserSet) {
+          centerCanvasViewport(surface);
         }
-        applyCanvasWorldTransform(world);
         updateCanvasZoomControlLabel();
+        updateCanvasEdgeIndicators();
       });
     }
 
@@ -4899,13 +5409,17 @@
     }
 
     function canvasWorldExtent() {
-      let w = CANVAS_WORLD_MIN_W;
-      let h = CANVAS_WORLD_MIN_H;
-      for (const pos of Object.values(canvasPlacements)) {
-        w = Math.max(w, pos.x + CANVAS_CARD_WIDTH + 320);
-        h = Math.max(h, pos.y + 360 + 320);
+      return { w: CANVAS_WORLD_MIN_W, h: CANVAS_WORLD_MIN_H };
+    }
+
+    function clampAllCanvasPlacementsToWorld() {
+      const { w, h } = canvasWorldExtent();
+      for (const id of Object.keys(canvasPlacements)) {
+        const p = canvasPlacements[id];
+        if (!p) continue;
+        p.x = Math.max(8, Math.min(p.x, w - CANVAS_CARD_WIDTH - 8));
+        p.y = Math.max(8, Math.min(p.y, h - 120));
       }
-      return { w, h };
     }
 
     function tryStartCanvasPan(e) {
@@ -4924,8 +5438,8 @@
         pointerId: e.pointerId,
         startX: e.clientX,
         startY: e.clientY,
-        startPanX: canvasViewport.panX,
-        startPanY: canvasViewport.panY,
+        startScrollLeft: surface.scrollLeft,
+        startScrollTop: surface.scrollTop,
       };
       surface.classList.add('is-panning');
       surface.setPointerCapture(e.pointerId);
@@ -4947,10 +5461,20 @@
       const rect = surface.getBoundingClientRect();
       const mx = clientX - rect.left;
       const my = clientY - rect.top;
-      const { panX, panY, zoom } = canvasViewport;
+      const world = canvasWorldEl();
+      const { padX, padY } = canvasWorldPadding(surface, world);
+      const zoom = canvasViewport.zoom;
       return {
-        x: (mx - panX) / zoom,
-        y: (my - panY) / zoom,
+        x: (surface.scrollLeft + mx - padX) / zoom,
+        y: (surface.scrollTop + my - padY) / zoom,
+      };
+    }
+
+    function clampCanvasPlacement(x, y) {
+      const { w, h } = canvasWorldExtent();
+      return {
+        x: Math.max(8, Math.min(Math.round(x), w - CANVAS_CARD_WIDTH - 8)),
+        y: Math.max(8, Math.min(Math.round(y), h - 120)),
       };
     }
 
@@ -4958,10 +5482,11 @@
       const surface = canvasSurfaceEl();
       if (!surface || !items[itemId]) return;
       const pt = canvasPointFromClient(surface, clientX, clientY);
-      canvasPlacements[itemId] = {
-        x: Math.max(8, Math.round(pt.x - CANVAS_CARD_WIDTH / 2)),
-        y: Math.max(8, Math.round(pt.y - CANVAS_DROP_OFFSET_Y)),
-      };
+      const pos = clampCanvasPlacement(
+        pt.x - CANVAS_CARD_WIDTH / 2,
+        pt.y - CANVAS_DROP_OFFSET_Y,
+      );
+      canvasPlacements[itemId] = pos;
       ensureCanvasPlacementOrder(itemId);
       canvasAssignOrderAtFront(itemId);
       scheduleSaveState();
@@ -5008,14 +5533,25 @@
         .join('');
       const hint = placed
         ? ''
-        : '<p class="canvas-hint">Drag cards from the list · drag to pan · pinch or ⌘/Ctrl+scroll to zoom</p>';
+        : '<p class="canvas-hint">Drag cards from the list · drag or scroll to pan · pinch or ⌘/Ctrl+scroll to zoom</p>';
       const { w, h } = canvasWorldExtent();
       return `
         <div class="spatial-canvas" data-canvas-surface role="region" aria-label="Decision canvas">
-          <div class="canvas-world" style="width:${w}px;height:${h}px">
-            ${hint}
-            ${placed}
+          <div class="canvas-scroll-content" data-canvas-scroll-content>
+            <div class="canvas-world" style="width:${w}px;height:${h}px">
+              ${hint}
+              ${placed}
+            </div>
           </div>
+        </div>
+      `;
+    }
+
+    function renderCanvasFrameHtml() {
+      return `
+        <div class="canvas-frame" data-canvas-frame>
+          ${renderCanvasSurfaceHtml()}
+          <div class="canvas-edge-indicators" data-canvas-edge-indicators aria-hidden="true"></div>
         </div>
       `;
     }
@@ -5088,10 +5624,64 @@
         clearWorkspaceLinkHover();
       });
 
+      let listDragBlockedPointer = null;
+
+      const endListDragBlocked = (e) => {
+        if (!listDragBlockedPointer || e.pointerId !== listDragBlockedPointer.pointerId) return;
+        listDragBlockedPointer.card?.classList.remove('is-list-drag-blocked');
+        listDragBlockedPointer = null;
+        document.body.classList.remove('canvas-list-drag-blocked-active');
+      };
+
+      app.addEventListener(
+        'pointerdown',
+        (e) => {
+          if (e.button !== 0) return;
+          const card = e.target.closest('.workspace-list .list-cards .card.canvas-list-drag-blocked');
+          if (!card) return;
+          listDragBlockedPointer = {
+            pointerId: e.pointerId,
+            startX: e.clientX,
+            startY: e.clientY,
+            card,
+            dragging: false,
+          };
+        },
+        true,
+      );
+
+      app.addEventListener(
+        'pointermove',
+        (e) => {
+          const state = listDragBlockedPointer;
+          if (!state || e.pointerId !== state.pointerId) return;
+          if (state.dragging) return;
+          const dx = e.clientX - state.startX;
+          const dy = e.clientY - state.startY;
+          if (dx * dx + dy * dy <= 9) return;
+          state.dragging = true;
+          state.card.classList.add('is-list-drag-blocked');
+          document.body.classList.add('canvas-list-drag-blocked-active');
+          const itemId = state.card.dataset.id;
+          if (itemId) centerCanvasViewportOnCard(itemId);
+          e.preventDefault();
+        },
+        true,
+      );
+
+      app.addEventListener('pointerup', endListDragBlocked, true);
+      app.addEventListener('pointercancel', endListDragBlocked, true);
+
+      app.addEventListener('selectstart', (e) => {
+        if (e.target.closest('.workspace-list .list-cards .card.canvas-list-drag-blocked.is-list-drag-blocked')) {
+          e.preventDefault();
+        }
+      });
+
       app.addEventListener('dragstart', (e) => {
         const source = e.target.closest('[data-canvas-drag-id]');
         if (!source) return;
-        if (e.target.closest('textarea, input, button, [data-editable]')) {
+        if (e.target.closest('textarea, input, button, [data-editable], [contenteditable="true"]')) {
           e.preventDefault();
           return;
         }
@@ -5161,10 +5751,15 @@
         const pan = canvasPanState;
         if (pan && e.pointerId === pan.pointerId) {
           e.preventDefault();
-          canvasViewport.panX = pan.startPanX + (e.clientX - pan.startX);
-          canvasViewport.panY = pan.startPanY + (e.clientY - pan.startY);
+          pan.surface.scrollLeft = pan.startScrollLeft - (e.clientX - pan.startX);
+          pan.surface.scrollTop = pan.startScrollTop - (e.clientY - pan.startY);
+          canvasViewport.scrollLeft = pan.surface.scrollLeft;
+          canvasViewport.scrollTop = pan.surface.scrollTop;
+          clampCanvasViewportScroll(pan.surface);
+          pan.surface.scrollLeft = canvasViewport.scrollLeft;
+          pan.surface.scrollTop = canvasViewport.scrollTop;
           canvasViewportUserSet = true;
-          applyCanvasWorldTransform();
+          updateCanvasEdgeIndicators();
           return;
         }
         const state = canvasPointerState;
@@ -5191,12 +5786,13 @@
         const surface = canvasSurfaceEl();
         if (!surface) return;
         const pt = canvasPointFromClient(surface, e.clientX, e.clientY);
-        canvasPlacements[state.id] = {
-          x: Math.max(8, Math.round(pt.x - state.offX)),
-          y: Math.max(8, Math.round(pt.y - state.offY)),
-        };
+        canvasPlacements[state.id] = clampCanvasPlacement(
+          pt.x - state.offX,
+          pt.y - state.offY,
+        );
         state.placed.style.left = `${canvasPlacements[state.id].x}px`;
         state.placed.style.top = `${canvasPlacements[state.id].y}px`;
+        updateCanvasEdgeIndicators();
       }, true);
 
       const endCanvasPointer = (e) => {
@@ -5416,12 +6012,13 @@
       const draft = followupDrafts[item.id] || '';
       const cardHighlight = idPrefix && highlightRef && highlightRef.stepIndex == null ? ' highlight' : '';
       const onCanvas = !!canvasPlacements[item.id];
+      const canvasListDragBlocked = draggableToCanvas && !inRefPanel && onCanvas;
       const canvasDragAttrs = draggableToCanvas && !inRefPanel && !onCanvas
         ? ` draggable="true" data-canvas-drag-id="${escapeAttr(item.id)}"`
         : '';
 
       return `
-        <article class="card ${cardStatusClass(item)}${cardHighlight}${inRefPanel ? ' card-readonly' : ''}" data-id="${item.id}" id="${idPrefix}card-${item.id}"${canvasDragAttrs}>
+        <article class="card ${cardStatusClass(item)}${cardHighlight}${inRefPanel ? ' card-readonly' : ''}${canvasListDragBlocked ? ' canvas-list-drag-blocked' : ''}" data-id="${item.id}" id="${idPrefix}card-${item.id}"${canvasDragAttrs}>
           <div class="card-top">
             <div class="card-main">
               <div class="card-header">
@@ -5501,7 +6098,7 @@
             </section>
           </div>
           <div class="workspace-canvas">
-            ${renderCanvasSurfaceHtml()}
+            ${renderCanvasFrameHtml()}
             ${renderCanvasZoomControlsHtml()}
           </div>
         </section>
