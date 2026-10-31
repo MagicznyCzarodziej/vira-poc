@@ -9,11 +9,29 @@ export type SelectionAnchor = {
   y: number;
 };
 
-function editableTextarea(target: EventTarget | null): HTMLTextAreaElement | null {
-  if (!(target instanceof HTMLTextAreaElement)) return null;
-  if (!target.matches(REF_TEXTAREA)) return null;
-  if (target.closest(".issue-ref-panel-body")) return null;
-  return target;
+export function isRefEditableTextarea(ta: unknown): ta is HTMLTextAreaElement {
+  return (
+    ta instanceof HTMLTextAreaElement
+    && ta.matches(REF_TEXTAREA)
+    && !ta.closest(".issue-ref-panel-body")
+  );
+}
+
+/** Resolve which textarea owns the selection after mouseup (including release outside the field). */
+export function refEditableTextareaForSelection(
+  target: EventTarget | null,
+  selectionDragTa: HTMLTextAreaElement | null = null,
+): HTMLTextAreaElement | null {
+  if (target instanceof Element) {
+    const fromTarget = target.closest("textarea");
+    if (isRefEditableTextarea(fromTarget)) return fromTarget;
+  }
+  const active = document.activeElement;
+  if (isRefEditableTextarea(active)) return active;
+  if (selectionDragTa && isRefEditableTextarea(selectionDragTa) && selectionDragTa.isConnected) {
+    return selectionDragTa;
+  }
+  return null;
 }
 
 function anchorPoint(ta: HTMLTextAreaElement, start: number, end: number, mirror: HTMLDivElement) {
@@ -43,14 +61,12 @@ function anchorPoint(ta: HTMLTextAreaElement, start: number, end: number, mirror
   return { x: midRect.left + midRect.width / 2, y: midRect.top };
 }
 
-export function selectionAnchor(
-  target: EventTarget | null,
+export function selectionAnchorFromTextarea(
+  ta: HTMLTextAreaElement,
   mirror: HTMLDivElement,
   clientX?: number,
   clientY?: number,
-): SelectionAnchor | null | undefined {
-  const ta = editableTextarea(target);
-  if (!ta) return undefined;
+): SelectionAnchor | null {
   const start = ta.selectionStart ?? 0;
   const end = ta.selectionEnd ?? 0;
   if (start === end) return null;
@@ -66,4 +82,16 @@ export function selectionAnchor(
     x: anchor?.x ?? clientX ?? rect.left + rect.width / 2,
     y: anchor?.y ?? clientY ?? rect.top,
   };
+}
+
+export function selectionAnchor(
+  target: EventTarget | null,
+  mirror: HTMLDivElement,
+  clientX?: number,
+  clientY?: number,
+  selectionDragTa: HTMLTextAreaElement | null = null,
+): SelectionAnchor | null | undefined {
+  const ta = refEditableTextareaForSelection(target, selectionDragTa);
+  if (!ta) return undefined;
+  return selectionAnchorFromTextarea(ta, mirror, clientX, clientY);
 }

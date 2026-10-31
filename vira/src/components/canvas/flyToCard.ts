@@ -94,11 +94,27 @@ function paintCenter(surface: HTMLElement, worldX: number, worldY: number, zoom:
   return next;
 }
 
+export function popCanvasPlacedCard(itemId: string): void {
+  const placed = document.querySelector<HTMLElement>(`[data-canvas-placed="${itemId}"]`);
+  const card = placed?.querySelector(".card");
+  if (!placed || !card) return;
+  placed.classList.remove("is-canvas-reveal-pop");
+  void card.getBoundingClientRect();
+  placed.classList.add("is-canvas-reveal-pop");
+  const onEnd = (event: Event) => {
+    if (event.target !== card) return;
+    placed.classList.remove("is-canvas-reveal-pop");
+    card.removeEventListener("animationend", onEnd);
+  };
+  card.addEventListener("animationend", onEnd);
+}
+
 export function flyViewportToCard(
   surface: HTMLElement,
   bounds: WorldBounds,
   getViewport: () => Viewport,
   setViewport: (viewport: Viewport) => void,
+  onComplete?: () => void,
 ): void {
   const token = ++flyToken;
   const current = getViewport();
@@ -115,6 +131,7 @@ export function flyViewportToCard(
   const finish = () => {
     if (token !== flyToken) return;
     applyCenter(surface, cardCenter.x, cardCenter.y, desiredZoom, setViewport);
+    onComplete?.();
   };
   if (distance <= 520) {
     void step(token, 480, (t) => {

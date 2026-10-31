@@ -53,11 +53,13 @@ export function CardTags({
 }) {
   if (editing) {
     return (
-      <TagEditor
-        initial={editInitial}
-        onCommit={(value) => useDocument.getState().commitEdit(value)}
-        onCancel={() => useDocument.getState().cancelEdit()}
-      />
+      <div className="tags-row-edit">
+        <TagEditor
+          initial={editInitial}
+          onCommit={(value) => useDocument.getState().commitEdit(value)}
+          onCancel={() => useDocument.getState().cancelEdit()}
+        />
+      </div>
     );
   }
   return (

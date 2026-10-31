@@ -18,6 +18,7 @@ export type DocumentState = SavedDocument & {
   editInitial: string;
   focusNonce: number;
   revealId: string | null;
+  canvasSelection: string[];
   setView: (mode: SavedDocument["viewMode"]) => void;
   toggleDates: () => void;
   setListFilter: (notOnCanvas: boolean) => void;
@@ -38,6 +39,11 @@ export type DocumentState = SavedDocument & {
   placeAtWorld: (id: string, x: number, y: number) => void;
   bringToFront: (id: string) => void;
   movePlacement: (id: string, x: number, y: number) => void;
+  movePlacements: (moves: { id: string; x: number; y: number }[]) => void;
+  setCanvasSelection: (ids: string[]) => void;
+  toggleCanvasSelection: (id: string) => void;
+  clearCanvasSelection: () => void;
+  removeCanvasSelectionFromCanvas: () => void;
   setViewport: (viewport: SavedDocument["canvasViewport"], userSet?: boolean) => void;
   createBlankCard: (where: Surface) => string | null;
   addRandom: () => void;

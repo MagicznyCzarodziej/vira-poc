@@ -88,7 +88,16 @@ export {
   clampZoom,
   sortedPlacementIds,
 } from "./canvas.ts";
-export { addStep, archiveCard, archiveQuestion, createCard, placeAtWorld, recomputeNextId } from "./cards.ts";
+export {
+  addStep,
+  archiveCard,
+  archiveQuestion,
+  canvasSpawnPreviewCard,
+  createBlankCard,
+  createCard,
+  placeAtWorld,
+  recomputeNextId,
+} from "./cards.ts";
 export { addRandomCards } from "./fixtures.ts";
 export { createDocumentFromSeed } from "./seed.ts";
 export { loadDocument, saveDocument } from "./persistence.ts";

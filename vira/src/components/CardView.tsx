@@ -1,6 +1,7 @@
 import {
   cardNumber,
   cardStatusClass,
+  getProblemText,
   type Card,
 } from "../domain/index.ts";
 import { collectCardHistoryEvents } from "../domain/index.ts";
@@ -10,7 +11,12 @@ import { armEditHandoff } from "./card/AutoTextarea.tsx";
 import { CardStep } from "./card/CardStep.tsx";
 import { CardTags } from "./card/CardTags.tsx";
 import { FollowupField } from "./card/FollowupField.tsx";
+import { shouldSuppressListCardClick } from "./canvas/listCardDrag.ts";
 import { IconTrash } from "./Icons.tsx";
+
+function openCardHistory(itemId: string) {
+  window.dispatchEvent(new CustomEvent("vira:open-drawer", { detail: { refId: itemId } }));
+}
 
 export function CardView({
   item,
@@ -66,20 +72,20 @@ export function CardView({
   ));
 
   const blocked = draggableToCanvas && onCanvas;
+  const canDragToCanvas = draggableToCanvas && !onCanvas;
+  const firstQuestionFilled = Boolean(item.steps[0] && getProblemText(item.steps[0]).trim());
   return (
     <article
       className={`card ${cardStatusClass(item)}${readOnly ? " card-readonly" : ""}${blocked ? " canvas-list-drag-blocked" : ""}`}
       data-id={item.id}
       id={`${prefix}card-${item.id}`}
-      draggable={draggableToCanvas && !onCanvas}
-      data-canvas-drag-id={draggableToCanvas && !onCanvas ? item.id : undefined}
-      onDragStart={(event) => {
-        if (event.target instanceof Element && event.target.closest("button, [data-action]")) {
+      data-canvas-drag-id={canDragToCanvas ? item.id : undefined}
+      onClickCapture={(event) => {
+        if (!canDragToCanvas || !shouldSuppressListCardClick()) return;
+        if (event.target instanceof Element && event.target.closest("button, .card-id, .btn-delete, [data-action]")) {
           event.preventDefault();
-          return;
+          event.stopPropagation();
         }
-        event.dataTransfer.setData("text/plain", item.id);
-        event.dataTransfer.effectAllowed = "copyMove";
       }}
     >
       <div className="card-top">
@@ -93,8 +99,9 @@ export function CardView({
                 data-id={item.id}
                 aria-label={`Open card history for !${cardNumber(item.id)}`}
                 onClick={(event) => {
+                  if (shouldSuppressListCardClick()) return;
                   event.stopPropagation();
-                  window.dispatchEvent(new CustomEvent("vira:open-drawer", { detail: { refId: item.id } }));
+                  openCardHistory(item.id);
                 }}
               >
                 !{cardNumber(item.id)}
@@ -108,17 +115,35 @@ export function CardView({
               />
             </div>
             {surface === "canvas" ? (
-              <button type="button" className="btn-delete btn-delete--dismiss" data-action="remove-from-canvas" aria-label="Remove from canvas" onClick={() => useDocument.getState().removeFromCanvas(item.id)}>
+              <button
+                type="button"
+                className="btn-delete btn-delete--dismiss"
+                data-action="remove-from-canvas"
+                aria-label="Remove from canvas"
+                onClick={() => {
+                  if (shouldSuppressListCardClick()) return;
+                  useDocument.getState().removeFromCanvas(item.id);
+                }}
+              >
                 <span className="icon-dismiss" aria-hidden="true">×</span>
               </button>
             ) : (
-              <button type="button" className="btn-delete btn-delete--archive" data-action="delete" aria-label="Archive card" onClick={() => useDocument.getState().archiveCardById(item.id)}>
+              <button
+                type="button"
+                className="btn-delete btn-delete--archive"
+                data-action="delete"
+                aria-label="Archive card"
+                onClick={() => {
+                  if (shouldSuppressListCardClick()) return;
+                  useDocument.getState().archiveCardById(item.id);
+                }}
+              >
                 <IconTrash />
               </button>
             )}
           </div>
           <div className="timeline">{steps}</div>
-          {!readOnly && (
+          {!readOnly && firstQuestionFilled && (
             <div className="followup-slot">
               <div className="followup-slot-inner">
                 <FollowupField itemId={item.id} surface={surface as Surface} draft={draft} />

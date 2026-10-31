@@ -3,6 +3,7 @@ import { WORLD_H, WORLD_W, isItemArchived, sortedPlacementIds } from "../../doma
 import { useDocument } from "../../store/index.ts";
 import { CardView } from "../CardView.tsx";
 import { IconCard } from "../Icons.tsx";
+import { setCanvasSpawnDragImage } from "./canvasSpawnDragGhost.ts";
 import { bindCanvasGestures } from "./bindCanvasGestures.ts";
 import { bindCanvasRefLinks } from "./bindCanvasRefLinks.ts";
 import { placeCenteredCard, zoomCanvas } from "./canvasCommands.ts";
@@ -18,6 +19,8 @@ export function CanvasWorkspace() {
   const viewport = useDocument((state) => state.canvasViewport);
   const userSet = useDocument((state) => state.canvasViewportUserSet);
   const revealId = useDocument((state) => state.revealId);
+  const canvasSelection = useDocument((state) => state.canvasSelection);
+  const selectedSet = new Set(canvasSelection);
   const ids = sortedPlacementIds(placements, items).filter((id) => items[id] && !isItemArchived(items[id]));
   const centered = useRef(false);
   const lineRef = useRef<SVGSVGElement>(null);
@@ -72,7 +75,7 @@ export function CanvasWorkspace() {
             <div className="canvas-scroll-content" data-canvas-scroll-content>
               <div className="canvas-world">
                 {ids.length === 0 && (
-                  <p className="canvas-hint">Drag cards from the list · C with pointer on canvas for a new card · Space+drag to pan · pinch or ⌘/Ctrl+scroll to zoom</p>
+                  <p className="canvas-hint">Drag cards from the list · drag empty canvas to select · Space+drag to pan · ⌘/Ctrl+scroll to zoom</p>
                 )}
                 {ids.map((id, index) => {
                   const item = items[id];
@@ -81,7 +84,7 @@ export function CanvasWorkspace() {
                   return (
                     <div
                       key={id}
-                      className={`canvas-placed-card${revealId === id ? " is-canvas-reveal-pop" : ""}`}
+                      className={`canvas-placed-card${revealId === id ? " is-canvas-reveal-pop" : ""}${selectedSet.has(id) ? " is-canvas-selected" : ""}`}
                       data-canvas-placed={id}
                       style={{ left: pos.x, top: pos.y, zIndex: index + 1 }}
                       onAnimationEnd={() => useDocument.getState().clearReveal()}
@@ -136,6 +139,7 @@ export function CanvasWorkspace() {
           if (spawnGesture.current) spawnGesture.current.drag = true;
           event.dataTransfer.setData("text/plain", SPAWN);
           event.dataTransfer.effectAllowed = "copy";
+          setCanvasSpawnDragImage(event.nativeEvent);
         }}
         onDragEnd={() => {
           const gesture = spawnGesture.current;

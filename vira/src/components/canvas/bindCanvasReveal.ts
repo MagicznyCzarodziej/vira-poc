@@ -1,5 +1,5 @@
 import { useDocument } from "../../store/index.ts";
-import { flyViewportToCard, placedCardBounds, takePendingReveal } from "./flyToCard.ts";
+import { flyViewportToCard, placedCardBounds, popCanvasPlacedCard, takePendingReveal } from "./flyToCard.ts";
 
 export function bindCanvasReveal(surface: HTMLElement): () => void {
   const onReveal = (event: Event) => {
@@ -9,12 +9,14 @@ export function bindCanvasReveal(surface: HTMLElement): () => void {
     if (!id || !pos) return;
     const placed = surface.querySelector<HTMLElement>(`[data-canvas-placed="${id}"]`);
     const bounds = placedCardBounds(pos, placed);
+    const pop = () => popCanvasPlacedCard(id);
     if (detail.smooth !== false) {
       flyViewportToCard(
         surface,
         bounds,
         () => useDocument.getState().canvasViewport,
         (next) => useDocument.getState().setViewport(next),
+        pop,
       );
       return;
     }
@@ -26,6 +28,7 @@ export function bindCanvasReveal(surface: HTMLElement): () => void {
       scrollLeft: centerX * zoom - surface.clientWidth / 2,
       scrollTop: centerY * zoom - surface.clientHeight / 2,
     });
+    pop();
   };
   const onCenter = (event: Event) => {
     const id = (event as CustomEvent<{ id: string }>).detail?.id;
