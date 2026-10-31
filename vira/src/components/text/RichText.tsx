@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
+import { ActionPointRefStack } from "./ActionPointRefStack.tsx";
 import {
+  actionPointIdFromNum,
   cardNumber,
   formatIssueRefDisplay,
   formatIssueRefToken,
@@ -7,24 +9,29 @@ import {
   issueRefPartsToToken,
   issueRefStaleReason,
   parseIssueRef,
+  stripActionPointRefsFromText,
   type Card,
   type IssueRef,
   type StaleReason,
 } from "../../domain/index.ts";
 import { useDocument } from "../../store/index.ts";
+import { collapseActionPointRuns, type RichTextActionPointPiece } from "./richTextPieces.ts";
 
 type Piece =
   | { kind: "text"; text: string }
   | { kind: "ref"; token: string; label?: string; raw: string }
-  | { kind: "mention"; name: string };
+  | { kind: "mention"; name: string }
+  | { kind: "actionPoint"; id: string; label?: string; raw: string };
 
-const TOKEN =
+const ISSUE_TOKEN =
   /\[([^\]]+)\]\(!(\d+)(?:\/(\d+)|\/a(\d+))?(?:@v(\d+))?\)|!(\d+)(?:\/(\d+)|\/a(\d+))?(?:@v(\d+))?|@(?!v\d+)([\w.-]+)/g;
 
-function pieces(text: string): Piece[] {
+const ACTION_POINT_TOKEN = /\[([^\]]+)\]\(!ap(\d+)\)|!ap(\d+)/g;
+
+function issueRefPieces(text: string): Piece[] {
   const out: Piece[] = [];
   let cursor = 0;
-  for (const match of text.matchAll(TOKEN)) {
+  for (const match of text.matchAll(ISSUE_TOKEN)) {
     const index = match.index ?? 0;
     if (index > cursor) out.push({ kind: "text", text: text.slice(cursor, index) });
     if (match[10]) out.push({ kind: "mention", name: match[10] });
@@ -45,6 +52,27 @@ function pieces(text: string): Piece[] {
     cursor = index + match[0].length;
   }
   if (cursor < text.length) out.push({ kind: "text", text: text.slice(cursor) });
+  return out;
+}
+
+function pieces(text: string): Piece[] {
+  const out: Piece[] = [];
+  let cursor = 0;
+  for (const match of text.matchAll(ACTION_POINT_TOKEN)) {
+    const index = match.index ?? 0;
+    if (index > cursor) out.push(...issueRefPieces(text.slice(cursor, index)));
+    const num = match[2] ?? match[3];
+    if (num) {
+      out.push({
+        kind: "actionPoint",
+        id: actionPointIdFromNum(Number.parseInt(num, 10)),
+        label: match[1],
+        raw: match[0],
+      });
+    }
+    cursor = index + match[0].length;
+  }
+  if (cursor < text.length) out.push(...issueRefPieces(text.slice(cursor)));
   return out;
 }
 
@@ -79,11 +107,47 @@ function refButton(items: Record<string, Card>, parsed: IssueRef, label: string 
   );
 }
 
-export function RichText({ text }: { text: string }) {
+function actionPointRunStack(
+  items: RichTextActionPointPiece[],
+  key: number,
+  allowUnlink: boolean,
+) {
+  const labels = Object.fromEntries(items.map((item) => [item.id, item.label]));
+  return (
+    <ActionPointRefStack
+      key={`ap-run-${key}`}
+      refIds={items.map((item) => item.id)}
+      labels={labels}
+      allowUnlink={allowUnlink}
+    />
+  );
+}
+
+function piecesWithActionPointRefs(prose: string, actionPointRefIds: string[]): Piece[] {
+  const base = pieces(prose);
+  if (!actionPointRefIds.length) return base;
+  const apPieces: Piece[] = actionPointRefIds.map((id) => ({
+    kind: "actionPoint",
+    id,
+    raw: "",
+  }));
+  return [...base, ...apPieces];
+}
+
+export function RichText({
+  text,
+  actionPointRefIds = [],
+  allowActionPointUnlink = false,
+}: {
+  text: string;
+  actionPointRefIds?: string[];
+  allowActionPointUnlink?: boolean;
+}) {
   const items = useDocument((state) => state.items);
-  if (!text) return null;
+  const prose = stripActionPointRefsFromText(text);
+  if (!prose && actionPointRefIds.length === 0) return null;
   const nodes: ReactNode[] = [];
-  pieces(text).forEach((piece, index) => {
+  collapseActionPointRuns(piecesWithActionPointRefs(prose, actionPointRefIds)).forEach((piece, index) => {
     if (piece.kind === "text") {
       nodes.push(piece.text);
       return;
@@ -94,6 +158,10 @@ export function RichText({ text }: { text: string }) {
           @{piece.name}
         </span>,
       );
+      return;
+    }
+    if (piece.kind === "actionPointRun") {
+      nodes.push(actionPointRunStack(piece.items, index, allowActionPointUnlink));
       return;
     }
     const parsed = parseIssueRef(piece.token);

@@ -13,6 +13,100 @@
       vertical-align: baseline;
     }
     .issue-ref:hover { background: rgba(0, 0, 0, 0.16); }
+    .action-point-ref-stack {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.125rem;
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+      margin: 0.15rem 0;
+      box-sizing: border-box;
+    }
+    .action-point-ref {
+      display: block;
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+      box-sizing: border-box;
+      font: inherit;
+      font-size: inherit;
+      padding: 0.15rem 0.4rem;
+      margin: 0;
+      border: none;
+      border-radius: 6px;
+      background: var(--action-point-bg, rgba(0, 0, 0, 0.08));
+      color: var(--action-point-text, inherit);
+      cursor: pointer;
+      text-align: left;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      text-decoration: none;
+    }
+    .action-point-ref--with-unlink {
+      display: flex;
+      align-items: center;
+      gap: 0.1rem;
+      padding: 0.1rem 0.2rem 0.1rem 0.4rem;
+      overflow: hidden;
+      cursor: default;
+    }
+    .action-point-ref-label {
+      flex: 1;
+      min-width: 0;
+      margin: 0;
+      padding: 0;
+      border: none;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      font-size: inherit;
+      text-align: left;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      cursor: pointer;
+    }
+    .action-point-ref-unlink {
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.25rem;
+      height: 1.25rem;
+      padding: 0;
+      margin: 0;
+      border: none;
+      border-radius: 4px;
+      background: transparent;
+      color: inherit;
+      cursor: pointer;
+      opacity: 0;
+    }
+    .action-point-ref--with-unlink:hover .action-point-ref-unlink,
+    .action-point-ref--with-unlink:focus-within .action-point-ref-unlink {
+      opacity: 1;
+    }
+    .action-point-ref-unlink:hover {
+      background: rgba(0, 0, 0, 0.12);
+    }
+    .action-point-ref-unlink .icon-unlink {
+      display: inline-flex;
+      line-height: 0;
+    }
+    .action-point-ref-unlink .icon-unlink svg {
+      width: 0.8rem;
+      height: 0.8rem;
+    }
+    .action-point-ref:hover,
+    .action-point-ref--with-unlink:hover {
+      filter: brightness(0.97);
+    }
+    .action-point-ref--missing {
+      opacity: 0.5;
+    }
     .issue-ref-link {
       font-size: inherit;
       font-weight: 600;

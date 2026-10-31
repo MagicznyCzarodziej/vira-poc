@@ -54,18 +54,22 @@
       border: 1px solid var(--surface);
       background-clip: padding-box;
     }
-    .workspace-list .list-cards .card[data-canvas-drag-id] {
+    .workspace-list .list-cards .card[data-canvas-drag-id],
+    .workspace-list .list-action-points .action-point-card[data-canvas-drag-ap-id] {
       cursor: grab;
     }
-    .workspace-list .list-cards .card[data-canvas-drag-id]:hover {
+    .workspace-list .list-cards .card[data-canvas-drag-id]:hover,
+    .workspace-list .list-action-points .action-point-card[data-canvas-drag-ap-id]:hover {
       outline: 2px dashed var(--canvas-drag-border);
       outline-offset: 4px;
     }
-    .workspace-list .list-cards .card.is-list-pointer-dragging {
+    .workspace-list .list-cards .card.is-list-pointer-dragging,
+    .workspace-list .list-action-points .action-point-card.is-list-pointer-dragging {
       cursor: grabbing;
       opacity: 0.4;
     }
-    .workspace-list .list-cards .card[data-canvas-drag-id]:active {
+    .workspace-list .list-cards .card[data-canvas-drag-id]:active,
+    .workspace-list .list-action-points .action-point-card[data-canvas-drag-ap-id]:active {
       cursor: grabbing;
     }
     .list-card-pointer-drag-ghost {
@@ -94,13 +98,15 @@
       45% { background-color: rgba(113, 113, 122, 0.36); }
       100% { background-color: rgba(113, 113, 122, 0.3); }
     }
-    .workspace-list .list-cards .card.canvas-list-drag-blocked.is-list-drag-blocked {
+    .workspace-list .list-cards .card.canvas-list-drag-blocked.is-list-drag-blocked,
+    .workspace-list .list-action-points .action-point-card.canvas-list-drag-blocked.is-list-drag-blocked {
       position: relative;
       z-index: 4;
       animation: canvas-list-drag-blocked-shake 0.28s ease;
       transition: none;
     }
-    .workspace-list .list-cards .card.canvas-list-drag-blocked.is-list-drag-blocked::after {
+    .workspace-list .list-cards .card.canvas-list-drag-blocked.is-list-drag-blocked::after,
+    .workspace-list .list-action-points .action-point-card.canvas-list-drag-blocked.is-list-drag-blocked::after {
       content: '';
       position: absolute;
       inset: 0;
@@ -109,11 +115,13 @@
       z-index: 40;
       animation: canvas-list-drag-blocked-flash 0.28s ease forwards;
     }
-    .workspace-list .list-cards .card.canvas-list-drag-blocked.is-list-drag-blocked * {
+    .workspace-list .list-cards .card.canvas-list-drag-blocked.is-list-drag-blocked *,
+    .workspace-list .list-action-points .action-point-card.canvas-list-drag-blocked.is-list-drag-blocked * {
       cursor: not-allowed !important;
       user-select: none;
     }
-    .workspace-list .list-cards .card.is-list-reveal-pop {
+    .workspace-list .list-cards .card.is-list-reveal-pop,
+    .workspace-list .list-action-points .action-point-card.is-list-reveal-pop {
       position: relative;
       z-index: 4;
       animation: canvas-placed-reveal-pop 0.45s cubic-bezier(0.34, 1.4, 0.64, 1);
@@ -124,6 +132,7 @@
       user-select: none;
     }
     .workspace-list .list-cards .card,
+    .workspace-list .list-action-points .action-point-card,
     .canvas-placed-card .card {
       transition: transform 0.14s ease, filter 0.14s ease, box-shadow 0.14s ease;
     }

@@ -96,17 +96,17 @@ function paintCenter(surface: HTMLElement, worldX: number, worldY: number, zoom:
 
 export function popCanvasPlacedCard(itemId: string): void {
   const placed = document.querySelector<HTMLElement>(`[data-canvas-placed="${itemId}"]`);
-  const card = placed?.querySelector(".card");
-  if (!placed || !card) return;
+  const inner = placed?.querySelector<HTMLElement>(".card, .action-point-card");
+  if (!placed || !inner) return;
   placed.classList.remove("is-canvas-reveal-pop");
-  void card.getBoundingClientRect();
+  void inner.getBoundingClientRect();
   placed.classList.add("is-canvas-reveal-pop");
   const onEnd = (event: Event) => {
-    if (event.target !== card) return;
+    if (event.target !== inner) return;
     placed.classList.remove("is-canvas-reveal-pop");
-    card.removeEventListener("animationend", onEnd);
+    inner.removeEventListener("animationend", onEnd);
   };
-  card.addEventListener("animationend", onEnd);
+  inner.addEventListener("animationend", onEnd);
 }
 
 export function flyViewportToCard(

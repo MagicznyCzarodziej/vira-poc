@@ -89,6 +89,15 @@
       font: inherit; color: var(--link); cursor: pointer;
     }
     .links button:hover { text-decoration: underline; }
+    .add-triggers {
+      display: flex;
+      gap: 0.45rem;
+      width: 100%;
+    }
+    .add-triggers .add-trigger {
+      flex: 1;
+      min-width: 0;
+    }
     .add-trigger {
       display: flex;
       align-items: center;

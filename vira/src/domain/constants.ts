@@ -3,6 +3,8 @@ export const STORAGE_VERSION = 1;
 
 export const CARD_WIDTH = 420;
 export const DROP_OFFSET_Y = 24;
+export const ACTION_POINT_WIDTH = 300;
+export const ACTION_DROP_OFFSET_Y = 18;
 export const WORLD_W = 30000;
 export const WORLD_H = 30000;
 export const ZOOM_MIN = 0.05;

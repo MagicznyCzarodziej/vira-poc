@@ -26,6 +26,7 @@ export {
   itemNeedsDecision,
   liveAnswerText,
   liveItems,
+  stepFlaggedByActionPoints,
   stepFullyResolved,
   stepResolved,
   toggleAnswerTentative,

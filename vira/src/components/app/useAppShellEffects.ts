@@ -1,10 +1,12 @@
 import { useEffect } from "react";
 import { bindListDragBlocked } from "../canvas/bindListDragBlocked.ts";
 import { bindListCardHtmlDrag } from "../canvas/bindListCardHtmlDrag.ts";
+import { bindListActionPointPointerDrag } from "../canvas/listActionPointPointerDrag.ts";
 import {
   bindListCardPointerDrag,
   createListCardPointerDragDeps,
 } from "../canvas/listCardPointerDrag.ts";
+import { bindActionPointClicks } from "../text/bindActionPointClicks.ts";
 import { bindRefPickFromCard, refPickModeActive } from "../text/bindRefPickFromCard.ts";
 import { useDocument, usePanels } from "../../store/index.ts";
 
@@ -24,12 +26,20 @@ export function useAppShellEffects() {
   useEffect(() => {
     const root = document.getElementById("app");
     if (!root) return;
+    return bindActionPointClicks(root);
+  }, []);
+
+  useEffect(() => {
+    const root = document.getElementById("app");
+    if (!root) return;
     const unbindBlocked = bindListDragBlocked(root);
     const unbindListDrag = bindListCardPointerDrag(document.body, createListCardPointerDragDeps());
+    const unbindApDrag = bindListActionPointPointerDrag(document.body);
     const unbindHtmlDrag = bindListCardHtmlDrag(document.body);
     return () => {
       unbindBlocked();
       unbindListDrag();
+      unbindApDrag();
       unbindHtmlDrag();
     };
   }, []);

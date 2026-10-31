@@ -1,0 +1,221 @@
+    .list-view--actions {
+      margin-bottom: 0.75rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--tone-2);
+    }
+    .list-empty-hint {
+      color: var(--muted);
+      font-size: 0.85rem;
+      margin: 0;
+    }
+    .list-action-points {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .action-point-card {
+      position: relative;
+      overflow: hidden;
+      width: 100%;
+      border-radius: 10px;
+      border: none;
+      background: var(--action-point-bg);
+      color: var(--action-point-text);
+      box-shadow:
+        0 1px 2px rgba(0, 0, 0, 0.08),
+        0 4px 14px rgba(220, 60, 60, 0.2);
+    }
+    .action-point-card:not(.is-done) .action-point-top {
+      color: var(--action-point-label);
+    }
+    .action-point-card.is-done {
+      background: var(--action-point-done-bg);
+      color: var(--action-point-done-text);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    }
+    .action-point-card.is-done .action-point-top {
+      color: var(--action-point-done-text);
+    }
+    .action-point-card.is-done .action-point-title {
+      text-decoration: line-through;
+      color: var(--action-point-done-text);
+    }
+    .list-action-point-pointer-drag-ghost {
+      position: fixed;
+      left: 0;
+      top: 0;
+      z-index: 10000;
+      width: 300px;
+      pointer-events: none;
+    }
+    .list-action-point-pointer-drag-ghost .action-point-card {
+      box-shadow: 0 10px 32px rgba(0, 0, 0, 0.2);
+    }
+    .action-point-link-drag-ghost {
+      position: fixed;
+      left: 0;
+      top: 0;
+      z-index: 10001;
+      pointer-events: none;
+    }
+    .action-point-link-drag-chip {
+      display: inline-block;
+      max-width: 11rem;
+      padding: 0.2rem 0.55rem;
+      border-radius: 6px;
+      background: var(--action-point-bg);
+      color: var(--action-point-text);
+      font-size: 0.8rem;
+      font-weight: 500;
+      line-height: 1.25;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+      outline: 2px dashed var(--action-point-label, #9f1239);
+      outline-offset: 2px;
+    }
+    body.list-action-point-pointer-drag-active,
+    body.ap-link-drag-active {
+      touch-action: none;
+      user-select: none;
+      cursor: grabbing;
+    }
+    .action-point-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.35rem 0.55rem 0;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    /* .btn-delete defaults to opacity 0 until .card:hover — APs are not .card */
+    .action-point-card .btn-delete {
+      opacity: 1;
+    }
+    .action-point-card:not(.is-done) .btn-delete {
+      color: var(--action-point-label);
+    }
+    .action-point-card:not(.is-done) .btn-delete:hover {
+      background: rgba(0, 0, 0, 0.08);
+      color: var(--action-point-text);
+    }
+    .action-point-body {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+      padding: 0.45rem 0.55rem 0.65rem;
+    }
+    .action-point-card:has(.action-point-canvas-actions) .action-point-body {
+      padding-bottom: 0.45rem;
+    }
+    .action-point-canvas-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.35rem;
+      padding: 0 0.45rem 0.5rem;
+    }
+    .action-point-icon-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.75rem;
+      height: 1.75rem;
+      padding: 0;
+      border: none;
+      border-radius: 6px;
+      background: rgba(0, 0, 0, 0.1);
+      color: inherit;
+      cursor: pointer;
+    }
+    .action-point-icon-btn:hover {
+      background: rgba(0, 0, 0, 0.16);
+    }
+    .action-point-icon-btn[aria-pressed="true"] {
+      background: rgba(0, 0, 0, 0.2);
+    }
+    .action-point-icon-btn .icon-circle-check svg,
+    .action-point-icon-btn .icon-undo svg {
+      display: block;
+      width: 1.15rem;
+      height: 1.15rem;
+    }
+    .action-point-icon-btn--dismiss .icon-dismiss {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.15rem;
+      line-height: 1;
+      width: 1.15rem;
+      height: 1.15rem;
+    }
+    .action-point-done input {
+      margin-top: 0.2rem;
+      cursor: pointer;
+    }
+    .action-point-title {
+      flex: 1;
+      min-width: 0;
+      font-size: 0.88rem;
+      line-height: 1.4;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .action-point-title.editable {
+      cursor: text;
+    }
+    .canvas-placed-action-point {
+      position: absolute;
+      width: 300px;
+      touch-action: none;
+      cursor: default;
+    }
+    .canvas-placed-action-point.is-canvas-selected .action-point-card {
+      outline: 2px solid var(--canvas-drag-border, rgba(59, 130, 246, 0.85));
+      outline-offset: 2px;
+    }
+    .canvas-placed-action-point.is-canvas-reveal-pop {
+      z-index: 24;
+    }
+    .canvas-placed-action-point.is-canvas-reveal-pop .action-point-card {
+      animation: canvas-placed-reveal-pop 0.45s cubic-bezier(0.34, 1.4, 0.64, 1);
+      transition: none;
+    }
+    .canvas-placed-action-point.is-dragging {
+      z-index: 25;
+      opacity: 0.92;
+      cursor: grabbing;
+    }
+    .canvas-placed-action-point.is-dragging,
+    .canvas-placed-action-point.is-dragging * {
+      user-select: none;
+    }
+    .canvas-placed-action-point .action-point-card {
+      width: 100%;
+      user-select: none;
+    }
+    .canvas-placed-action-point .action-point-card:not(.is-done) {
+      box-shadow:
+        0 8px 24px rgba(220, 60, 60, 0.24),
+        0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    .canvas-placed-action-point .action-point-card.is-done {
+      box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
+    }
+    .canvas-placed-action-point .action-point-card textarea,
+    .canvas-placed-action-point .action-point-card input {
+      user-select: text;
+    }
+    .visually-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      border: 0;
+    }

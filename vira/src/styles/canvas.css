@@ -7,11 +7,16 @@
       flex-direction: column;
       align-self: stretch;
     }
-    .canvas-spawn-btn {
+    .canvas-spawn-group {
       position: absolute;
       left: 0.75rem;
       bottom: 0.75rem;
       z-index: 5;
+      display: flex;
+      flex-direction: row;
+      gap: 0.4rem;
+    }
+    .canvas-spawn-btn {
       display: flex;
       align-items: center;
       justify-content: center;
@@ -34,7 +39,8 @@
       outline: 2px solid var(--link);
       outline-offset: 2px;
     }
-    .canvas-spawn-btn .icon-card svg {
+    .canvas-spawn-btn .icon-card svg,
+    .canvas-spawn-btn .icon-lightbulb svg {
       display: block;
       width: 1.55rem;
       height: 1.55rem;

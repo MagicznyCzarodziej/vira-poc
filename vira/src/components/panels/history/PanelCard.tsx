@@ -5,6 +5,7 @@ import {
   formatDecisionDate,
   getAnswerText,
   getProblemText,
+  stepActionPointRefIds,
   stepFieldHeadRev,
   stepFullyResolved,
   stepVisibleAtHistoryEvent,
@@ -13,6 +14,7 @@ import {
   type FieldName,
   type HistoryEvent,
 } from "../../../domain/index.ts";
+import { useDocument } from "../../../store/index.ts";
 import { RichText } from "../../text/RichText.tsx";
 
 export function PanelCard({
@@ -24,11 +26,12 @@ export function PanelCard({
   highlight: { stepIndex: number | null; focusAnswer: boolean; displayRevision: number | null; historyEventIndex: number | null };
   events: HistoryEvent[];
 }) {
+  const actionPoints = useDocument((state) => state.actionPoints);
   const num = cardNumber(item.id);
   const history = highlight.historyEventIndex != null;
   return (
     <article
-      className={`card ${cardStatusClass(item)}${highlight.stepIndex == null ? " highlight" : ""} card-readonly`}
+      className={`card ${cardStatusClass(item, { actionPoints })}${highlight.stepIndex == null ? " highlight" : ""} card-readonly`}
       data-id={item.id}
       id={`panel-card-${item.id}`}
     >
@@ -69,7 +72,7 @@ export function PanelCard({
               const empty = !answerText?.trim();
               const showAsAnswered = history
                 ? !empty
-                : stepFullyResolved(step) || (!empty && pinRev != null && highlight.focusAnswer);
+                : stepFullyResolved(step, { actionPoints }) || (!empty && pinRev != null && highlight.focusAnswer);
               return (
                 <div className={`timeline-step${showAsAnswered ? " answered" : ""}`} id={`panel-step-${item.id}-${index}`} key={index}>
                   <div className="problem-row">
@@ -82,7 +85,9 @@ export function PanelCard({
                   ) : (
                     <div className={`answer-block${step.answerTentative ? " answer-marked" : ""}${refStep && highlight.focusAnswer ? bar : ""}`} id={`panel-answer-${item.id}-${index}`}>
                       <div className="answer-inner">
-                        <span className="answer-text"><RichText text={answerText ?? ""} /></span>
+                        <span className="answer-text">
+                          <RichText text={answerText ?? ""} actionPointRefIds={stepActionPointRefIds(step)} />
+                        </span>
                         {step.decidedAt && (
                           <div className="answer-meta">
                             <time className="decision-date" dateTime={step.decidedAt}>{formatDecisionDate(step.decidedAt)}</time>

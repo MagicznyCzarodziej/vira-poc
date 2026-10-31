@@ -1,12 +1,30 @@
 import { clampAllPlacements, clampZoom, ensureAllPlacementOrders } from "./canvas.ts";
 import { STORAGE_KEY, STORAGE_VERSION } from "./constants.ts";
+import { recomputeNextActionPointId } from "./actionPoints.ts";
 import { recomputeNextId } from "./cards.ts";
 import { normalizeStep } from "./steps.ts";
 import { normalizeTagsList } from "./tags.ts";
-import type { Card, Placement, SavedDocument, Viewport, ViewMode } from "./types.ts";
+import type { ActionPoint, Card, Placement, SavedDocument, Viewport, ViewMode } from "./types.ts";
 
 function isViewMode(value: unknown): value is ViewMode {
   return value === "board" || value === "list";
+}
+
+function normalizeEntityPlacements(
+  raw: Record<string, Placement>,
+  entities: Record<string, unknown>,
+): Record<string, Placement> {
+  const out: Record<string, Placement> = {};
+  for (const [id, placement] of Object.entries(raw)) {
+    if (!placement || !entities[id]) continue;
+    out[id] = {
+      x: Number(placement.x) || 0,
+      y: Number(placement.y) || 0,
+      order: placement.order,
+    };
+  }
+  clampAllPlacements(out);
+  return out;
 }
 
 function normalizeViewport(raw: unknown): Viewport {
@@ -40,10 +58,25 @@ export function normalizeDocument(data: SavedDocument): SavedDocument {
   }
   clampAllPlacements(canvasPlacements);
   ensureAllPlacementOrders(canvasPlacements, items);
+  const actionPoints: Record<string, ActionPoint> = {};
+  for (const [id, raw] of Object.entries(data.actionPoints ?? {})) {
+    if (!raw || typeof raw !== "object") continue;
+    const title = typeof raw.title === "string" ? raw.title : "Action";
+    actionPoints[id] = {
+      id: raw.id || id,
+      title,
+      done: raw.done === true,
+      doneAt: raw.doneAt || null,
+      createdAt: typeof raw.createdAt === "string" ? raw.createdAt : new Date(0).toISOString(),
+    };
+  }
   return {
     version: 1,
     nextId: recomputeNextId(items),
+    nextActionPointId: Math.max(recomputeNextActionPointId(actionPoints), Number(data.nextActionPointId) || 1),
     items,
+    actionPoints,
+    actionPointPlacements: normalizeEntityPlacements(data.actionPointPlacements ?? {}, actionPoints),
     viewMode: isViewMode(data.viewMode) ? data.viewMode : "list",
     showAllDates: data.showAllDates === true,
     listFilterNotOnCanvas: data.listFilterNotOnCanvas === true,

@@ -5,7 +5,8 @@ export function bindCanvasReveal(surface: HTMLElement): () => void {
   const onReveal = (event: Event) => {
     const detail = (event as CustomEvent<{ id: string; smooth?: boolean }>).detail;
     const id = detail?.id;
-    const pos = id ? useDocument.getState().canvasPlacements[id] : null;
+    const doc = useDocument.getState();
+    const pos = id ? (doc.canvasPlacements[id] ?? doc.actionPointPlacements[id]) : null;
     if (!id || !pos) return;
     const placed = surface.querySelector<HTMLElement>(`[data-canvas-placed="${id}"]`);
     const bounds = placedCardBounds(pos, placed);

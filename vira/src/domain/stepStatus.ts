@@ -1,5 +1,6 @@
+import { hasOpenActionPointRefsForStep, stepActionPointRefIds } from "./stepActionPoints.ts";
 import { getAnswerText } from "./stepRevisions.ts";
-import type { Card, CardStatusClass, Step } from "./types.ts";
+import type { Card, CardStatusClass, Step, StepResolutionContext } from "./types.ts";
 
 export function isItemArchived(item: Card | null | undefined): boolean {
   return !!item?.archivedAt;
@@ -19,11 +20,22 @@ export function liveItems(items: Record<string, Card>): Card[] {
 
 export function stepResolved(step: Step): boolean {
   if (step.answerArchivedAt) return false;
-  return !!(step.answer && step.answer.trim());
+  if (step.answer?.trim()) return true;
+  return !!(step.decidedAt && (step.actionPointRefs?.length ?? 0) > 0);
 }
 
-export function stepFullyResolved(step: Step): boolean {
-  return stepResolved(step) && !step.answerTentative;
+export function stepFullyResolved(step: Step, context?: StepResolutionContext): boolean {
+  if (!stepResolved(step) || step.answerTentative) return false;
+  if (stepActionPointRefIds(step).length > 0) {
+    if (!context?.actionPoints) return false;
+    return !hasOpenActionPointRefsForStep(step, context.actionPoints);
+  }
+  return true;
+}
+
+export function stepFlaggedByActionPoints(step: Step, context?: StepResolutionContext): boolean {
+  if (!context?.actionPoints || !stepResolved(step)) return false;
+  return hasOpenActionPointRefsForStep(step, context.actionPoints);
 }
 
 export function isRefLinkableStep(step: Step | null | undefined): boolean {
@@ -43,15 +55,15 @@ export function toggleAnswerTentative(step: Step): void {
   step.answerTentative = !step.answerTentative;
 }
 
-export function itemNeedsDecision(item: Card): boolean {
+export function itemNeedsDecision(item: Card, context?: StepResolutionContext): boolean {
   if (isItemArchived(item)) return false;
-  return itemActiveSteps(item).some((step) => !stepFullyResolved(step));
+  return itemActiveSteps(item).some((step) => !stepFullyResolved(step, context));
 }
 
-export function cardStatusClass(item: Card): CardStatusClass {
+export function cardStatusClass(item: Card, context?: StepResolutionContext): CardStatusClass {
   const steps = itemActiveSteps(item);
   if (!steps.length) return "card-incomplete";
-  const resolved = steps.filter(stepFullyResolved).length;
+  const resolved = steps.filter((step) => stepFullyResolved(step, context)).length;
   if (resolved === steps.length) return "card-complete";
   if (resolved === 0 && steps.every((step) => !stepResolved(step))) return "card-incomplete";
   return "card-partial";

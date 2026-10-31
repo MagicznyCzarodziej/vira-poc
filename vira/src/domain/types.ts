@@ -13,6 +13,8 @@ export type Step = {
   answer: string | null;
   answerTentative: boolean;
   decidedAt: string | null;
+  /** Linked action points — not stored in answer prose. */
+  actionPointRefs?: string[];
   problemRevisions: Revision[];
   answerRevisions: Revision[];
   problemRev: number;
@@ -42,16 +44,31 @@ export type Viewport = {
 
 export type ViewMode = "board" | "list";
 
+export type ActionPoint = {
+  id: string;
+  title: string;
+  done: boolean;
+  doneAt: string | null;
+  createdAt: string;
+};
+
 export type SavedDocument = {
   version: 1;
   nextId: number;
+  nextActionPointId: number;
   items: Record<string, Card>;
+  actionPoints: Record<string, ActionPoint>;
+  actionPointPlacements: Record<string, Placement>;
   viewMode: ViewMode;
   showAllDates: boolean;
   listFilterNotOnCanvas: boolean;
   canvasPlacements: Record<string, Placement>;
   canvasViewport: Viewport;
   canvasViewportUserSet: boolean;
+};
+
+export type StepResolutionContext = {
+  actionPoints?: Record<string, ActionPoint>;
 };
 
 export type IssueRef = {

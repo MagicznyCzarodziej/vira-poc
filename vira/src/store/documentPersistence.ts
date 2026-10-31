@@ -21,7 +21,10 @@ export function persist(state: SavedDocument) {
   saveDocument({
     version: 1,
     nextId: state.nextId,
+    nextActionPointId: state.nextActionPointId,
     items: state.items,
+    actionPoints: state.actionPoints,
+    actionPointPlacements: state.actionPointPlacements,
     viewMode: state.viewMode,
     showAllDates: state.showAllDates,
     listFilterNotOnCanvas: state.listFilterNotOnCanvas,

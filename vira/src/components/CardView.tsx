@@ -1,6 +1,7 @@
 import {
   cardNumber,
   cardStatusClass,
+  getAnswerText,
   getProblemText,
   type Card,
 } from "../domain/index.ts";
@@ -30,6 +31,8 @@ export function CardView({
   historyEventIndex?: number | null;
 }) {
   const placements = useDocument((state) => state.canvasPlacements);
+  const actionPoints = useDocument((state) => state.actionPoints);
+  const resolutionContext = { actionPoints };
   const editing = useDocument((state) => state.editing);
   const editInitial = useDocument((state) => state.editInitial);
   const draft = useDocument((state) => state.followupDrafts[item.id] ?? "");
@@ -73,10 +76,14 @@ export function CardView({
 
   const blocked = draggableToCanvas && onCanvas;
   const canDragToCanvas = draggableToCanvas && !onCanvas;
-  const firstQuestionFilled = Boolean(item.steps[0] && getProblemText(item.steps[0]).trim());
+  const step0 = item.steps[0];
+  const showFollowup = Boolean(
+    step0
+    && (getProblemText(step0).trim() || getAnswerText(step0, null, { live: true })?.trim()),
+  );
   return (
     <article
-      className={`card ${cardStatusClass(item)}${readOnly ? " card-readonly" : ""}${blocked ? " canvas-list-drag-blocked" : ""}`}
+      className={`card ${cardStatusClass(item, resolutionContext)}${readOnly ? " card-readonly" : ""}${blocked ? " canvas-list-drag-blocked" : ""}`}
       data-id={item.id}
       id={`${prefix}card-${item.id}`}
       data-canvas-drag-id={canDragToCanvas ? item.id : undefined}
@@ -143,7 +150,7 @@ export function CardView({
             )}
           </div>
           <div className="timeline">{steps}</div>
-          {!readOnly && firstQuestionFilled && (
+          {!readOnly && showFollowup && (
             <div className="followup-slot">
               <div className="followup-slot-inner">
                 <FollowupField itemId={item.id} surface={surface as Surface} draft={draft} />

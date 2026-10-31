@@ -40,4 +40,16 @@ describe("removeCanvasSelectionFromCanvas", () => {
     useDocument.getState().removeFromCanvas("item-1");
     expect(useDocument.getState().canvasSelection).toEqual(["item-2"]);
   });
+
+  it("removes selected action points from the canvas", () => {
+    const apId = useDocument.getState().createStandaloneActionPoint("Ship");
+    useDocument.getState().cancelEdit();
+    useDocument.getState().placeActionPointAtWorld(apId, 50, 60);
+    useDocument.getState().setCanvasSelection([apId]);
+    useDocument.getState().removeCanvasSelectionFromCanvas();
+    const next = useDocument.getState();
+    expect(next.actionPointPlacements[apId]).toBeUndefined();
+    expect(next.actionPoints[apId]?.title).toBe("Ship");
+    expect(next.canvasSelection).toEqual([]);
+  });
 });

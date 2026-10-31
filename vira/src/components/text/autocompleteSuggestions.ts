@@ -118,7 +118,11 @@ export function suggestionButtons(ta: HTMLTextAreaElement, opts?: AutocompleteOp
 
   if (mention && !/^v\d+$/.test(mention[1] ?? "")) {
     const query = (mention[1] ?? "").toLowerCase();
-    const hits = allKnownMentions(items, Object.values(state.followupDrafts))
+    const hits = allKnownMentions(
+      items,
+      Object.values(state.followupDrafts),
+      Object.values(state.actionPoints).map((ap) => ap.title),
+    )
       .filter((name) => name.toLowerCase().startsWith(query))
       .slice(0, 8);
     if (hits.length) {

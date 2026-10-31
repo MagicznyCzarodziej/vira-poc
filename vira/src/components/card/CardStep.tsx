@@ -5,14 +5,19 @@ import {
   getProblemText,
   isStepArchived,
   itemActiveSteps,
+  stepActionPointRefIds,
+  stepHasVisibleAnswerContent,
+  stepFlaggedByActionPoints,
   stepFullyResolved,
   stepVisibleAtHistoryEvent,
   type Card,
   type HistoryEvent,
   type Step,
+  type StepResolutionContext,
 } from "../../domain/index.ts";
 import { useDocument, type EditTarget, type Surface } from "../../store/index.ts";
-import { IconTrash } from "../Icons.tsx";
+import { IconActionPoint, IconTrash } from "../Icons.tsx";
+import { ActionPointRefStack } from "../text/ActionPointRefStack.tsx";
 import { RichText } from "../text/RichText.tsx";
 import { refPickModeActive } from "../text/bindRefPickFromCard.ts";
 import { shouldSuppressListCardClick } from "../canvas/listCardDrag.ts";
@@ -47,6 +52,8 @@ export function CardStep({
 }) {
   const editInitial = useDocument((state) => state.editInitial);
   const focusNonce = useDocument((state) => state.focusNonce);
+  const actionPoints = useDocument((state) => state.actionPoints);
+  const resolutionContext: StepResolutionContext = { actionPoints };
   if (!readOnly && isStepArchived(step)) return null;
   if (events && historyEventIndex != null && !stepVisibleAtHistoryEvent(events, index, historyEventIndex)) return null;
   const problemText = events && historyEventIndex != null
@@ -58,16 +65,21 @@ export function CardStep({
   const answerText = events && historyEventIndex != null
     ? (answerRev != null ? getAnswerText(step, answerRev) : null)
     : getAnswerText(step, null, { live: !readOnly });
-  const empty = !answerText?.trim();
-  const answered = historyEventIndex != null ? !empty : stepFullyResolved(step);
-  const showRemove = !readOnly && !isStepArchived(step) && itemActiveSteps(item).length > 1;
+  const empty = !stepHasVisibleAnswerContent(step, answerText);
+  const refOnlyDecision = !empty && !answerText?.trim();
+  const answered = historyEventIndex != null ? !empty : stepFullyResolved(step, resolutionContext);
+  const flaggedByActionPoints = stepFlaggedByActionPoints(step, resolutionContext);
+  const hasQuestion = Boolean(problemText.trim());
+  const showProblemRow = hasQuestion || editingHere("problem", index);
+  const showRemove = !readOnly && !isStepArchived(step) && itemActiveSteps(item).length > 1 && hasQuestion;
   const edit = (field: "problem" | "answer") => (event: { target: EventTarget | null }) => {
     if (shouldSuppressListCardClick() || refPickModeActive() || readOnly || ignoresEdit(event)) return;
     start({ id: item.id, field, step: index, surface: surface as Surface });
   };
 
   return (
-    <div className={`timeline-step${answered ? " answered" : ""}`} id={`${prefix}step-${item.id}-${index}`}>
+    <div className={`timeline-step${answered ? " answered" : ""}${!hasQuestion && !empty ? " decision-only" : ""}`} id={`${prefix}step-${item.id}-${index}`}>
+      {showProblemRow && (
       <div className="problem-row">
         {showRemove && (
           <button type="button" className="field-remove-btn field-remove-btn--problem" data-action="remove-step" aria-label="Archive question" onClick={() => useDocument.getState().archiveQuestionAt(item.id, index)}>
@@ -105,6 +117,7 @@ export function CardStep({
           </div>
         )}
       </div>
+      )}
       {empty ? (
         editingHere("answer", index) ? (
           <div className="answer-block" id={`${prefix}answer-${item.id}-${index}`}>
@@ -133,23 +146,28 @@ export function CardStep({
         )
       ) : (
         <div
-          className={`answer-block${step.answerTentative ? " answer-marked" : ""}`}
+          className={`answer-block${step.answerTentative || flaggedByActionPoints ? " answer-marked" : ""}${refOnlyDecision ? " decision-ref-only" : ""}`}
           id={`${prefix}answer-${item.id}-${index}`}
           data-ref-pick={readOnly ? undefined : "answer"}
+          data-editable={readOnly || !refOnlyDecision ? undefined : "answer"}
           data-id={item.id}
           data-step={index}
+          onClick={readOnly || !refOnlyDecision ? undefined : edit("answer")}
         >
           <div className="answer-inner">
             {editingHere("answer", index) ? (
-              <AutoTextarea
-                key={`a-${focusNonce}`}
-                className="inline-input inline-input-answer"
-                initial={editInitial}
-                dataset={{ "ref-item-id": item.id, "ref-field": "answer", "ref-step": String(index) }}
-                onTag={(tag) => useDocument.getState().addTag(item.id, tag)}
-                onCancel={() => useDocument.getState().cancelEdit()}
-                onCommit={(value) => useDocument.getState().commitEdit(value)}
-              />
+              <div className="answer-text answer-text--editing">
+                <AutoTextarea
+                  key={`a-${focusNonce}`}
+                  className="inline-input inline-input-answer"
+                  initial={editInitial}
+                  dataset={{ "ref-item-id": item.id, "ref-field": "answer", "ref-step": String(index) }}
+                  onTag={(tag) => useDocument.getState().addTag(item.id, tag)}
+                  onCancel={() => useDocument.getState().cancelEdit()}
+                  onCommit={(value) => useDocument.getState().commitEdit(value)}
+                />
+                <ActionPointRefStack refIds={stepActionPointRefIds(step)} allowUnlink={!readOnly} />
+              </div>
             ) : (
               <span
                 className={`answer-text${readOnly ? "" : " editable"}`}
@@ -158,7 +176,14 @@ export function CardStep({
                 data-step={index}
                 onClick={edit("answer")}
               >
-                <RichText text={answerText ?? ""} />
+                {refOnlyDecision && (
+                  <span className="decision-ref-only-hint">Add decision text…</span>
+                )}
+                <RichText
+                  text={answerText ?? ""}
+                  actionPointRefIds={stepActionPointRefIds(step)}
+                  allowActionPointUnlink={!readOnly}
+                />
               </span>
             )}
             <div className="answer-meta">
@@ -169,6 +194,19 @@ export function CardStep({
                       <IconTrash />
                     </button>
                   )}
+                  <button
+                    type="button"
+                    className="field-remove-btn field-remove-btn--action-point"
+                    data-action="add-action-point"
+                    aria-label="Add action point"
+                    title="Add action to do (linked in this decision)"
+                    onClick={() => {
+                      if (shouldSuppressListCardClick()) return;
+                      useDocument.getState().addActionPointToDecision(item.id, index, surface as Surface);
+                    }}
+                  >
+                    <IconActionPoint />
+                  </button>
                   <button
                     type="button"
                     className="answer-mark-btn"

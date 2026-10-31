@@ -1,13 +1,20 @@
 import { useEffect, useRef } from "react";
-import { WORLD_H, WORLD_W, isItemArchived, sortedPlacementIds } from "../../domain/index.ts";
+import {
+  WORLD_H,
+  WORLD_W,
+  isItemArchived,
+  sortedActionPointPlacementIds,
+  sortedPlacementIds,
+} from "../../domain/index.ts";
 import { useDocument } from "../../store/index.ts";
+import { ActionPointView } from "../action/ActionPointView.tsx";
 import { CardView } from "../CardView.tsx";
-import { IconCard } from "../Icons.tsx";
-import { setCanvasSpawnDragImage } from "./canvasSpawnDragGhost.ts";
+import { IconCard, IconLightbulb } from "../Icons.tsx";
 import { bindCanvasGestures } from "./bindCanvasGestures.ts";
 import { bindCanvasRefLinks } from "./bindCanvasRefLinks.ts";
-import { placeCenteredCard, zoomCanvas } from "./canvasCommands.ts";
-import { SPAWN, type SpawnGesture } from "./canvasDrop.ts";
+import { zoomCanvas } from "./canvasCommands.ts";
+import { CanvasSpawnButton } from "./canvasSpawnButton.tsx";
+import type { SpawnGesture } from "./canvasDrop.ts";
 import { FakeScrollbars } from "./FakeScrollbars.tsx";
 
 export function CanvasWorkspace() {
@@ -15,13 +22,16 @@ export function CanvasWorkspace() {
   const spawnGesture = useRef<SpawnGesture | null>(null);
   const spawnAt = useRef(0);
   const items = useDocument((state) => state.items);
+  const actionPoints = useDocument((state) => state.actionPoints);
   const placements = useDocument((state) => state.canvasPlacements);
+  const apPlacements = useDocument((state) => state.actionPointPlacements);
   const viewport = useDocument((state) => state.canvasViewport);
   const userSet = useDocument((state) => state.canvasViewportUserSet);
   const revealId = useDocument((state) => state.revealId);
   const canvasSelection = useDocument((state) => state.canvasSelection);
   const selectedSet = new Set(canvasSelection);
   const ids = sortedPlacementIds(placements, items).filter((id) => items[id] && !isItemArchived(items[id]));
+  const apIds = sortedActionPointPlacementIds(apPlacements, actionPoints).filter((id) => actionPoints[id]);
   const centered = useRef(false);
   const lineRef = useRef<SVGSVGElement>(null);
 
@@ -49,7 +59,7 @@ export function CanvasWorkspace() {
     }
     surface.scrollLeft = Math.min(Math.max(0, left), maxLeft);
     surface.scrollTop = Math.min(Math.max(0, top), maxTop);
-  }, [viewport, userSet, ids.length]);
+  }, [viewport, userSet, ids.length, apIds.length]);
 
   useEffect(() => {
     const surface = surfaceRef.current;
@@ -65,8 +75,6 @@ export function CanvasWorkspace() {
 
   const pct = Math.round(viewport.zoom * 100);
   const zoomBy = (factor: number) => zoomCanvas(surfaceRef, factor);
-  const spawnCenteredCard = () => placeCenteredCard(surfaceRef, spawnAt);
-
   return (
     <>
       <div className="canvas-frame" data-canvas-frame>
@@ -74,9 +82,25 @@ export function CanvasWorkspace() {
           <div className="spatial-canvas" data-canvas-surface role="region" aria-label="Decision canvas" ref={surfaceRef}>
             <div className="canvas-scroll-content" data-canvas-scroll-content>
               <div className="canvas-world">
-                {ids.length === 0 && (
-                  <p className="canvas-hint">Drag cards from the list · drag empty canvas to select · Space+drag to pan · ⌘/Ctrl+scroll to zoom</p>
+                {ids.length === 0 && apIds.length === 0 && (
+                  <p className="canvas-hint">Drag decisions or actions from the list · drag empty canvas to select · Space+drag to pan · ⌘/Ctrl+scroll to zoom</p>
                 )}
+                {apIds.map((id, index) => {
+                  const ap = actionPoints[id];
+                  const pos = apPlacements[id];
+                  if (!ap || !pos) return null;
+                  return (
+                    <div
+                      key={id}
+                      className={`canvas-placed-action-point${revealId === id ? " is-canvas-reveal-pop" : ""}${selectedSet.has(id) ? " is-canvas-selected" : ""}`}
+                      data-canvas-placed={id}
+                      style={{ left: pos.x, top: pos.y, zIndex: ids.length + index + 1 }}
+                      onAnimationEnd={() => useDocument.getState().clearReveal()}
+                    >
+                      <ActionPointView actionPoint={ap} surface="canvas" />
+                    </div>
+                  );
+                })}
                 {ids.map((id, index) => {
                   const item = items[id];
                   const pos = placements[id];
@@ -100,64 +124,28 @@ export function CanvasWorkspace() {
           <FakeScrollbars surfaceRef={surfaceRef} />
         </div>
       </div>
-      <button
-        type="button"
-        className="canvas-spawn-btn"
-        data-action="canvas-spawn-card"
-        data-canvas-spawn
-        draggable
-        aria-label="Add card — click or drag onto canvas"
-        title="Add card (click or drag)"
-        onPointerDown={(event) => {
-          if (event.button !== 0) return;
-          const active = document.activeElement;
-          if (
-            (active instanceof HTMLTextAreaElement || active instanceof HTMLInputElement)
-            && active.closest(".card, .composer")
-          ) {
-            useDocument.getState().commitEdit(active.value);
-          }
-          spawnGesture.current = { id: event.pointerId, x: event.clientX, y: event.clientY, dist: 0, drag: false, dropped: false };
-        }}
-        onPointerMove={(event) => {
-          const gesture = spawnGesture.current;
-          if (!gesture || gesture.id !== event.pointerId) return;
-          const dx = event.clientX - gesture.x;
-          const dy = event.clientY - gesture.y;
-          gesture.dist = Math.max(gesture.dist, dx * dx + dy * dy);
-        }}
-        onPointerUp={(event) => {
-          const gesture = spawnGesture.current;
-          if (!gesture || gesture.id !== event.pointerId) return;
-          window.setTimeout(() => {
-            if (gesture.drag || gesture.dropped) return;
-            spawnGesture.current = null;
-            spawnCenteredCard();
-          }, 0);
-        }}
-        onDragStart={(event) => {
-          if (spawnGesture.current) spawnGesture.current.drag = true;
-          event.dataTransfer.setData("text/plain", SPAWN);
-          event.dataTransfer.effectAllowed = "copy";
-          setCanvasSpawnDragImage(event.nativeEvent);
-        }}
-        onDragEnd={() => {
-          const gesture = spawnGesture.current;
-          if (!gesture) return;
-          const micro = gesture.drag && !gesture.dropped && gesture.dist <= 36;
-          spawnGesture.current = null;
-          if (micro) spawnCenteredCard();
-          else if (gesture.drag) spawnAt.current = Date.now();
-        }}
-        onClick={() => {
-          if (Date.now() - spawnAt.current < 400) return;
-          const gesture = spawnGesture.current;
-          if (gesture?.drag || gesture?.dropped) return;
-          spawnCenteredCard();
-        }}
-      >
-        <IconCard />
-      </button>
+      <div className="canvas-spawn-group" aria-label="Add card to canvas">
+        <CanvasSpawnButton
+          intent="question"
+          spawnGesture={spawnGesture}
+          spawnAt={spawnAt}
+          surfaceRef={surfaceRef}
+          aria-label="New question — click or drag onto canvas"
+          title="New question (click or drag)"
+        >
+          <IconCard />
+        </CanvasSpawnButton>
+        <CanvasSpawnButton
+          intent="decision"
+          spawnGesture={spawnGesture}
+          spawnAt={spawnAt}
+          surfaceRef={surfaceRef}
+          aria-label="New decision — click or drag onto canvas"
+          title="New decision (click or drag)"
+        >
+          <IconLightbulb />
+        </CanvasSpawnButton>
+      </div>
       <div className="canvas-zoom-controls" aria-label="Canvas zoom">
         <button type="button" className="canvas-zoom-btn" data-action="canvas-zoom-out" aria-label="Zoom out" onClick={() => zoomBy(1 / 1.15)}>−</button>
         <button type="button" className="canvas-zoom-btn canvas-zoom-btn--label" data-action="canvas-zoom-reset" aria-label="Reset zoom to 100%" onClick={() => useDocument.getState().setViewport({ ...useDocument.getState().canvasViewport, zoom: 1 })}>{pct}%</button>

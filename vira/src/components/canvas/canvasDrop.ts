@@ -1,7 +1,19 @@
 import { CARD_WIDTH, DROP_OFFSET_Y } from "../../domain/index.ts";
+import type { ComposerIntent } from "../../store/documentTypes.ts";
 import { useDocument } from "../../store/index.ts";
+import {
+  isCanvasSpawnPayload,
+  spawnIntentFromPayload,
+} from "./canvasSpawnPayload.ts";
 
-export const SPAWN = "__canvas_new_card__";
+export {
+  isCanvasSpawnPayload,
+  SPAWN,
+  SPAWN_DECISION,
+  SPAWN_QUESTION,
+  spawnIntentFromPayload,
+  spawnPayloadForIntent,
+} from "./canvasSpawnPayload.ts";
 
 export type SpawnGesture = {
   id: number;
@@ -10,6 +22,7 @@ export type SpawnGesture = {
   dist: number;
   drag: boolean;
   dropped: boolean;
+  intent: ComposerIntent;
 };
 
 export function bindCanvasDrop(
@@ -27,18 +40,18 @@ export function bindCanvasDrop(
   const onDrop = (event: DragEvent) => {
     const payload = event.dataTransfer?.getData("text/plain");
     if (!payload) return;
-    if (!surface.contains(event.target as Node) && payload !== SPAWN) return;
-    if (payload === SPAWN && (event.target as Element).closest(".workspace-list")) {
+    if (!surface.contains(event.target as Node) && !isCanvasSpawnPayload(payload)) return;
+    if (isCanvasSpawnPayload(payload) && (event.target as Element).closest(".workspace-list")) {
       event.preventDefault();
       if (spawnGesture.current) spawnGesture.current.dropped = true;
-      useDocument.getState().createBlankCard("list");
+      useDocument.getState().createBlankCard("list", spawnIntentFromPayload(payload));
       return;
     }
-    if (payload === SPAWN && !(event.target as Element).closest("[data-canvas-surface]")) return;
+    if (isCanvasSpawnPayload(payload) && !(event.target as Element).closest("[data-canvas-surface]")) return;
     event.preventDefault();
-    if (payload === SPAWN) {
+    if (isCanvasSpawnPayload(payload)) {
       if (spawnGesture.current) spawnGesture.current.dropped = true;
-      const id = useDocument.getState().createBlankCard("canvas");
+      const id = useDocument.getState().createBlankCard("canvas", spawnIntentFromPayload(payload));
       if (!id) return;
       const pt = worldPoint(event.clientX, event.clientY);
       useDocument.getState().placeAtWorld(id, pt.x - CARD_WIDTH / 2, pt.y - DROP_OFFSET_Y);

@@ -29,8 +29,9 @@ export function createCard(
     };
     return id;
   }
-  const problem = input.problem?.trim();
-  if (!problem) {
+  const problem = input.problem?.trim() ?? "";
+  const answer = input.answer?.trim() || null;
+  if (!problem && !answer) {
     bag.nextId -= 1;
     return null;
   }
@@ -38,7 +39,7 @@ export function createCard(
     id,
     tags: normalizeTagsList(input.tags ?? []),
     archivedAt: null,
-    steps: [normalizeStep({ problem, answer: input.answer ? input.answer.trim() : null })],
+    steps: [normalizeStep({ problem, answer })],
   };
   return id;
 }

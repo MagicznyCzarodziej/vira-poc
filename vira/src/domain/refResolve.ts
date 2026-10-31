@@ -70,9 +70,13 @@ export function issueRefAutocompleteLabel(items: Record<string, Card>, parsed: I
     return truncateLabel(step ? (getAnswerText(step) || "Answer") : "Answer", 48);
   }
   if (parsed.stepIndex != null) {
-    return truncateLabel(item.steps[parsed.stepIndex]?.problem || item.id, 48);
+    const step = item.steps[parsed.stepIndex];
+    const label = step ? (getProblemText(step).trim() || getAnswerText(step) || item.id) : item.id;
+    return truncateLabel(label, 48);
   }
-  return truncateLabel(item.steps[0]?.problem || item.id, 48);
+  const step = item.steps[0];
+  const label = step ? (getProblemText(step).trim() || getAnswerText(step) || item.id) : item.id;
+  return truncateLabel(label, 48);
 }
 
 export function buildIssueRefMarkdown(items: Record<string, Card>, refToken: string, label: string): string | null {

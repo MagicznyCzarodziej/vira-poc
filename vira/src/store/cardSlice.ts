@@ -8,6 +8,7 @@ import {
   importFigJamStickies,
   normalizeTagName,
   parseFigJamStickyCsv,
+  recomputeNextActionPointId,
   recomputeNextId,
   locateIssueRefSource,
   replaceIssueRefRevisionInText,
@@ -82,14 +83,15 @@ export const createCardSlice: StateCreator<DocumentState, [], [], CardSlice> = (
     set({ items: { ...bag.items }, canvasPlacements: { ...bag.canvasPlacements }, followupDrafts: drafts });
     schedule(get);
   },
-  createBlankCard: (where) => {
+  createBlankCard: (where, intent = "decision") => {
     const bag = bagOf(get());
     bag.items = { ...bag.items };
     const id = createBlankCardInBag(bag);
+    const field = intent === "question" ? "problem" : "answer";
     set({
       items: { ...bag.items },
       nextId: bag.nextId,
-      editing: { id, field: "problem", step: 0, surface: where },
+      editing: { id, field, step: 0, surface: where },
       editInitial: "",
       focusNonce: get().focusNonce + 1,
       revealId: where === "canvas" ? id : null,
@@ -130,6 +132,9 @@ export const createCardSlice: StateCreator<DocumentState, [], [], CardSlice> = (
     set({
       items: {},
       nextId: recomputeNextId({}),
+      actionPoints: {},
+      actionPointPlacements: {},
+      nextActionPointId: 1,
       canvasPlacements: {},
       canvasViewport: { scrollLeft: 0, scrollTop: 0, zoom: 1 },
       canvasViewportUserSet: false,

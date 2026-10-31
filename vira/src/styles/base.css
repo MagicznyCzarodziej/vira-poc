@@ -24,6 +24,11 @@
       --answer-text: #09090b;
       --answer-tentative-bg: #fef3c7;
       --answer-tentative-text: #09090b;
+      --action-point-bg: #ffa3a3;
+      --action-point-text: #290808;
+      --action-point-label: #9f1239;
+      --action-point-done-bg: #ececee;
+      --action-point-done-text: #71717a;
       --app-header-h: 3.25rem;
       --issue-ref-panel-w: min(32rem, 44vw);
       --canvas-bg: #e5e5e7;

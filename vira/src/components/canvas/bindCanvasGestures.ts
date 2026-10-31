@@ -20,13 +20,27 @@ import {
 import { noteListCardDragEnded } from "./listCardDrag.ts";
 import { bindCanvasReveal } from "./bindCanvasReveal.ts";
 import { bindCanvasDrop, type SpawnGesture } from "./canvasDrop.ts";
+import {
+  beginActionPointLinkDrag,
+  endActionPointLinkDrag,
+  finishActionPointLinkDrop,
+  syncActionPointLinkDropHighlight,
+} from "./actionPointLinkDrag.ts";
+import { syncActionPointLinkDragGhost } from "./actionPointLinkDragGhost.ts";
+import {
+  canvasPlacedHostFromTarget,
+  canvasPlacedId,
+  canvasWorldPlacement,
+  isCanvasActionPointId,
+  partitionCanvasMoves,
+} from "./canvasPlaced.ts";
 
 function commitEditOutsideCard(target: Element) {
   const active = document.activeElement;
   if (!(active instanceof HTMLTextAreaElement || active instanceof HTMLInputElement)) return;
   if (!useDocument.getState().editing) return;
-  const host = active.closest(".card");
-  if (host && target.closest(".card") === host) return;
+  const host = active.closest(".card, .action-point-card");
+  if (host && target.closest(".card, .action-point-card") === host) return;
   useDocument.getState().commitEdit(active.value);
 }
 
@@ -49,8 +63,8 @@ export function bindCanvasGestures(surface: HTMLElement, spawnGesture: { readonl
   } | null = null;
   let drag: {
     id: number;
-    cardId: string;
-    cardEl: HTMLElement;
+    placedId: string;
+    placedEl: HTMLElement;
     ox: number;
     oy: number;
     sx: number;
@@ -61,6 +75,15 @@ export function bindCanvasGestures(surface: HTMLElement, spawnGesture: { readonl
     groupIds?: string[];
     groupStart?: Record<string, { x: number; y: number }>;
     anchorStart?: { x: number; y: number };
+  } | null = null;
+  let apLink: {
+    id: number;
+    apId: string;
+    el: HTMLElement;
+    sx: number;
+    sy: number;
+    active: boolean;
+    captured: boolean;
   } | null = null;
   let space = false;
   let hotspot = { x: 0, y: 0, over: false };
@@ -78,7 +101,7 @@ export function bindCanvasGestures(surface: HTMLElement, spawnGesture: { readonl
   const releaseDragCapture = () => {
     if (!drag?.captured) return;
     try {
-      drag.cardEl.releasePointerCapture(drag.id);
+      drag.placedEl.releasePointerCapture(drag.id);
     } catch {
       /* pointer already released */
     }
@@ -98,17 +121,67 @@ export function bindCanvasGestures(surface: HTMLElement, spawnGesture: { readonl
     }
   };
 
+  const revertCanvasGroupToDragStart = (current: NonNullable<typeof drag>) => {
+    const store = useDocument.getState();
+    const groupIds = current.groupIds ?? [current.placedId];
+    const groupStart = current.groupStart ?? {};
+    const moves: { id: string; x: number; y: number }[] = [];
+    for (const gid of groupIds) {
+      const start = groupStart[gid];
+      if (start) moves.push({ id: gid, x: start.x, y: start.y });
+    }
+    if (moves.length === 0) return;
+    const { cardMoves, actionPointMoves } = partitionCanvasMoves(store, moves);
+    store.movePlacements(cardMoves);
+    store.moveActionPointPlacements(actionPointMoves);
+  };
+
+  const beginApLinkFromCanvasDrag = (event: PointerEvent, from: NonNullable<typeof drag>) => {
+    const pastThreshold = shouldStartCanvasCardDrag(from.sx, from.sy, event.clientX, event.clientY);
+    const active = from.on || pastThreshold;
+
+    if (from.on) revertCanvasGroupToDragStart(from);
+
+    releaseDragCapture();
+    setGroupDraggingClass(from.groupIds ?? [from.placedId], false);
+    document.body.classList.remove("canvas-card-drag-active");
+
+    apLink = {
+      id: event.pointerId,
+      apId: from.placedId,
+      el: from.placedEl,
+      sx: from.sx,
+      sy: from.sy,
+      active,
+      captured: false,
+    };
+    drag = null;
+
+    if (!active) return;
+
+    beginActionPointLinkDrag();
+    apLink.el.classList.add("is-ap-link-dragging");
+    try {
+      apLink.el.setPointerCapture(event.pointerId);
+      apLink.captured = true;
+    } catch {
+      /* inactive pointer */
+    }
+    syncActionPointLinkDragGhost(apLink.el, event.clientX, event.clientY);
+    syncActionPointLinkDropHighlight(event.clientX, event.clientY);
+  };
+
   const onPointerDown = (event: PointerEvent) => {
     const target = event.target as Element;
     if (tryConsumeRefPick(event)) return;
     if (refPickModeActive() && target.closest("[data-ref-pick]") && !target.closest("button, [data-action]")) return;
     if (target.closest("[data-canvas-spawn]")) return;
-    const placedCard = target.closest<HTMLElement>(".canvas-placed-card");
-    if (!placedCard && target.closest("button, [data-action]")) return;
+    const placedHost = canvasPlacedHostFromTarget(target);
+    if (!placedHost && target.closest("button, [data-action]")) return;
     if (isCanvasCardTypingTarget(target)) return;
     commitEditOutsideCard(target);
     const middle = event.button === 1;
-    const background = event.button === 0 && !placedCard;
+    const background = event.button === 0 && !placedHost;
     if (middle || shouldStartCanvasSpacePan(space, event.button)) {
       pan = { id: event.pointerId, x: event.clientX, y: event.clientY, left: surface.scrollLeft, top: surface.scrollTop };
       surface.classList.add("is-panning");
@@ -128,10 +201,23 @@ export function bindCanvasGestures(surface: HTMLElement, spawnGesture: { readonl
       };
       return;
     }
-    if (!placedCard || event.button !== 0) return;
-    const id = placedCard.dataset.canvasPlaced;
-    const pos = id ? useDocument.getState().canvasPlacements[id] : null;
+    if (!placedHost || event.button !== 0) return;
+    const id = canvasPlacedId(placedHost);
+    const doc = useDocument.getState();
+    const pos = id ? canvasWorldPlacement(doc, id) : null;
     if (!id || !pos) return;
+    if (event.shiftKey && isCanvasActionPointId(doc, id)) {
+      apLink = {
+        id: event.pointerId,
+        apId: id,
+        el: placedHost,
+        sx: event.clientX,
+        sy: event.clientY,
+        active: false,
+        captured: false,
+      };
+      return;
+    }
     const selection = useDocument.getState().canvasSelection;
     if (event.shiftKey) {
       /* toggle on pointerup if this stays a click */
@@ -141,8 +227,8 @@ export function bindCanvasGestures(surface: HTMLElement, spawnGesture: { readonl
     const pt = worldPoint(event.clientX, event.clientY);
     drag = {
       id: event.pointerId,
-      cardId: id,
-      cardEl: placedCard,
+      placedId: id,
+      placedEl: placedHost,
       ox: pt.x - pos.x,
       oy: pt.y - pos.y,
       sx: event.clientX,
@@ -153,6 +239,24 @@ export function bindCanvasGestures(surface: HTMLElement, spawnGesture: { readonl
     };
   };
   const onPointerMove = (event: PointerEvent) => {
+    if (apLink && event.pointerId === apLink.id) {
+      if (!apLink.active && !shouldStartCanvasCardDrag(apLink.sx, apLink.sy, event.clientX, event.clientY)) return;
+      if (!apLink.active) {
+        apLink.active = true;
+        beginActionPointLinkDrag();
+        apLink.el.classList.add("is-ap-link-dragging");
+        try {
+          apLink.el.setPointerCapture(event.pointerId);
+          apLink.captured = true;
+        } catch {
+          /* inactive pointer */
+        }
+      }
+      syncActionPointLinkDragGhost(apLink.el, event.clientX, event.clientY);
+      syncActionPointLinkDropHighlight(event.clientX, event.clientY);
+      event.preventDefault();
+      return;
+    }
     if (pan && event.pointerId === pan.id) {
       surface.scrollLeft = pan.left - (event.clientX - pan.x);
       surface.scrollTop = pan.top - (event.clientY - pan.y);
@@ -179,6 +283,12 @@ export function bindCanvasGestures(surface: HTMLElement, spawnGesture: { readonl
       return;
     }
     if (!drag || event.pointerId !== drag.id) return;
+    const docForDrag = useDocument.getState();
+    if (event.shiftKey && isCanvasActionPointId(docForDrag, drag.placedId)) {
+      beginApLinkFromCanvasDrag(event, drag);
+      event.preventDefault();
+      return;
+    }
     if (!drag.on && !shouldStartCanvasCardDrag(drag.sx, drag.sy, event.clientX, event.clientY)) return;
     if (!drag.on) {
       drag.on = true;
@@ -186,19 +296,22 @@ export function bindCanvasGestures(surface: HTMLElement, spawnGesture: { readonl
         document.activeElement.blur();
       }
       const state = useDocument.getState();
-      const groupIds = resolveCanvasDragGroup(state.canvasSelection, drag.cardId);
+      const groupIds = resolveCanvasDragGroup(state.canvasSelection, drag.placedId);
       drag.groupIds = groupIds;
       drag.groupStart = {};
       for (const gid of groupIds) {
-        const p = state.canvasPlacements[gid];
+        const p = canvasWorldPlacement(state, gid);
         if (p) drag.groupStart[gid] = { x: p.x, y: p.y };
       }
-      drag.anchorStart = { ...state.canvasPlacements[drag.cardId]! };
-      for (const gid of groupIds) state.bringToFront(gid);
+      drag.anchorStart = { ...canvasWorldPlacement(state, drag.placedId)! };
+      for (const gid of groupIds) {
+        if (isCanvasActionPointId(state, gid)) state.bringActionPointToFront(gid);
+        else state.bringToFront(gid);
+      }
       setGroupDraggingClass(groupIds, true);
       document.body.classList.add("canvas-card-drag-active");
       try {
-        drag.cardEl.setPointerCapture(event.pointerId);
+        drag.placedEl.setPointerCapture(event.pointerId);
         drag.captured = true;
       } catch {
         /* inactive pointer */
@@ -207,7 +320,7 @@ export function bindCanvasGestures(surface: HTMLElement, spawnGesture: { readonl
     const current = drag;
     const pt = worldPoint(event.clientX, event.clientY);
     const anchorNext = clampPlacement(pt.x - current.ox, pt.y - current.oy);
-    const groupIds = current.groupIds ?? [current.cardId];
+    const groupIds = current.groupIds ?? [current.placedId];
     const anchorStart = current.anchorStart ?? anchorNext;
     const moves = movesForCanvasGroupDrag(
       groupIds,
@@ -215,10 +328,26 @@ export function bindCanvasGestures(surface: HTMLElement, spawnGesture: { readonl
       anchorStart,
       anchorNext,
     );
-    useDocument.getState().movePlacements(moves);
+    const store = useDocument.getState();
+    const { cardMoves, actionPointMoves } = partitionCanvasMoves(store, moves);
+    store.movePlacements(cardMoves);
+    store.moveActionPointPlacements(actionPointMoves);
     event.preventDefault();
   };
   const onPointerUp = (event: PointerEvent) => {
+    if (apLink && event.pointerId === apLink.id) {
+      if (apLink.active) finishActionPointLinkDrop(apLink.apId, event.clientX, event.clientY);
+      if (apLink.captured) {
+        try {
+          apLink.el.releasePointerCapture(apLink.id);
+        } catch {
+          /* pointer already released */
+        }
+      }
+      apLink.el.classList.remove("is-ap-link-dragging");
+      endActionPointLinkDrag();
+      apLink = null;
+    }
     if (pan && event.pointerId === pan.id) {
       pan = null;
       surface.classList.remove("is-panning");
@@ -236,7 +365,7 @@ export function bindCanvasGestures(surface: HTMLElement, spawnGesture: { readonl
         noteListCardDragEnded();
       }
       releaseDragCapture();
-      setGroupDraggingClass(drag.groupIds ?? [drag.cardId], false);
+      setGroupDraggingClass(drag.groupIds ?? [drag.placedId], false);
       document.body.classList.remove("canvas-card-drag-active");
       drag = null;
     }
@@ -272,7 +401,7 @@ export function bindCanvasGestures(surface: HTMLElement, spawnGesture: { readonl
     if ((event.key === "c" || event.key === "C") && !event.repeat && !event.metaKey && !event.ctrlKey && !event.altKey) {
       if (typing || !hotspot.over || useDocument.getState().viewMode !== "list") return;
       event.preventDefault();
-      const id = useDocument.getState().createBlankCard("canvas");
+      const id = useDocument.getState().createBlankCard("canvas", "decision");
       if (!id) return;
       const pt = worldPoint(hotspot.x, hotspot.y);
       useDocument.getState().placeAtWorld(id, pt.x - CARD_WIDTH / 2, pt.y - DROP_OFFSET_Y);
@@ -329,12 +458,16 @@ export function bindCanvasGestures(surface: HTMLElement, spawnGesture: { readonl
     };
   };
   const onClick = (event: MouseEvent) => {
-    if (Date.now() < suppressUntil && (event.target as Element).closest(".canvas-placed-card")) {
+    if (Date.now() < suppressUntil && canvasPlacedHostFromTarget(event.target)) {
       event.preventDefault();
       event.stopPropagation();
     }
   };
+  const onSelectStart = (event: Event) => {
+    if (marquee) event.preventDefault();
+  };
   surface.addEventListener("pointerdown", onPointerDown);
+  surface.addEventListener("selectstart", onSelectStart);
   window.addEventListener("pointermove", onPointerMove, true);
   window.addEventListener("pointerup", onPointerUp, true);
   window.addEventListener("pointercancel", onPointerUp, true);
@@ -349,6 +482,7 @@ export function bindCanvasGestures(surface: HTMLElement, spawnGesture: { readonl
   const unbindReveal = bindCanvasReveal(surface);
   return () => {
     surface.removeEventListener("pointerdown", onPointerDown);
+    surface.removeEventListener("selectstart", onSelectStart);
     window.removeEventListener("pointermove", onPointerMove, true);
     window.removeEventListener("pointerup", onPointerUp, true);
     window.removeEventListener("pointercancel", onPointerUp, true);

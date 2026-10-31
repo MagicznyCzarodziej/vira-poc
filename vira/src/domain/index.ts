@@ -1,5 +1,17 @@
-export { STORAGE_KEY, STORAGE_VERSION, CARD_WIDTH, DROP_OFFSET_Y, WORLD_W, WORLD_H, ZOOM_MIN, ZOOM_MAX } from "./constants.ts";
+export {
+  STORAGE_KEY,
+  STORAGE_VERSION,
+  ACTION_DROP_OFFSET_Y,
+  ACTION_POINT_WIDTH,
+  CARD_WIDTH,
+  DROP_OFFSET_Y,
+  WORLD_W,
+  WORLD_H,
+  ZOOM_MIN,
+  ZOOM_MAX,
+} from "./constants.ts";
 export type {
+  ActionPoint,
   Card,
   CardStatusClass,
   DocBag,
@@ -9,9 +21,44 @@ export type {
   SavedDocument,
   StaleReason,
   Step,
+  StepResolutionContext,
   Viewport,
   ViewMode,
 } from "./types.ts";
+export {
+  compareActionPointIdsNewestFirst,
+  liveActionPointIds,
+  placeActionPointAtWorld,
+  removeActionPointFromCanvasPlacements,
+  sortedActionPointPlacementIds,
+} from "./actionPointCanvas.ts";
+export {
+  createActionPoint,
+  hasOpenActionPointRefs,
+  recomputeNextActionPointId,
+  toggleActionPointDone,
+} from "./actionPoints.ts";
+export {
+  addActionPointRefToStep,
+  collapseDecisionShellIfNoAnswerOrRefs,
+  ensureEmptyDecisionForActionPointRefs,
+  hasOpenActionPointRefsForStep,
+  migrateStepActionPointRefsFromAnswerText,
+  removeActionPointRefFromStep,
+  stepActionPointRefIds,
+  stepHasVisibleAnswerContent,
+} from "./stepActionPoints.ts";
+export {
+  actionPointDisplayNum,
+  actionPointIdFromNum,
+  actionPointRefPreviewTitle,
+  formatActionPointMarkdown,
+  formatActionPointRef,
+  mergeActionPointRefsAfterEdit,
+  parseActionPointIdsInText,
+  stripActionPointRefsFromText,
+  canonicalizeActionPointRefsInText,
+} from "./actionPointSyntax.ts";
 export {
   allKnownMentions,
   allKnownTags,
@@ -43,6 +90,7 @@ export {
   setStepFieldHeadText,
   stepFieldHeadRev,
   stepFieldRevisions,
+  stepFlaggedByActionPoints,
   stepFullyResolved,
   stepResolved,
   toggleAnswerTentative,

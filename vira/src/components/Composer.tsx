@@ -6,6 +6,7 @@ import { useLayoutEffect, useRef } from "react";
 
 export function Composer() {
   const tags = useDocument((state) => state.composerTags);
+  const intent = useDocument((state) => state.composerIntent);
   const [value, setValue] = useState("");
   const ref = useRef<HTMLTextAreaElement>(null);
   const caret = useRef<number | null>(null);
@@ -47,7 +48,11 @@ export function Composer() {
       </div>
       <textarea
         ref={ref}
-        placeholder="Type anything, @mention, !reference, #tag"
+        placeholder={
+          intent === "question"
+            ? "Question — Enter to add, Shift+Enter for new line, @mention, !reference, #tag"
+            : "Decision — Enter to add, Shift+Enter for new line, @mention, !reference, #tag"
+        }
         data-composer-input
         value={value}
         rows={1}
@@ -86,10 +91,15 @@ export function Composer() {
   );
 }
 
-export function NewDecisionButton() {
+export function NewCardTriggers() {
   return (
-    <button type="button" className="add-trigger" data-action="add-root" onClick={() => useDocument.getState().openNewDecision()}>
-      New decision
-    </button>
+    <div className="add-triggers" role="group" aria-label="Add card">
+      <button type="button" className="add-trigger" data-action="add-decision" onClick={() => useDocument.getState().openNewDecision()}>
+        New decision
+      </button>
+      <button type="button" className="add-trigger" data-action="add-question" onClick={() => useDocument.getState().openNewQuestion()}>
+        New question
+      </button>
+    </div>
   );
 }

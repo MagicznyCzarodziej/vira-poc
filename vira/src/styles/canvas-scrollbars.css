@@ -102,6 +102,7 @@
     }
     .spatial-canvas.is-marquee-active {
       cursor: crosshair;
+      user-select: none;
     }
     .spatial-canvas.is-panning {
       cursor: grabbing;

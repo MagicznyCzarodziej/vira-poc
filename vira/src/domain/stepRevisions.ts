@@ -1,3 +1,5 @@
+import { stripActionPointRefsFromText } from "./actionPointSyntax.ts";
+import { migrateStepActionPointRefsFromAnswerText } from "./stepActionPoints.ts";
 import type { FieldName, Step } from "./types.ts";
 
 export function ensureStepRevisions(step: Step, now = new Date().toISOString()): void {
@@ -21,6 +23,7 @@ export function normalizeStep(raw: {
   answer?: string | null;
   answerTentative?: boolean;
   decidedAt?: string | null;
+  actionPointRefs?: string[];
   problemRevisions?: Step["problemRevisions"];
   answerRevisions?: Step["answerRevisions"];
   problemRev?: number;
@@ -34,6 +37,9 @@ export function normalizeStep(raw: {
     answer,
     answerTentative: answer ? !!raw.answerTentative : false,
     decidedAt: answer ? (raw.decidedAt || now) : null,
+    actionPointRefs: Array.isArray(raw.actionPointRefs)
+      ? raw.actionPointRefs.filter((id) => typeof id === "string")
+      : [],
     problemRevisions: raw.problemRevisions ? raw.problemRevisions.map((entry) => ({ ...entry })) : [],
     answerRevisions: raw.answerRevisions ? raw.answerRevisions.map((entry) => ({ ...entry })) : [],
     problemRev: raw.problemRev ?? 0,
@@ -42,6 +48,7 @@ export function normalizeStep(raw: {
     answerArchivedAt: raw.answerArchivedAt || null,
   };
   ensureStepRevisions(step, now);
+  migrateStepActionPointRefsFromAnswerText(step);
   return step;
 }
 
@@ -88,6 +95,7 @@ export function recordProblemEdit(step: Step, newText: string, at = new Date().t
 }
 
 export function recordAnswerEdit(step: Step, newText: string, at = new Date().toISOString()): void {
+  newText = stripActionPointRefsFromText(newText);
   const trimmed = newText.trim();
   if (!trimmed) return;
   ensureStepRevisions(step);

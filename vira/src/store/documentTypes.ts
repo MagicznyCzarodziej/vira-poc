@@ -1,7 +1,7 @@
 import type { FieldName, IssueRef, SavedDocument } from "../domain/index.ts";
 
 export type Surface = "list" | "canvas";
-export type EditField = "problem" | "answer" | "tags" | "followup";
+export type EditField = "problem" | "answer" | "tags" | "followup" | "actionPoint";
 
 export type EditTarget = {
   id: string;
@@ -10,8 +10,11 @@ export type EditTarget = {
   surface: Surface;
 };
 
+export type ComposerIntent = "decision" | "question";
+
 export type DocumentState = SavedDocument & {
   openComposer: boolean;
+  composerIntent: ComposerIntent;
   composerTags: string[];
   followupDrafts: Record<string, string>;
   editing: EditTarget | null;
@@ -23,9 +26,10 @@ export type DocumentState = SavedDocument & {
   toggleDates: () => void;
   setListFilter: (notOnCanvas: boolean) => void;
   openNewDecision: () => void;
+  openNewQuestion: () => void;
   closeComposer: () => void;
   addComposerTag: (tag: string) => void;
-  submitComposer: (text: string) => void;
+  submitComposer: (text: string, mode?: "decision" | "question") => void;
   setFollowupDraft: (id: string, value: string) => void;
   beginEdit: (target: EditTarget) => void;
   commitEdit: (value: string, next?: EditTarget | null) => void;
@@ -45,11 +49,22 @@ export type DocumentState = SavedDocument & {
   clearCanvasSelection: () => void;
   removeCanvasSelectionFromCanvas: () => void;
   setViewport: (viewport: SavedDocument["canvasViewport"], userSet?: boolean) => void;
-  createBlankCard: (where: Surface) => string | null;
+  createBlankCard: (where: Surface, intent?: ComposerIntent) => string | null;
   addRandom: () => void;
   importFigJamStickiesFromCsv: (csvText: string) => number;
   clearAll: () => void;
   setFieldHeadText: (itemId: string, stepIndex: number, field: FieldName, text: string) => void;
   upgradeIssueRef: (parsed: IssueRef, source?: { itemId: string; stepIndex: number; field: FieldName }) => boolean;
+  addActionPointToDecision: (itemId: string, stepIndex: number, surface: Surface) => string | null;
+  linkActionPointToDecision: (actionPointId: string, itemId: string, stepIndex: number) => boolean;
+  unlinkActionPointFromDecision: (actionPointId: string, itemId: string, stepIndex: number) => boolean;
+  createStandaloneActionPoint: (title?: string) => string;
+  setActionPointTitle: (actionPointId: string, title: string) => void;
+  toggleActionPointDone: (actionPointId: string) => void;
+  placeActionPointAtWorld: (id: string, x: number, y: number) => void;
+  moveActionPointPlacement: (id: string, x: number, y: number) => void;
+  moveActionPointPlacements: (moves: { id: string; x: number; y: number }[]) => void;
+  bringActionPointToFront: (id: string) => void;
+  removeActionPointFromCanvas: (id: string) => void;
   clearReveal: () => void;
 };

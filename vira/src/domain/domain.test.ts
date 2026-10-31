@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { createCard } from "./cards.ts";
 import { cardStatusClass, compareItemIds } from "./steps.ts";
 import { archiveStepAnswerField, normalizeStep } from "./steps.ts";
 import { parseTags } from "./tags.ts";
@@ -10,6 +11,31 @@ import type { Card } from "./types.ts";
 describe("tags", () => {
   it("lowercases and dedupes", () => {
     expect(parseTags(" API, api, Privacy ")).toEqual(["api", "privacy"]);
+  });
+});
+
+describe("createCard", () => {
+  it("creates a decision-only card with no question", () => {
+    const bag = { nextId: 1, items: {}, canvasPlacements: {}, canvasViewport: null };
+    const id = createCard(bag, { problem: "", answer: "Ship REST first" });
+    expect(id).toBe("item-1");
+    const card = bag.items["item-1"];
+    expect(card?.steps[0]?.problem.trim()).toBe("");
+    expect(card?.steps[0]?.answer).toBe("Ship REST first");
+  });
+
+  it("rejects a card with neither question nor decision", () => {
+    const bag = { nextId: 1, items: {}, canvasPlacements: {}, canvasViewport: null };
+    expect(createCard(bag, { problem: "", answer: "" })).toBeNull();
+    expect(bag.nextId).toBe(1);
+  });
+
+  it("still creates question-first cards with an open decision", () => {
+    const bag = { nextId: 1, items: {}, canvasPlacements: {}, canvasViewport: null };
+    const id = createCard(bag, { problem: "Should we ship?" });
+    expect(id).toBe("item-1");
+    expect(bag.items["item-1"]?.steps[0]?.problem).toBe("Should we ship?");
+    expect(bag.items["item-1"]?.steps[0]?.answer).toBeNull();
   });
 });
 
@@ -30,6 +56,11 @@ describe("card status", () => {
 
   it("is complete when every active step is settled", () => {
     const step = normalizeStep({ problem: "Q", answer: "A" });
+    expect(cardStatusClass(card([step]))).toBe("card-complete");
+  });
+
+  it("treats decision-only steps as complete when settled", () => {
+    const step = normalizeStep({ problem: "", answer: "Decided" });
     expect(cardStatusClass(card([step]))).toBe("card-complete");
   });
 });

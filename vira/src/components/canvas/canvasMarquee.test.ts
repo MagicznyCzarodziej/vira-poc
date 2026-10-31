@@ -51,6 +51,26 @@ describe("canvasMarquee", () => {
     expect(placedIdsInMarquee(surface, marquee)).toEqual(["item-1"]);
   });
 
+  it("includes action points that use data-canvas-placed", () => {
+    document.body.innerHTML = `
+      <div id="surface">
+        <div class="canvas-placed-action-point" data-canvas-placed="ap-1"></div>
+        <div data-canvas-placed="item-1"></div>
+      </div>
+    `;
+    const surface = document.getElementById("surface")!;
+    const rects: Record<string, DOMRect> = {
+      "ap-1": { left: 10, top: 10, right: 50, bottom: 50 } as DOMRect,
+      "item-1": { left: 200, top: 200, right: 240, bottom: 240 } as DOMRect,
+    };
+    for (const el of surface.querySelectorAll<HTMLElement>("[data-canvas-placed]")) {
+      const id = el.dataset.canvasPlaced!;
+      el.getBoundingClientRect = () => rects[id]!;
+    }
+    const marquee = normalizeClientRect(0, 0, 50, 50);
+    expect(placedIdsInMarquee(surface, marquee)).toEqual(["ap-1"]);
+  });
+
   it("positions the marquee overlay in viewport coordinates", () => {
     const el = document.createElement("div");
     positionMarqueeElement(el, normalizeClientRect(120, 80, 220, 180));

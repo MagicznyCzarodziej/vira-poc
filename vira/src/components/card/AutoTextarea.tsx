@@ -27,8 +27,9 @@ export function AutoTextarea({
   onEnterCommit?: (value: string) => void;
   onCancel: () => void;
   onTag?: (tag: string) => void;
-  dataset: Record<string, string>;
+  dataset?: Record<string, string>;
 }) {
+  const dataAttrs = dataset ?? {};
   const [value, setValue] = useState(initial);
   const ref = useRef<HTMLTextAreaElement>(null);
   const caret = useRef<number | null>(null);
@@ -71,7 +72,7 @@ export function AutoTextarea({
       className={className}
       rows={1}
       value={value}
-      {...Object.fromEntries(Object.entries(dataset).map(([key, val]) => [`data-${key}`, val]))}
+      {...Object.fromEntries(Object.entries(dataAttrs).map(([key, val]) => [`data-${key}`, val]))}
       onChange={(event) => setValue(event.target.value)}
       onBlur={() => {
         const snapshot = useDocument.getState().editing;

@@ -59,7 +59,11 @@ export function mentionNamesInText(text: string | null | undefined): string[] {
   return names;
 }
 
-export function allKnownMentions(items: Record<string, Card>, drafts: string[] = []): string[] {
+export function allKnownMentions(
+  items: Record<string, Card>,
+  drafts: string[] = [],
+  actionPointTitles: string[] = [],
+): string[] {
   const set = new Set<string>();
   const addText = (text: string | null | undefined) => {
     for (const name of mentionNamesInText(text)) set.add(name);
@@ -73,5 +77,6 @@ export function allKnownMentions(items: Record<string, Card>, drafts: string[] =
     }
   }
   for (const draft of drafts) addText(draft);
+  for (const title of actionPointTitles) addText(title);
   return [...set].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
 }

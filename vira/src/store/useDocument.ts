@@ -4,6 +4,7 @@ import { createCardSlice } from "./cardSlice.ts";
 import { createDocumentUiSlice } from "./documentUiSlice.ts";
 import { flush, loadInitial, persist } from "./documentPersistence.ts";
 import type { DocumentState } from "./documentTypes.ts";
+import { createActionPointSlice } from "./actionPointSlice.ts";
 import { createEditSlice } from "./editSlice.ts";
 
 export type { EditField, EditTarget, Surface } from "./documentTypes.ts";
@@ -14,6 +15,7 @@ persist(loaded);
 export const useDocument = create<DocumentState>()((set, get, store) => ({
   ...loaded,
   openComposer: false,
+  composerIntent: "decision",
   composerTags: [],
   followupDrafts: {},
   editing: null,
@@ -22,6 +24,7 @@ export const useDocument = create<DocumentState>()((set, get, store) => ({
   revealId: null,
   canvasSelection: [],
   ...createEditSlice(set, get, store),
+  ...createActionPointSlice(set, get, store),
   ...createCardSlice(set, get, store),
   ...createDocumentUiSlice(set, get, store),
   ...createCanvasSlice(set, get, store),

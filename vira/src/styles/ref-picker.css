@@ -122,8 +122,26 @@
     .ref-link-picker-clear-filters[hidden] {
       display: none;
     }
-    body.ref-pick-active {
+    body.ref-pick-active,
+    body.ap-link-drag-active {
       --ref-pick-hover: #fde68a;
+    }
+    body.ap-link-drag-active .card:not(.card-readonly) .answer-block {
+      cursor: copy;
+      transition: background-color 0.12s ease;
+    }
+    body.ap-link-drag-active .card:not(.card-readonly) .answer-block.ap-link-drop-target {
+      background-color: var(--ref-pick-hover) !important;
+      color: var(--text);
+    }
+    body.ap-link-drag-active .card:not(.card-readonly) .answer-block.ap-link-drop-target.empty {
+      font-style: normal;
+    }
+    body.ap-link-drag-active .card:not(.card-readonly) .answer-block.ap-link-drop-target .answer-text,
+    body.ap-link-drag-active .card:not(.card-readonly) .answer-block.ap-link-drop-target .answer-meta,
+    body.ap-link-drag-active .card:not(.card-readonly) .answer-block.ap-link-drop-target .issue-ref,
+    body.ap-link-drag-active .card:not(.card-readonly) .answer-block.ap-link-drop-target .action-point-ref-stack {
+      background: transparent;
     }
     body.ref-pick-active .card:not(.card-readonly) [data-ref-pick] {
       cursor: pointer;

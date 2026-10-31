@@ -48,14 +48,17 @@ export function refLinkRows(
     if (tags.length && !tags.every((tag) => item.tags.includes(tag))) continue;
     const num = cardNumber(item.id);
     const rows: RefLinkRow[] = [];
-    const first = item.steps[0] ? getProblemText(item.steps[0]) : "";
-    if ((kind === "all" || kind === "card") && matchesQuery(`!${num} ${item.tags.join(" ")} ${first}`, q)) {
+    const firstStep = item.steps[0];
+    const first = firstStep ? getProblemText(firstStep) : "";
+    const firstAnswer = firstStep ? liveAnswerText(firstStep) : null;
+    const cardLabel = first.trim() || firstAnswer || "";
+    if ((kind === "all" || kind === "card") && matchesQuery(`!${num} ${item.tags.join(" ")} ${cardLabel}`, q)) {
       rows.push({
         token: item.id,
         kind: "card",
         idLabel: `!${num}`,
-        question: first,
-        answer: item.steps.length === 1 && item.steps[0] ? liveAnswerText(item.steps[0]) : null,
+        question: cardLabel,
+        answer: item.steps.length === 1 && firstStep ? firstAnswer : null,
       });
     }
     item.steps.forEach((step, index) => {
@@ -64,7 +67,7 @@ export function refLinkRows(
       const problem = getProblemText(step);
       const answer = liveAnswerText(step);
       const hay = `!${num} ${item.tags.join(" ")} ${problem} ${answer || ""}`;
-      if ((kind === "all" || kind === "question") && matchesQuery(hay, q)) {
+      if ((kind === "all" || kind === "question") && problem.trim() && matchesQuery(hay, q)) {
         rows.push({
           token: `${item.id}/${stepNum}`,
           kind: "question",

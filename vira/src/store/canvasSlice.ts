@@ -72,8 +72,12 @@ export const createCanvasSlice: StateCreator<DocumentState, [], [], CanvasSlice>
     const ids = get().canvasSelection;
     if (ids.length === 0) return;
     const canvasPlacements = { ...get().canvasPlacements };
-    for (const id of ids) delete canvasPlacements[id];
-    set({ canvasPlacements, canvasSelection: [] });
+    const actionPointPlacements = { ...get().actionPointPlacements };
+    for (const id of ids) {
+      if (get().actionPoints[id]) delete actionPointPlacements[id];
+      else delete canvasPlacements[id];
+    }
+    set({ canvasPlacements, actionPointPlacements, canvasSelection: [] });
     schedule(get);
   },
   setViewport: (canvasViewport, userSet = true) => {

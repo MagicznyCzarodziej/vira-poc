@@ -150,7 +150,10 @@ export function createDocumentFromSeed(): SavedDocument {
   return {
     version: 1,
     nextId: bag.nextId,
+    nextActionPointId: 1,
     items: bag.items,
+    actionPoints: {},
+    actionPointPlacements: {},
     viewMode: "list",
     showAllDates: false,
     listFilterNotOnCanvas: false,

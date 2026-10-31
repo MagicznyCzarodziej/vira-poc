@@ -1,5 +1,6 @@
 import { type RefObject } from "react";
 import { CARD_WIDTH, DROP_OFFSET_Y, clampZoom } from "../../domain/index.ts";
+import type { ComposerIntent } from "../../store/documentTypes.ts";
 import { useDocument } from "../../store/index.ts";
 
 export function zoomCanvas(surfaceRef: RefObject<HTMLDivElement | null>, factor: number): void {
@@ -19,14 +20,18 @@ export function zoomCanvas(surfaceRef: RefObject<HTMLDivElement | null>, factor:
   });
 }
 
-export function placeCenteredCard(surfaceRef: RefObject<HTMLDivElement | null>, spawnAt: { current: number }): void {
+export function placeCenteredCard(
+  surfaceRef: RefObject<HTMLDivElement | null>,
+  spawnAt: { current: number },
+  intent: ComposerIntent = "decision",
+): void {
   const now = Date.now();
   if (now - spawnAt.current < 50) return;
   spawnAt.current = now;
   const surface = surfaceRef.current;
   if (!surface) return;
   const rect = surface.getBoundingClientRect();
-  const id = useDocument.getState().createBlankCard("canvas");
+  const id = useDocument.getState().createBlankCard("canvas", intent);
   if (!id) return;
   const zoom = useDocument.getState().canvasViewport.zoom;
   const x = (surface.scrollLeft + rect.width / 2) / zoom - CARD_WIDTH / 2;
