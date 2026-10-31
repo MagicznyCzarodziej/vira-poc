@@ -30,6 +30,7 @@ export function bindCanvasDrop(
     if (!surface.contains(event.target as Node) && payload !== SPAWN) return;
     if (payload === SPAWN && (event.target as Element).closest(".workspace-list")) {
       event.preventDefault();
+      if (spawnGesture.current) spawnGesture.current.dropped = true;
       useDocument.getState().createBlankCard("list");
       return;
     }

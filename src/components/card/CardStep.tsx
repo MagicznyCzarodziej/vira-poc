@@ -15,6 +15,7 @@ import { useDocument, type EditTarget, type Surface } from "../../store/index.ts
 import { IconTrash } from "../Icons.tsx";
 import { RichText } from "../text/RichText.tsx";
 import { refPickModeActive } from "../text/bindRefPickFromCard.ts";
+import { shouldSuppressListCardClick } from "../canvas/listCardDrag.ts";
 import { AutoTextarea } from "./AutoTextarea.tsx";
 
 function ignoresEdit(event: { target: EventTarget | null }): boolean {
@@ -61,7 +62,7 @@ export function CardStep({
   const answered = historyEventIndex != null ? !empty : stepFullyResolved(step);
   const showRemove = !readOnly && !isStepArchived(step) && itemActiveSteps(item).length > 1;
   const edit = (field: "problem" | "answer") => (event: { target: EventTarget | null }) => {
-    if (refPickModeActive() || readOnly || ignoresEdit(event)) return;
+    if (shouldSuppressListCardClick() || refPickModeActive() || readOnly || ignoresEdit(event)) return;
     start({ id: item.id, field, step: index, surface: surface as Surface });
   };
 

@@ -8,7 +8,7 @@
       border-radius: 12px;
       border: 1px dashed var(--tone-2);
       background: var(--canvas-bg);
-      cursor: grab;
+      cursor: default;
       touch-action: pan-x pan-y;
       scrollbar-width: none;
     }
@@ -99,6 +99,9 @@
     .canvas-scroll-content {
       position: relative;
       overflow: hidden;
+    }
+    .spatial-canvas.is-marquee-active {
+      cursor: crosshair;
     }
     .spatial-canvas.is-panning {
       cursor: grabbing;

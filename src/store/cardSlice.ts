@@ -4,7 +4,7 @@ import {
   archiveCard,
   archiveQuestion,
   archiveStepAnswerField,
-  createCard,
+  createBlankCard as createBlankCardInBag,
   normalizeTagName,
   recomputeNextId,
   locateIssueRefSource,
@@ -76,18 +76,18 @@ export const createCardSlice: StateCreator<DocumentState, [], [], CardSlice> = (
     archiveCard(bag, id);
     const drafts = { ...get().followupDrafts };
     delete drafts[id];
-    set({ items: bag.items, canvasPlacements: bag.canvasPlacements, followupDrafts: drafts });
+    set({ items: { ...bag.items }, canvasPlacements: { ...bag.canvasPlacements }, followupDrafts: drafts });
     schedule(get);
   },
   createBlankCard: (where) => {
     const bag = bagOf(get());
-    const id = createCard(bag, { problem: "New decision" });
-    if (!id) return null;
+    bag.items = { ...bag.items };
+    const id = createBlankCardInBag(bag);
     set({
-      items: bag.items,
+      items: { ...bag.items },
       nextId: bag.nextId,
       editing: { id, field: "problem", step: 0, surface: where },
-      editInitial: "New decision",
+      editInitial: "",
       focusNonce: get().focusNonce + 1,
       revealId: where === "canvas" ? id : null,
     });

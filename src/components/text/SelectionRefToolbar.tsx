@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { selectionAnchor, type SelectionAnchor } from "./selectionGeometry.ts";
+import { isRefEditableTextarea, selectionAnchor, type SelectionAnchor } from "./selectionGeometry.ts";
 
 export function SelectionRefToolbar() {
   const [sel, setSel] = useState<SelectionAnchor | null>(null);
@@ -32,6 +32,8 @@ export function SelectionRefToolbar() {
     document.body.append(mirror);
 
     let timer = 0;
+    let selectionDragTa: HTMLTextAreaElement | null = null;
+
     const apply = (next: SelectionAnchor | null) => {
       setSel((prev) => {
         if (!next) return null;
@@ -48,19 +50,26 @@ export function SelectionRefToolbar() {
       });
     };
 
+    const onMouseDown = (event: MouseEvent) => {
+      const ta = event.target instanceof Element ? event.target.closest("textarea") : null;
+      selectionDragTa = isRefEditableTextarea(ta) ? ta : null;
+    };
+
     const onMouseUp = (event: MouseEvent) => {
       if (barRef.current?.contains(event.target as Node)) return;
       if (event.target instanceof Element && event.target.closest(".mention-menu")) return;
       const target = event.target;
       const x = event.clientX;
       const y = event.clientY;
-      const reading = selectionAnchor(target, mirror, x, y);
+      const dragTa = selectionDragTa;
+      selectionDragTa = null;
+      const reading = selectionAnchor(target, mirror, x, y, dragTa);
       window.clearTimeout(timer);
       if (reading === undefined) {
         apply(null);
         return;
       }
-      timer = window.setTimeout(() => apply(selectionAnchor(target, mirror, x, y) ?? null), 0);
+      timer = window.setTimeout(() => apply(selectionAnchor(target, mirror, x, y, dragTa) ?? null), 0);
     };
 
     const onSelectionChange = () => {
@@ -73,10 +82,12 @@ export function SelectionRefToolbar() {
       apply(selectionAnchor(current.textarea, mirror) ?? null);
     };
 
+    document.addEventListener("mousedown", onMouseDown, true);
     document.addEventListener("mouseup", onMouseUp);
     document.addEventListener("selectionchange", onSelectionChange);
     return () => {
       window.clearTimeout(timer);
+      document.removeEventListener("mousedown", onMouseDown, true);
       document.removeEventListener("mouseup", onMouseUp);
       document.removeEventListener("selectionchange", onSelectionChange);
       mirror.remove();

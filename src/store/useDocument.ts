@@ -20,6 +20,7 @@ export const useDocument = create<DocumentState>()((set, get, store) => ({
   editInitial: "",
   focusNonce: 0,
   revealId: null,
+  canvasSelection: [],
   ...createEditSlice(set, get, store),
   ...createCardSlice(set, get, store),
   ...createDocumentUiSlice(set, get, store),

@@ -43,6 +43,18 @@ export function createCard(
   return id;
 }
 
+export function createBlankCard(bag: DocBag): string {
+  const id = `item-${bag.nextId}`;
+  bag.nextId += 1;
+  bag.items[id] = {
+    id,
+    tags: [],
+    archivedAt: null,
+    steps: [normalizeStep({ problem: "", answer: null })],
+  };
+  return id;
+}
+
 export function addStep(card: Card, problem: string): boolean {
   const trimmed = problem.trim();
   if (!trimmed) return false;
@@ -95,6 +107,16 @@ export function recomputeNextId(items: Record<string, Card>): number {
     if (match) max = Math.max(max, parseInt(match[1] ?? "0", 10));
   }
   return max + 1;
+}
+
+/** Static card shape for canvas spawn-button drag preview (not persisted). */
+export function canvasSpawnPreviewCard(): Card {
+  return {
+    id: "item-new",
+    tags: [],
+    archivedAt: null,
+    steps: [normalizeStep({ problem: "", answer: null })],
+  };
 }
 
 export { archiveStepAnswerField };

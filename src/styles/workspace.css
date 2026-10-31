@@ -54,15 +54,34 @@
       border: 1px solid var(--surface);
       background-clip: padding-box;
     }
-    .workspace-list .list-cards .card[draggable="true"] {
+    .workspace-list .list-cards .card[data-canvas-drag-id] {
       cursor: grab;
     }
-    .workspace-list .list-cards .card[draggable="true"]:hover {
+    .workspace-list .list-cards .card[data-canvas-drag-id]:hover {
       outline: 2px dashed var(--canvas-drag-border);
       outline-offset: 4px;
     }
-    .workspace-list .list-cards .card[draggable="true"]:active {
+    .workspace-list .list-cards .card.is-list-pointer-dragging {
       cursor: grabbing;
+      opacity: 0.4;
+    }
+    .workspace-list .list-cards .card[data-canvas-drag-id]:active {
+      cursor: grabbing;
+    }
+    .list-card-pointer-drag-ghost {
+      position: fixed;
+      left: 0;
+      top: 0;
+      z-index: 10000;
+      width: min(420px, calc(100vw - 2rem));
+      pointer-events: none;
+    }
+    .list-card-pointer-drag-ghost .card {
+      box-shadow: 0 10px 32px rgba(0, 0, 0, 0.2);
+    }
+    body.list-card-pointer-drag-active {
+      touch-action: none;
+      user-select: none;
     }
     @keyframes canvas-list-drag-blocked-shake {
       0%, 100% { transform: translateX(0); }
@@ -133,6 +152,19 @@
     .canvas-surface-shell .spatial-canvas {
       width: 100%;
       height: 100%;
+    }
+    .canvas-surface-shell .canvas-marquee {
+      position: fixed;
+      z-index: 50;
+      display: none;
+      pointer-events: none;
+      border: 1.5px solid var(--canvas-drag-border);
+      background: rgba(59, 130, 246, 0.14);
+      border-radius: 3px;
+      box-sizing: border-box;
+    }
+    .canvas-surface-shell .canvas-marquee.is-visible {
+      display: block;
     }
     .canvas-surface-shell .canvas-ref-links {
       position: absolute;

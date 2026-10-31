@@ -56,10 +56,11 @@ export const createEditSlice: StateCreator<DocumentState, [], [], EditSlice> = (
       return;
     }
     const bag = bagOf(get());
+    bag.items = { ...bag.items };
     const id = createCard(bag, { problem: text, tags: get().composerTags });
     if (!id) return;
     set({
-      items: bag.items,
+      items: { ...bag.items },
       nextId: bag.nextId,
       openComposer: false,
       composerTags: [],
