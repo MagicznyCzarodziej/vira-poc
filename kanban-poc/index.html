@@ -37,6 +37,7 @@
       --answer-tentative-text: #09090b;
       --app-header-h: 3.25rem;
       --issue-ref-panel-w: min(32rem, 44vw);
+      --canvas-bg: #e5e5e7;
     }
     * { box-sizing: border-box; }
     body {
@@ -127,15 +128,30 @@
       color: var(--muted);
     }
     main { padding: 1.25rem 1.5rem 2.5rem; margin: 0; max-width: none; }
-    main:has(#app.board) {
-      max-width: 1200px;
-      margin: 0 auto;
+    main:has(#app.board),
+    main:has(#app.canvas) {
+      max-width: none;
+      margin: 0;
+      width: 100%;
+    }
+    main:has(#app.canvas) {
+      display: flex;
+      flex-direction: column;
+      flex: 1 1 auto;
+      min-height: 0;
     }
     .main-layout {
       width: fit-content;
       max-width: 100%;
     }
-    .main-layout:has(#app:not(.board)) {
+    .main-layout:has(#app.canvas) {
+      width: 100%;
+      flex: 1 1 auto;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    .main-layout:has(#app.list) {
       margin-left: 0;
       margin-right: 0;
     }
@@ -143,19 +159,26 @@
       flex: 1 1 auto;
       min-width: 0;
     }
-    .main-layout > #app:not(.board) {
+    .main-layout > #app.list {
       flex: 0 0 500px;
       width: 500px;
       max-width: 100%;
+    }
+    .main-layout > #app.canvas {
+      flex: 1 1 auto;
+      width: 100%;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
     }
     @media (max-width: 840px) {
       .app-body {
         flex-direction: column;
       }
-      .main-layout:has(#app:not(.board)) {
+      .main-layout:has(#app.list) {
         width: 100%;
       }
-      .main-layout > #app:not(.board) {
+      .main-layout > #app.list {
         flex: 1 1 auto;
         width: 100%;
       }
@@ -223,10 +246,31 @@
       padding: 0;
       position: relative;
       overflow: hidden;
-      background: var(--bg);
+      background: var(--tone-1);
+      cursor: default;
       box-shadow:
         0 1px 2px rgba(0, 0, 0, 0.07),
         0 4px 14px rgba(0, 0, 0, 0.08);
+    }
+    .card button,
+    .card a,
+    .card [data-action] {
+      cursor: pointer;
+    }
+    .card textarea,
+    .card input {
+      cursor: default;
+    }
+    .card textarea:focus,
+    .card input:focus {
+      cursor: text;
+    }
+    .card.card-incomplete {
+      background: var(--question-bg);
+      color: var(--question-text);
+    }
+    .card.card-partial {
+      background: var(--tone-1);
     }
     .card.card-complete {
       background: var(--answer-card-bg);
@@ -241,8 +285,14 @@
       background: var(--answer-bg);
       color: var(--answer-text);
     }
-    .card.card-complete .btn-delete {
+    .card.card-incomplete .tags-row,
+    .card.card-partial .tags-row {
+      background: var(--question-bg);
+      color: var(--question-text);
+    }
+    .card.card-complete .tags-row {
       background: var(--answer-card-bg);
+      color: var(--answer-text);
     }
     .timeline-step.answered .problem {
       background: var(--answer-bg);
@@ -269,14 +319,22 @@
       border: none;
       background: var(--tone-1);
     }
-    .timeline-step:hover .answer-block.empty,
-    .timeline-step:focus-within .answer-block.empty {
+    .timeline-step:not(.answered) .answer-block.empty {
       display: block;
     }
     .card-top {
       min-height: 1.5rem;
     }
-    .card-main { min-width: 0; }
+    .card-main {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    .btn-delete,
+    .field-remove-btn,
+    .answer-mark-btn {
+      transition: opacity 0.15s ease, background 0.15s ease, color 0.15s ease;
+    }
     .btn-delete {
       position: absolute;
       top: 0.35rem;
@@ -286,18 +344,17 @@
       height: 24px;
       border: none;
       border-radius: 6px;
-      background: var(--bg);
+      background: transparent;
       color: var(--muted);
       cursor: pointer;
       font-size: 1.1rem;
       line-height: 1;
       opacity: 0;
-      transition: opacity 0.15s, background 0.15s, color 0.15s;
     }
     .card:hover .btn-delete { opacity: 1; }
     .btn-delete:hover { background: var(--hover-fill); color: var(--text); }
     .editable {
-      cursor: text;
+      cursor: default;
       border-radius: 4px;
       padding: 2px 4px;
       margin: -2px -4px;
@@ -347,6 +404,49 @@
       background: var(--answer-tentative-bg);
     }
     .editable.empty { color: var(--muted); font-style: italic; }
+    .problem-row {
+      position: relative;
+    }
+    .field-remove-btn {
+      font: inherit;
+      font-size: 0.85rem;
+      line-height: 1;
+      width: 1.25rem;
+      height: 1.25rem;
+      padding: 0;
+      margin: 0;
+      border: none;
+      border-radius: 4px;
+      background: rgba(0, 0, 0, 0.08);
+      color: inherit;
+      cursor: pointer;
+      opacity: 0;
+      flex-shrink: 0;
+    }
+    .field-remove-btn--problem {
+      position: absolute;
+      top: var(--qa-join-py);
+      right: var(--card-text-x);
+      z-index: 1;
+    }
+    .timeline-step:first-child .field-remove-btn--problem {
+      top: var(--qa-py);
+    }
+    .problem-row:hover .field-remove-btn--problem,
+    .problem-row:focus-within .field-remove-btn--problem {
+      opacity: 1;
+    }
+    .answer-block:not(.empty):hover .answer-meta-actions .field-remove-btn,
+    .answer-block:not(.empty):focus-within:has(textarea, input) .answer-meta-actions .field-remove-btn {
+      opacity: 1;
+    }
+    .field-remove-btn:hover,
+    .answer-mark-btn:hover {
+      background: rgba(0, 0, 0, 0.12);
+    }
+    .problem-row:has(.field-remove-btn--problem) .problem {
+      padding-right: calc(var(--card-text-x) + 1.35rem);
+    }
     .problem {
       font-weight: 400;
       font-size: 0.9rem;
@@ -366,6 +466,12 @@
     .timeline-step:last-child:not(:has(.answer-block:not(.empty))) .problem {
       padding-bottom: var(--qa-py);
     }
+    .timeline-step + .timeline-step .problem {
+      padding-top: var(--qa-join-py);
+    }
+    .timeline-step:not(:last-child) .answer-block:not(.empty) {
+      padding-bottom: var(--qa-join-py);
+    }
     .answer-block {
       font-size: 0.85rem;
       padding: var(--qa-join-py) var(--card-text-x) var(--qa-py);
@@ -376,6 +482,8 @@
     .answer-block:not(.empty) {
       background: var(--answer-bg);
       color: var(--answer-text);
+      padding-top: var(--qa-py);
+      padding-bottom: var(--qa-py);
     }
     .answer-block.empty {
       color: var(--muted);
@@ -384,7 +492,7 @@
     }
     .answer-inner {
       display: flex;
-      align-items: flex-start;
+      align-items: center;
       justify-content: space-between;
       gap: var(--card-text-x);
     }
@@ -401,35 +509,55 @@
       gap: 0.25rem;
       flex-shrink: 0;
     }
+    .answer-meta-actions {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 0.2rem;
+      flex-shrink: 0;
+    }
+    .answer-meta-actions .field-remove-btn {
+      width: 1.5rem;
+      height: 1.5rem;
+      font-size: 1rem;
+      margin: 0;
+    }
     .answer-mark-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
       font: inherit;
       font-size: 1rem;
       line-height: 1;
       width: 1.5rem;
       height: 1.5rem;
       padding: 0;
+      margin: 0;
       border: none;
       border-radius: 4px;
       background: rgba(0, 0, 0, 0.08);
       color: inherit;
       cursor: pointer;
       opacity: 0;
-      transition: opacity 0.15s, background 0.15s;
     }
-    .answer-block:hover .answer-mark-btn,
-    .answer-block:focus-within .answer-mark-btn,
+    .answer-meta-actions .field-remove-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .answer-block:not(.empty):hover .answer-mark-btn,
+    .answer-block:not(.empty):focus-within:has(textarea, input) .answer-mark-btn,
     .answer-mark-btn[aria-pressed="true"] {
       opacity: 1;
     }
-    .answer-mark-btn:hover { background: rgba(0, 0, 0, 0.12); }
     .answer-mark-btn[aria-pressed="true"] {
       background: rgba(0, 0, 0, 0.14);
       box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
     }
     .answer-mark-icon {
       display: block;
-      font-size: 1.35rem;
-      line-height: 1.5rem;
+      font-size: 1.05rem;
+      line-height: 1;
       text-align: center;
     }
     .answer-block.answer-marked {
@@ -470,7 +598,8 @@
       box-shadow: none;
     }
     .inline-input:focus {
-      box-shadow: inset 0 0 0 2px var(--focus-ring);
+      box-shadow: none;
+      cursor: text;
     }
     .inline-input.single {
       min-height: unset;
@@ -478,25 +607,20 @@
       padding: 0.2rem 0.35rem;
       border-radius: 6px;
     }
-    .inline-input-problem {
+    .problem > .inline-input-problem {
       display: block;
       margin: 0;
-      padding: var(--qa-py) var(--card-text-x) var(--qa-join-py);
-      font-size: 0.9rem;
-      font-weight: 400;
-      background: var(--question-bg);
-      color: var(--question-text);
+      padding: 0;
+      width: 100%;
+      min-height: 1.45em;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      font-size: inherit;
+      font-weight: inherit;
+      line-height: inherit;
       border-radius: 0;
-      min-height: unset;
-    }
-    .timeline-step:first-child .inline-input-problem {
-      font-weight: 600;
-      font-size: 0.95rem;
-    }
-    .timeline-step.answered .inline-input-problem,
-    .card.card-complete .inline-input-problem {
-      background: var(--answer-bg);
-      color: var(--answer-text);
+      field-sizing: fixed;
     }
     .inline-input-answer {
       display: block;
@@ -513,7 +637,7 @@
       flex-wrap: wrap;
       gap: 0.35rem 0.55rem;
       margin: 0;
-      align-items: center;
+      align-items: flex-start;
       padding: 0.45rem var(--card-text-x) 0.4rem;
       padding-right: calc(var(--card-text-x) + 1.75rem);
     }
@@ -526,10 +650,22 @@
       gap: 0.35rem;
     }
     .tags-row-edit .inline-input.single {
-      flex: 1 1 6rem;
-      min-width: 4rem;
+      flex: 0 1 auto;
+      min-width: 0;
       width: auto;
       max-width: 100%;
+      font-size: 0.75rem;
+      line-height: 1.25;
+      padding: 0;
+      min-height: 0;
+      box-shadow: none;
+    }
+    .tags-row-edit .inline-input.single:focus {
+      box-shadow: none;
+      background: var(--hover-fill);
+    }
+    .tags-row:has(.tags-row-edit .inline-input.single) {
+      flex-wrap: nowrap;
     }
     .tags-row-tags {
       display: inline-flex;
@@ -559,38 +695,57 @@
       outline: none;
     }
     .tags-row:not(:has(.tag)) .tags-add {
-      display: none;
+      visibility: hidden;
     }
-    .card:hover .tags-row:not(:has(.tag)) .tags-add,
-    .card:focus-within .tags-row:not(:has(.tag)) .tags-add {
-      display: inline;
+    .card:hover .tags-row:not(:has(.tag)) .tags-add {
+      visibility: visible;
+    }
+    .followup-slot {
+      display: grid;
+      grid-template-rows: 0fr;
+      flex: none;
+      position: relative;
+      z-index: 1;
+      margin-top: -1px;
+      background: var(--question-bg);
+      transition: grid-template-rows 0.12s cubic-bezier(0.33, 1, 0.38, 1);
+    }
+    .card-main:has(.timeline-step:last-child:hover) .followup-slot,
+    .card-main:has(.followup-slot:hover) .followup-slot,
+    .followup-slot:has(.followup-input:focus),
+    .followup-slot:has(.followup-input:not(:placeholder-shown)) {
+      grid-template-rows: 1fr;
+    }
+    .followup-slot-inner {
+      overflow: hidden;
+      min-height: 0;
+      background: var(--question-bg);
     }
     .followup-input {
-      display: none;
+      display: block;
       width: 100%;
-      margin-top: 0.5rem;
-      padding: 0.45rem var(--card-text-x);
+      margin: 0;
+      padding: var(--qa-py) var(--card-text-x);
       border: none;
-      border-radius: 6px;
+      border-radius: 0;
       font: inherit;
-      font-size: 0.85rem;
+      font-size: 0.9rem;
       line-height: 1.45;
-      color: var(--text);
-      background: var(--tone-2);
+      color: var(--question-text);
+      background: var(--question-bg);
       outline: none;
       min-height: 2.25rem;
-    }
-    .card:hover .followup-input,
-    .card:focus-within .followup-input,
-    .followup-input:not(:placeholder-shown) {
-      display: block;
+      box-sizing: border-box;
     }
     .followup-input:focus {
-      display: block;
-      background: var(--bg);
-      box-shadow: 0 0 0 3px var(--focus-ring);
+      background: var(--question-bg);
+      color: var(--question-text);
+      box-shadow: none;
+      cursor: text;
     }
-    .followup-input::placeholder { color: var(--muted); }
+    .followup-input::placeholder {
+      color: color-mix(in srgb, var(--question-text) 36%, var(--question-bg));
+    }
     .tag {
       font-size: 0.68rem;
       font-weight: 500;
@@ -598,16 +753,16 @@
       border-radius: 4px;
     }
     .tags-row-edit[data-editable] {
-      cursor: text;
+      cursor: default;
       border-radius: 6px;
-      padding: 0.1rem 0.25rem;
-      margin: -0.1rem -0.25rem;
     }
     .tags-row-edit[data-editable]:hover { background: var(--hover-fill); }
     .tags-add {
       font-size: 0.75rem;
+      line-height: 1.25;
       color: var(--muted);
       font-style: italic;
+      min-width: 2.15rem;
     }
     .card-footer {
       margin-top: 0.5rem;
@@ -673,6 +828,7 @@
       resize: none;
       outline: none;
       min-height: 2.75rem;
+      cursor: text;
     }
     .composer-meta {
       display: flex;
@@ -690,6 +846,7 @@
       font-size: 0.75rem;
       color: var(--text);
       outline: none;
+      cursor: text;
     }
     .composer-meta input::placeholder { color: var(--muted); }
     .composer-actions {
@@ -754,6 +911,121 @@
       display: flex;
       flex-direction: column;
       gap: 1rem;
+    }
+    .canvas-view {
+      display: flex;
+      gap: 1rem;
+      align-items: stretch;
+      flex: 1 1 auto;
+      min-height: calc(100vh - var(--app-header-h) - 5rem);
+      width: 100%;
+    }
+    .canvas-tray {
+      flex: 0 0 260px;
+      max-width: min(280px, 28vw);
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      padding: 0.65rem;
+      background: var(--surface);
+      border-radius: 12px;
+      border: 1px solid var(--tone-2);
+      overflow: auto;
+      max-height: none;
+      align-self: stretch;
+    }
+    .canvas-tray-title {
+      margin: 0 0 0.25rem;
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+    }
+    .canvas-tray-item {
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+      padding: 0.45rem 0.5rem;
+      border-radius: 8px;
+      background: var(--bg);
+      border: 1px solid var(--tone-2);
+      cursor: grab;
+      user-select: none;
+    }
+    .canvas-tray-item:active { cursor: grabbing; }
+    .canvas-tray-item.is-on-canvas {
+      border-color: var(--link);
+      box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.15);
+    }
+    .canvas-tray-id {
+      font-size: 0.68rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      color: var(--text);
+    }
+    .canvas-tray-q {
+      font-size: 0.75rem;
+      line-height: 1.35;
+      color: var(--muted);
+    }
+    .spatial-canvas {
+      position: relative;
+      flex: 1 1 auto;
+      min-width: 0;
+      width: 100%;
+      min-height: calc(100vh - var(--app-header-h) - 5rem);
+      overflow: auto;
+      border-radius: 12px;
+      border: 1px dashed var(--tone-2);
+      background: var(--canvas-bg);
+    }
+    .canvas-hint {
+      position: absolute;
+      left: 50%;
+      top: 45%;
+      transform: translate(-50%, -50%);
+      margin: 0;
+      font-size: 0.85rem;
+      color: var(--muted);
+      pointer-events: none;
+    }
+    .canvas-placed-card {
+      position: absolute;
+      width: min(420px, calc(100% - 1rem));
+      z-index: 1;
+      touch-action: none;
+    }
+    .canvas-placed-card.is-dragging {
+      z-index: 20;
+      opacity: 0.92;
+      cursor: grabbing;
+    }
+    .canvas-placed-card.is-dragging,
+    .canvas-placed-card.is-dragging * {
+      user-select: none;
+    }
+    .canvas-placed-card .card {
+      user-select: none;
+      box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
+    }
+    .canvas-placed-card .card textarea,
+    .canvas-placed-card .card input {
+      user-select: text;
+    }
+    @media (max-width: 720px) {
+      .canvas-view {
+        flex-direction: column;
+        min-height: auto;
+      }
+      .canvas-tray {
+        flex: none;
+        max-width: none;
+        max-height: 12rem;
+      }
+      .spatial-canvas {
+        min-height: 50vh;
+      }
     }
     .composer-in-card { margin-top: 0.5rem; }
     .mention {
@@ -1573,6 +1845,7 @@
     .issue-ref-panel-body .card-readonly .issue-ref-link {
       cursor: default;
     }
+    .issue-ref-panel-body .card-readonly .timeline-step:not(.answered) .answer-block.empty,
     .issue-ref-panel-body .card-readonly .timeline-step:hover .answer-block.empty,
     .issue-ref-panel-body .card-readonly .timeline-step:focus-within .answer-block.empty {
       display: none !important;
@@ -1682,6 +1955,7 @@
         <nav class="view-tabs" aria-label="View">
           <button type="button" class="view-tab" data-view="board">Board</button>
           <button type="button" class="view-tab active" data-view="list">List</button>
+          <button type="button" class="view-tab" data-view="canvas">Canvas</button>
         </nav>
         <button type="button" class="view-tab dates-toggle" data-action="toggle-dates" aria-pressed="false">Dates</button>
         <span class="badge-proto">PoC · saved locally</span>
@@ -1715,6 +1989,8 @@
     let selectionRefToolbarEl = null;
     /** @type {HTMLTextAreaElement | null} */
     let selectionRefToolbarTa = null;
+    /** @type {HTMLTextAreaElement | null} */
+    let selectionDragTa = null;
     /** @type {{ ta: HTMLTextAreaElement, start: number, end: number, label: string } | null} */
     let selectionRefToolbarState = null;
     /** @type {object | null} */
@@ -1772,10 +2048,23 @@
     /** @type {{ id: string, field: string, step?: number, panel?: boolean } | null} */
     let pendingFocus = null;
 
+    /** @type {{ id: string, field: string, step: number } | null} */
+    let pendingEditableHandoff = null;
+
     const PANEL_CARD_ID_PREFIX = 'panel-';
 
-    /** @type {'board' | 'list'} */
+    /** @type {'board' | 'list' | 'canvas'} */
     let viewMode = 'list';
+
+    /** @type {Record<string, { x: number, y: number }>} */
+    let canvasPlacements = {};
+
+    /** @type {{ placed: HTMLElement, id: string, pointerId: number, offX: number, offY: number, startX: number, startY: number, dragging: boolean } | null} */
+    let canvasPointerState = null;
+
+    let canvasSuppressClickUntil = 0;
+
+    let canvasInteractionsBound = false;
 
     let showAllDates = false;
 
@@ -1802,6 +2091,7 @@
           items,
           viewMode,
           showAllDates,
+          canvasPlacements,
         }));
       } catch (err) {
         console.warn('Could not save to localStorage', err);
@@ -1859,8 +2149,13 @@
         }
         migrateAllItemRefSigils();
         recomputeNextId();
-        if (data.viewMode === 'board' || data.viewMode === 'list') viewMode = data.viewMode;
+        if (data.viewMode === 'board' || data.viewMode === 'list' || data.viewMode === 'canvas') {
+          viewMode = data.viewMode;
+        }
         if (typeof data.showAllDates === 'boolean') showAllDates = data.showAllDates;
+        if (data.canvasPlacements && typeof data.canvasPlacements === 'object') {
+          canvasPlacements = data.canvasPlacements;
+        }
         return true;
       } catch (err) {
         console.warn('Could not load from localStorage', err);
@@ -2128,6 +2423,26 @@
       if (!trimmed || !items[itemId]) return false;
       items[itemId].steps.push(normalizeStep({ problem: trimmed, answer: null }));
       return true;
+    }
+
+    function clearStepAnswer(itemId, stepIndex) {
+      const step = items[itemId]?.steps[stepIndex];
+      if (!step || !stepResolved(step)) return;
+      step.answer = null;
+      step.decidedAt = null;
+      step.answerTentative = false;
+      step.answerRevisions = [];
+      step.answerRev = 0;
+      render();
+    }
+
+    function removeStep(itemId, stepIndex) {
+      const item = items[itemId];
+      if (!item || item.steps.length <= 1) return;
+      const idx = Number(stepIndex);
+      if (!Number.isFinite(idx) || idx < 0 || idx >= item.steps.length) return;
+      item.steps.splice(idx, 1);
+      render();
     }
 
     function seed() {
@@ -3448,12 +3763,78 @@
       return !!ta?.matches?.(REF_EDITABLE_TEXTAREA_SEL) && !ta.closest('.issue-ref-panel-body');
     }
 
+    function refEditableTextareaForSelection(eventTarget) {
+      const fromTarget = eventTarget?.closest?.('textarea');
+      if (isRefEditableTextarea(fromTarget)) return fromTarget;
+      const active = document.activeElement;
+      if (isRefEditableTextarea(active)) return active;
+      if (isRefEditableTextarea(selectionDragTa)) return selectionDragTa;
+      return null;
+    }
+
+    function finishTextareaSelectionRefToolbar(ta, clientX, clientY) {
+      if (!ta) {
+        hideSelectionRefToolbar();
+        return;
+      }
+      setTimeout(() => updateSelectionRefToolbar(ta, clientX, clientY), 0);
+    }
+
     function getTextareaSelectionLabel(ta) {
       const start = ta.selectionStart ?? 0;
       const end = ta.selectionEnd ?? 0;
       if (start === end) return null;
       const label = ta.value.slice(start, end).trim();
       return label ? { start, end, label } : null;
+    }
+
+    /** @type {HTMLDivElement | null} */
+    let textareaSelectionMirrorEl = null;
+
+    function getTextareaSelectionAnchor(ta, start, end) {
+      if (!ta || start == null || end == null || start >= end) return null;
+      if (!textareaSelectionMirrorEl) {
+        textareaSelectionMirrorEl = document.createElement('div');
+        textareaSelectionMirrorEl.setAttribute('aria-hidden', 'true');
+        textareaSelectionMirrorEl.style.position = 'fixed';
+        textareaSelectionMirrorEl.style.visibility = 'hidden';
+        textareaSelectionMirrorEl.style.pointerEvents = 'none';
+        textareaSelectionMirrorEl.style.whiteSpace = 'pre-wrap';
+        textareaSelectionMirrorEl.style.overflowWrap = 'anywhere';
+        textareaSelectionMirrorEl.style.wordBreak = 'break-word';
+        textareaSelectionMirrorEl.style.zIndex = '-1';
+        document.body.appendChild(textareaSelectionMirrorEl);
+      }
+      const taRect = ta.getBoundingClientRect();
+      const cs = getComputedStyle(ta);
+      const mirror = textareaSelectionMirrorEl;
+      mirror.style.left = `${taRect.left}px`;
+      mirror.style.top = `${taRect.top}px`;
+      mirror.style.width = `${taRect.width}px`;
+      mirror.style.height = `${taRect.height}px`;
+      mirror.style.overflow = 'auto';
+      mirror.style.boxSizing = cs.boxSizing;
+      mirror.style.padding = cs.padding;
+      mirror.style.border = cs.border;
+      mirror.style.font = cs.font;
+      mirror.style.lineHeight = cs.lineHeight;
+      mirror.style.letterSpacing = cs.letterSpacing;
+      mirror.scrollTop = ta.scrollTop;
+
+      const text = ta.value;
+      mirror.innerHTML = `${escapeHtml(text.slice(0, start))}<span data-sel-anchor></span>${escapeHtml(text.slice(end))}`;
+      const mid = mirror.querySelector('[data-sel-anchor]');
+      if (!mid) return null;
+      mid.textContent = text.slice(start, end);
+
+      const midRect = mid.getBoundingClientRect();
+      if (!midRect.width && !midRect.height) {
+        return { x: taRect.left + taRect.width / 2, y: taRect.top };
+      }
+      return {
+        x: midRect.left + midRect.width / 2,
+        y: midRect.top,
+      };
     }
 
     function positionSelectionRefToolbar(toolbar, clientX, clientY) {
@@ -3480,7 +3861,10 @@
       const toolbar = ensureSelectionRefToolbar();
       selectionRefToolbarTa = ta;
       selectionRefToolbarState = { ta, start: sel.start, end: sel.end, label: sel.label };
-      positionSelectionRefToolbar(toolbar, clientX, clientY);
+      const anchor = getTextareaSelectionAnchor(ta, sel.start, sel.end);
+      const x = anchor?.x ?? clientX ?? ta.getBoundingClientRect().left + ta.clientWidth / 2;
+      const y = anchor?.y ?? clientY ?? ta.getBoundingClientRect().top;
+      positionSelectionRefToolbar(toolbar, x, y);
     }
 
     function mountAutocompleteMenu(ta, buildItems) {
@@ -3988,6 +4372,184 @@
     function deleteItem(id) {
       delete items[id];
       delete followupDrafts[id];
+      delete canvasPlacements[id];
+    }
+
+    const CANVAS_CARD_WIDTH = 420;
+    const CANVAS_DROP_OFFSET_Y = 24;
+
+    function canvasSurfaceEl() {
+      return document.querySelector('[data-canvas-surface]');
+    }
+
+    function canvasPointFromClient(surface, clientX, clientY) {
+      const rect = surface.getBoundingClientRect();
+      return {
+        x: clientX - rect.left + surface.scrollLeft,
+        y: clientY - rect.top + surface.scrollTop,
+      };
+    }
+
+    function placeCardOnCanvas(itemId, clientX, clientY) {
+      const surface = canvasSurfaceEl();
+      if (!surface || !items[itemId]) return;
+      const pt = canvasPointFromClient(surface, clientX, clientY);
+      canvasPlacements[itemId] = {
+        x: Math.max(8, Math.round(pt.x - CANVAS_CARD_WIDTH / 2)),
+        y: Math.max(8, Math.round(pt.y - CANVAS_DROP_OFFSET_Y)),
+      };
+      scheduleSaveState();
+      render();
+    }
+
+    function renderCanvasTrayItem(item) {
+      const num = item.id.replace(/^item-/i, '');
+      const q = truncateLabel(getProblemText(item.steps[0]) || '', 88);
+      const onCanvas = !!canvasPlacements[item.id];
+      return `
+        <div class="canvas-tray-item${onCanvas ? ' is-on-canvas' : ''}" draggable="true" data-canvas-drag-id="${escapeAttr(item.id)}" aria-grabbed="false">
+          <span class="canvas-tray-id">!${escapeHtml(num)}</span>
+          <span class="canvas-tray-q">${escapeHtml(q)}</span>
+        </div>
+      `;
+    }
+
+    function renderCanvasPlacedCard(item, pos) {
+      return `
+        <div class="canvas-placed-card" data-canvas-placed="${escapeAttr(item.id)}" style="left:${pos.x}px;top:${pos.y}px">
+          ${renderCard(item)}
+        </div>
+      `;
+    }
+
+    function renderCanvasView() {
+      const ordered = allItemsOrdered();
+      const tray = ordered.length
+        ? ordered.map((item) => renderCanvasTrayItem(item)).join('')
+        : '<p class="canvas-tray-q" style="margin:0">No cards yet</p>';
+      const placed = Object.entries(canvasPlacements)
+        .filter(([id]) => items[id])
+        .map(([id, pos]) => renderCanvasPlacedCard(items[id], pos))
+        .join('');
+      const hint = placed ? '' : '<p class="canvas-hint">Drag cards from the list onto the canvas</p>';
+      return `
+        <section class="canvas-view">
+          <aside class="canvas-tray" aria-label="Cards to place">
+            <p class="canvas-tray-title">Cards</p>
+            ${tray}
+          </aside>
+          <div class="spatial-canvas" data-canvas-surface role="region" aria-label="Decision canvas">
+            ${hint}
+            ${placed}
+          </div>
+        </section>
+      `;
+    }
+
+    function bindCanvasInteractions() {
+      if (canvasInteractionsBound) return;
+      canvasInteractionsBound = true;
+      const app = document.getElementById('app');
+
+      app.addEventListener('dragstart', (e) => {
+        const tile = e.target.closest('.canvas-tray-item');
+        if (!tile) return;
+        const id = tile.dataset.canvasDragId;
+        if (!id) return;
+        e.dataTransfer.setData('text/plain', id);
+        e.dataTransfer.effectAllowed = 'copyMove';
+        tile.setAttribute('aria-grabbed', 'true');
+      });
+
+      app.addEventListener('dragend', (e) => {
+        const tile = e.target.closest('.canvas-tray-item');
+        if (tile) tile.setAttribute('aria-grabbed', 'false');
+      });
+
+      app.addEventListener('dragover', (e) => {
+        if (!e.target.closest('[data-canvas-surface]')) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'copy';
+      });
+
+      app.addEventListener('drop', (e) => {
+        const surface = e.target.closest('[data-canvas-surface]');
+        if (!surface) return;
+        e.preventDefault();
+        const id = e.dataTransfer.getData('text/plain');
+        if (id && items[id]) placeCardOnCanvas(id, e.clientX, e.clientY);
+      });
+
+      app.addEventListener('pointerdown', (e) => {
+        if (e.button !== 0) return;
+        const placed = e.target.closest('.canvas-placed-card');
+        if (!placed) return;
+        const followup = e.target.closest('[data-followup-input]');
+        if (e.target.closest('input') && !followup) return;
+        if (e.target.closest('textarea')) {
+          if (!followup) return;
+          if (document.activeElement === followup) return;
+        }
+        const id = placed.dataset.canvasPlaced;
+        if (!id || !canvasPlacements[id]) return;
+        const surface = canvasSurfaceEl();
+        if (!surface) return;
+        const pt = canvasPointFromClient(surface, e.clientX, e.clientY);
+        canvasPointerState = {
+          placed,
+          id,
+          pointerId: e.pointerId,
+          offX: pt.x - canvasPlacements[id].x,
+          offY: pt.y - canvasPlacements[id].y,
+          startX: e.clientX,
+          startY: e.clientY,
+          dragging: false,
+        };
+      }, true);
+
+      app.addEventListener('pointermove', (e) => {
+        const state = canvasPointerState;
+        if (!state || e.pointerId !== state.pointerId) return;
+        if (!state.dragging) {
+          const dx = e.clientX - state.startX;
+          const dy = e.clientY - state.startY;
+          if (dx * dx + dy * dy <= 16) return;
+          state.dragging = true;
+          state.placed.classList.add('is-dragging');
+          state.placed.setPointerCapture(e.pointerId);
+        }
+        e.preventDefault();
+        const surface = canvasSurfaceEl();
+        if (!surface) return;
+        const pt = canvasPointFromClient(surface, e.clientX, e.clientY);
+        canvasPlacements[state.id] = {
+          x: Math.max(8, Math.round(pt.x - state.offX)),
+          y: Math.max(8, Math.round(pt.y - state.offY)),
+        };
+        state.placed.style.left = `${canvasPlacements[state.id].x}px`;
+        state.placed.style.top = `${canvasPlacements[state.id].y}px`;
+      }, true);
+
+      const endCanvasPointer = (e) => {
+        const state = canvasPointerState;
+        if (!state || e.pointerId !== state.pointerId) return;
+        if (state.dragging) {
+          e.preventDefault();
+          canvasSuppressClickUntil = Date.now() + 350;
+          state.placed.classList.remove('is-dragging');
+          scheduleSaveState();
+        }
+        canvasPointerState = null;
+      };
+      app.addEventListener('pointerup', endCanvasPointer, true);
+      app.addEventListener('pointercancel', endCanvasPointer, true);
+
+      app.addEventListener('click', (e) => {
+        if (Date.now() < canvasSuppressClickUntil && e.target.closest('.canvas-placed-card')) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      }, true);
     }
 
     function renderComposerHtml() {
@@ -4005,15 +4567,37 @@
       `;
     }
 
-    function commitFollowup(itemId, text, { inPanel = false, ta = null } = {}) {
+    function commitFollowup(itemId, text, { inPanel = false, ta = null, focusAnswer = true } = {}) {
       if (ta) consumeTrailingHashTag(ta);
       const trimmed = (ta ? ta.value : text).trim();
       if (!trimmed || !items[itemId]) return;
       addStep(itemId, trimmed);
       delete followupDrafts[itemId];
-      const stepIndex = items[itemId].steps.length - 1;
-      pendingFocus = { id: itemId, field: 'answer', step: stepIndex, panel: inPanel };
+      if (focusAnswer) {
+        const stepIndex = items[itemId].steps.length - 1;
+        pendingFocus = { id: itemId, field: 'answer', step: stepIndex, panel: inPanel };
+      }
       render();
+    }
+
+    function tryCommitFollowupField(followup) {
+      if (!followup?.matches('[data-followup-input]')) return;
+      if (!followup.value.trim()) return;
+      commitFollowup(followup.dataset.id, followup.value, {
+        inPanel: !!followup.closest('.issue-ref-panel-body'),
+        ta: followup,
+        focusAnswer: !pendingEditableHandoff,
+      });
+    }
+
+    function finishEditableHandoff(root = document.getElementById('app')) {
+      if (!pendingEditableHandoff || !root) return;
+      const h = pendingEditableHandoff;
+      pendingEditableHandoff = null;
+      const el = h.field === 'tags'
+        ? root.querySelector(`[data-editable="tags"][data-id="${h.id}"]`)
+        : root.querySelector(`[data-editable="${h.field}"][data-id="${h.id}"][data-step="${h.step}"]`);
+      if (el) startInlineEdit(el, h.field, h.id, h.step);
     }
 
     function renderTagsHtml(item, { readOnly = false } = {}) {
@@ -4083,10 +4667,16 @@
       const fieldEditAttrs = (field) => inRefPanel
         ? ''
         : ` data-editable="${field}" data-id="${item.id}" data-step="${index}"`;
+      const answerClearBtn = !inRefPanel && !answerEmpty
+        ? `<button type="button" class="field-remove-btn" data-action="clear-answer" data-id="${item.id}" data-step="${index}" aria-label="Remove answer">×</button>`
+        : '';
       const answerMetaHtml = inRefPanel
         ? (dateHtml ? `<div class="answer-meta">${dateHtml}</div>` : '')
         : `<div class="answer-meta">
-                <button type="button" class="answer-mark-btn" data-action="toggle-answer-tentative" data-id="${item.id}" data-step="${index}" aria-pressed="${step.answerTentative ? 'true' : 'false'}" aria-label="${step.answerTentative ? 'Clear tentative mark' : 'Mark answer as tentative'}" title="Still needs specify, refine, or further thought"><span class="answer-mark-icon" aria-hidden="true">⚑</span></button>
+                <div class="answer-meta-actions">
+                  ${answerClearBtn}
+                  <button type="button" class="answer-mark-btn" data-action="toggle-answer-tentative" data-id="${item.id}" data-step="${index}" aria-pressed="${step.answerTentative ? 'true' : 'false'}" aria-label="${step.answerTentative ? 'Clear tentative mark' : 'Mark answer as tentative'}" title="Still needs specify, refine, or further thought"><span class="answer-mark-icon" aria-hidden="true">⚑</span></button>
+                </div>
                 ${dateHtml}
               </div>`;
       const answerHtml = answerEmpty
@@ -4097,7 +4687,10 @@
               ${answerMetaHtml}
             </div>
           </div>`;
-      const problemHtml = `<div class="problem${inRefPanel ? '' : ' editable'}${refBarOnProblem ? refTargetBar : ''}"${fieldEditAttrs('problem')}>${formatRichText(problemText)}</div>`;
+      const stepRemoveBtn = !inRefPanel && item.steps.length > 1
+        ? `<button type="button" class="field-remove-btn field-remove-btn--problem" data-action="remove-step" data-id="${item.id}" data-step="${index}" aria-label="Remove question">×</button>`
+        : '';
+      const problemHtml = `<div class="problem-row">${stepRemoveBtn}<div class="problem${inRefPanel ? '' : ' editable'}${refBarOnProblem ? refTargetBar : ''}"${fieldEditAttrs('problem')}>${formatRichText(problemText)}</div></div>`;
       const stepHighlight = highlightStep && !highlightRef?.focusAnswer ? ' highlight' : '';
       return `
         <div class="timeline-step${showAsAnswered ? ' answered' : ''}${stepHighlight}" id="${idPrefix}step-${item.id}-${index}">
@@ -4126,13 +4719,17 @@
             <div class="card-main">
               ${renderTagsHtml(item, { readOnly: inRefPanel })}
               <div class="timeline">${timeline}</div>
-              ${inRefPanel ? '' : `<textarea
-                class="followup-input"
-                data-followup-input
-                data-id="${item.id}"
-                placeholder="Follow-up question"
-                rows="1"
-              >${escapeHtml(draft)}</textarea>`}
+              ${inRefPanel ? '' : `<div class="followup-slot">
+                <div class="followup-slot-inner">
+                  <textarea
+                    class="followup-input"
+                    data-followup-input
+                    data-id="${item.id}"
+                    placeholder="Follow-up question"
+                    rows="1"
+                  >${escapeHtml(draft)}</textarea>
+                </div>
+              </div>`}
             </div>
             <button type="button" class="btn-delete" data-action="delete" data-id="${item.id}" aria-label="Delete">×</button>
           </div>
@@ -4196,8 +4793,12 @@
       removeIssuePreview();
       const drawerRef = issueDrawerRefId;
       const app = document.getElementById('app');
-      app.className = viewMode === 'board' ? 'board' : '';
-      app.innerHTML = viewMode === 'board' ? renderBoardView() : renderListView();
+      app.className = viewMode;
+      app.innerHTML = viewMode === 'board'
+        ? renderBoardView()
+        : viewMode === 'canvas'
+          ? renderCanvasView()
+          : renderListView();
 
       document.body.classList.toggle('show-dates', showAllDates);
       document.querySelectorAll('.view-tab[data-view]').forEach((tab) => {
@@ -4221,6 +4822,8 @@
           ? queryRoot.querySelector(`[data-editable="tags"][data-id="${id}"]`)
           : queryRoot.querySelector(`[data-editable="${field}"][data-id="${id}"][data-step="${step}"]`);
         if (el) startInlineEdit(el, field, id, step);
+      } else if (pendingEditableHandoff) {
+        finishEditableHandoff(document.getElementById('app'));
       } else {
         const composerInput = document.querySelector('[data-composer-input]');
         if (composerInput) {
@@ -4232,10 +4835,12 @@
       if (drawerRef) populateIssueRefDrawer(drawerRef);
 
       syncAutoGrowTextareas(document.getElementById('app'));
+      if (viewMode === 'canvas') bindCanvasInteractions();
       scheduleSaveState();
     }
 
     function setView(mode) {
+      if (mode !== 'board' && mode !== 'list' && mode !== 'canvas') return;
       viewMode = mode;
       render();
     }
@@ -4265,14 +4870,22 @@
         input.type = 'text';
         input.className = 'inline-input single';
         input.value = item.tags.join(', ');
-        el.replaceWith(input);
+        const syncTagsInputSize = () => {
+          const len = Math.max(input.value.length, 1);
+          input.size = Math.min(Math.max(len, 4), 48);
+        };
+        el.replaceChildren(input);
+        syncTagsInputSize();
+        input.addEventListener('input', syncTagsInputSize);
         input.focus();
         input.select();
         const commit = () => {
           item.tags = parseTags(input.value);
           render();
         };
-        input.addEventListener('blur', commit);
+        input.addEventListener('blur', () => {
+          setTimeout(() => commit(), 0);
+        });
         input.addEventListener('keydown', (e) => {
           if (isEnterSubmit(e)) { e.preventDefault(); input.blur(); }
           if (e.key === 'Escape') { pendingFocus = null; render(); }
@@ -4292,7 +4905,19 @@
       ta.dataset.refStep = String(stepIndex);
       ta.value = current;
       ta.rows = 1;
-      el.replaceWith(ta);
+      const emptyAnswerBlock = !isProblem
+        && el.classList.contains('answer-block')
+        && el.classList.contains('empty');
+      const problemBlock = isProblem && el.classList.contains('problem');
+      if (emptyAnswerBlock) {
+        el.classList.remove('empty', 'editable');
+        el.replaceChildren(ta);
+      } else if (problemBlock) {
+        el.classList.remove('editable');
+        el.replaceChildren(ta);
+      } else {
+        el.replaceWith(ta);
+      }
       autoGrowTextarea(ta);
       ta.focus();
       ta.setSelectionRange(ta.value.length, ta.value.length);
@@ -4317,12 +4942,17 @@
 
       ta.addEventListener('blur', () => {
         setTimeout(hideSelectionRefToolbar, 120);
-        if (isRefLinkPickerOpen() || selectionRefPick) {
-          pendingInlineEditCommit = commit;
-          return;
-        }
-        removeMentionMenu();
-        commit();
+        setTimeout(() => {
+          if (isRefLinkPickerOpen() || selectionRefPick) {
+            pendingInlineEditCommit = commit;
+            return;
+          }
+          if (document.body.contains(ta) && getTextareaSelectionLabel(ta)) {
+            return;
+          }
+          removeMentionMenu();
+          commit();
+        }, 0);
       });
       ta.addEventListener('keydown', (e) => {
         if (isEnterSubmit(e)) {
@@ -4363,11 +4993,39 @@
       if (tab) setView(tab.dataset.view);
     });
 
+    document.getElementById('app-body').addEventListener('mousedown', (e) => {
+      if (e.button !== 0) return;
+      if (Date.now() < canvasSuppressClickUntil && e.target.closest('.canvas-placed-card')) return;
+      if (e.target.closest('.issue-ref-panel-body')) return;
+
+      const editable = e.target.closest('[data-editable]');
+      if (!editable) return;
+      if (e.target.closest('[data-action]')) return;
+      if (e.target.closest('textarea, input') && editable.contains(e.target)) return;
+
+      const active = document.activeElement;
+      if (!active?.matches('textarea.inline-input, input.inline-input.single, [data-followup-input]')) return;
+
+      const sameField = !active.matches('[data-followup-input]')
+        && active.closest('[data-editable]') === editable;
+      if (sameField) return;
+
+      pendingEditableHandoff = {
+        id: editable.dataset.id,
+        field: editable.dataset.editable,
+        step: editable.dataset.editable === 'tags' ? 0 : Number(editable.dataset.step),
+      };
+      e.preventDefault();
+      active.blur();
+    }, true);
+
     document.getElementById('app-body').addEventListener('click', (e) => {
+      if (Date.now() < canvasSuppressClickUntil && e.target.closest('.canvas-placed-card')) return;
+
       const editable = e.target.closest('[data-editable]');
       if (editable && !editable.closest('.issue-ref-panel-body') && !e.target.closest('textarea, input, [data-action]')) {
-        const field = editable.dataset.editable;
         const id = editable.dataset.id;
+        const field = editable.dataset.editable;
         const step = field === 'tags' ? 0 : Number(editable.dataset.step);
         startInlineEdit(editable, field, id, step);
         return;
@@ -4557,6 +5215,16 @@
         return;
       }
 
+      if (action === 'clear-answer' && id && items[id]) {
+        clearStepAnswer(id, Number(actionEl.dataset.step));
+        return;
+      }
+
+      if (action === 'remove-step' && id && items[id]) {
+        removeStep(id, Number(actionEl.dataset.step));
+        return;
+      }
+
       if (action === 'delete' && id && items[id]) {
         const openParsed = issueDrawerRefId ? parseIssueRef(issueDrawerRefId) : null;
         if (openParsed?.itemId === id) closeIssueRefDrawer();
@@ -4577,24 +5245,27 @@
     });
 
 
-    document.getElementById('app-body').addEventListener('mouseup', (e) => {
-      if (selectionRefToolbarEl?.contains(e.target) || mentionMenuEl?.contains(e.target)) return;
+    document.getElementById('app-body').addEventListener('mousedown', (e) => {
       const ta = e.target.closest('textarea');
-      if (!isRefEditableTextarea(ta)) {
+      selectionDragTa = isRefEditableTextarea(ta) ? ta : null;
+    }, true);
+
+    document.addEventListener('mouseup', (e) => {
+      if (selectionRefToolbarEl?.contains(e.target) || mentionMenuEl?.contains(e.target)) return;
+      const ta = refEditableTextareaForSelection(e.target);
+      selectionDragTa = null;
+      if (!ta) {
         hideSelectionRefToolbar();
         return;
       }
-      const x = e.clientX;
-      const y = e.clientY;
-      setTimeout(() => updateSelectionRefToolbar(ta, x, y), 0);
+      finishTextareaSelectionRefToolbar(ta, e.clientX, e.clientY);
     });
 
     document.getElementById('app-body').addEventListener('keyup', (e) => {
       const ta = e.target.closest('textarea');
       if (!isRefEditableTextarea(ta)) return;
       if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'Shift'].includes(e.key)) return;
-      const rect = ta.getBoundingClientRect();
-      updateSelectionRefToolbar(ta, rect.left + rect.width / 2, rect.top + 12);
+      updateSelectionRefToolbar(ta);
     });
 
     document.getElementById('app-body').addEventListener('input', (e) => {
@@ -4605,14 +5276,25 @@
       if (followup) followupDrafts[followup.dataset.id] = followup.value;
     });
 
+    document.getElementById('app-body').addEventListener('focusout', (e) => {
+      if (!e.target.matches('[data-followup-input]')) return;
+      const followup = e.target;
+      setTimeout(() => {
+        const handoff = pendingEditableHandoff;
+        if (document.body.contains(followup)) {
+          tryCommitFollowupField(followup);
+        }
+        if (handoff && pendingEditableHandoff) {
+          finishEditableHandoff();
+        }
+      }, 0);
+    });
+
     document.getElementById('app-body').addEventListener('keydown', (e) => {
       const followup = e.target.closest('[data-followup-input]');
       if (followup && isEnterSubmit(e)) {
         e.preventDefault();
-        commitFollowup(followup.dataset.id, followup.value, {
-          inPanel: !!followup.closest('.issue-ref-panel-body'),
-          ta: followup,
-        });
+        tryCommitFollowupField(followup);
         return;
       }
 
