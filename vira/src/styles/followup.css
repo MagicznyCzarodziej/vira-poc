@@ -1,0 +1,111 @@
+    .followup-slot {
+      display: grid;
+      grid-template-rows: 0fr;
+      flex: none;
+      position: relative;
+      z-index: 1;
+      margin-top: -1px;
+      background: var(--question-bg);
+      transition: grid-template-rows 0.12s cubic-bezier(0.33, 1, 0.38, 1);
+    }
+    .card-main:has(.timeline-step:last-child:hover) .followup-slot,
+    .card-main:has(.followup-slot:hover) .followup-slot,
+    .followup-slot:has(.followup-input:focus),
+    .followup-slot:has(.followup-input:not(:placeholder-shown)) {
+      grid-template-rows: 1fr;
+    }
+    .followup-slot-inner {
+      overflow: hidden;
+      min-height: 0;
+      background: var(--question-bg);
+    }
+    .followup-input {
+      display: block;
+      width: 100%;
+      margin: 0;
+      padding: var(--qa-py) var(--card-text-x);
+      border: none;
+      border-radius: 0;
+      font: inherit;
+      font-size: 0.9rem;
+      line-height: 1.45;
+      color: var(--question-text);
+      background: var(--question-bg);
+      outline: none;
+      min-height: 2.25rem;
+      box-sizing: border-box;
+    }
+    .followup-input:focus {
+      background: var(--question-bg);
+      color: var(--question-text);
+      box-shadow: none;
+      cursor: text;
+    }
+    .followup-input::placeholder {
+      color: color-mix(in srgb, var(--question-text) 36%, var(--question-bg));
+    }
+    .tag {
+      font-size: 0.68rem;
+      font-weight: 500;
+      padding: 0.12rem 0.4rem;
+      border-radius: 4px;
+    }
+    .tags-row-edit[data-editable] {
+      cursor: default;
+      border-radius: 6px;
+    }
+    .tags-row-edit[data-editable]:hover { background: var(--hover-fill); }
+    .tags-add {
+      font-size: 0.75rem;
+      line-height: 1.25;
+      color: var(--muted);
+      font-style: italic;
+      min-width: 2.15rem;
+    }
+    .card-footer {
+      margin-top: 0.5rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem 0.75rem;
+      align-items: center;
+    }
+    .text-btn {
+      background: none;
+      border: none;
+      padding: 0;
+      font: inherit;
+      font-size: 0.75rem;
+      color: var(--link);
+      cursor: pointer;
+    }
+    .text-btn:hover { color: var(--text); text-decoration: underline; }
+    .text-btn.muted { color: var(--muted); }
+    .links {
+      font-size: 0.72rem;
+      color: var(--muted);
+    }
+    .links button {
+      background: none; border: none; padding: 0;
+      font: inherit; color: var(--link); cursor: pointer;
+    }
+    .links button:hover { text-decoration: underline; }
+    .add-trigger {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      width: 100%;
+      padding: 0.55rem 0.65rem;
+      border: none;
+      border-radius: 8px;
+      background: var(--tone-2);
+      color: var(--muted);
+      font: inherit;
+      font-size: 0.8rem;
+      cursor: pointer;
+      text-align: left;
+      transition: color 0.15s, background 0.15s;
+    }
+    .add-trigger:hover {
+      color: var(--text);
+      background: var(--tone-3);
+    }

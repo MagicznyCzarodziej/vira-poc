@@ -1,0 +1,149 @@
+    .issue-ref {
+      font: inherit;
+      font-size: inherit;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      padding: 0 0.25rem;
+      margin: 0 0.05rem;
+      border: none;
+      border-radius: 3px;
+      background: rgba(0, 0, 0, 0.1);
+      color: inherit;
+      cursor: pointer;
+      vertical-align: baseline;
+    }
+    .issue-ref:hover { background: rgba(0, 0, 0, 0.16); }
+    .issue-ref-link {
+      font-size: inherit;
+      font-weight: 600;
+      font-variant-numeric: normal;
+      padding: 0;
+      margin: 0;
+      border-radius: 0;
+      background: transparent;
+      text-decoration: underline;
+      text-decoration-thickness: 1px;
+      text-underline-offset: 2px;
+    }
+    .issue-ref-link:hover {
+      background: rgba(0, 0, 0, 0.06);
+    }
+    .issue-ref-missing {
+      opacity: 0.55;
+      text-decoration: line-through;
+    }
+    .issue-ref.issue-ref-stale {
+      background: #fde68a;
+      color: #78350f;
+    }
+    .issue-ref.issue-ref-stale:hover {
+      background: #fcd34d;
+    }
+    .issue-ref-link.issue-ref-stale {
+      background: transparent;
+      color: #92400e;
+      text-decoration-color: #d97706;
+    }
+    .issue-ref-link.issue-ref-stale:hover {
+      background: rgba(251, 191, 36, 0.15);
+    }
+    .issue-ref-preview {
+      position: absolute;
+      z-index: 10000;
+      max-width: min(22rem, calc(100vw - 1.5rem));
+      padding: 0.65rem 0.75rem;
+      border-radius: 10px;
+      background: var(--bg);
+      color: var(--text);
+      box-shadow:
+        0 4px 24px rgba(0, 0, 0, 0.14),
+        0 0 0 1px rgba(0, 0, 0, 0.06);
+      pointer-events: auto;
+      font-size: 0.8rem;
+      line-height: 1.4;
+    }
+    .issue-ref-preview.issue-ref-preview-is-stale {
+      background: #fffbeb;
+      box-shadow:
+        0 4px 24px rgba(217, 119, 6, 0.14),
+        0 0 0 1px #fcd34d;
+    }
+    .issue-ref-preview.issue-ref-preview-is-stale .issue-ref-preview-head {
+      border-bottom-color: #fde68a;
+    }
+    .issue-ref-preview.issue-ref-preview-is-stale .issue-ref-preview-status {
+      color: #92400e;
+    }
+    .issue-ref-preview-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin-bottom: 0.5rem;
+      padding-bottom: 0.4rem;
+      border-bottom: 1px solid var(--tone-2);
+    }
+    .issue-ref-preview-id {
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+    .issue-ref-preview-status {
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+    }
+    .issue-ref-preview-step + .issue-ref-preview-step {
+      margin-top: 0.55rem;
+    }
+    .issue-ref-preview-q {
+      padding: 0.25rem 0.45rem;
+      border-radius: 4px;
+      background: var(--question-bg);
+      margin-bottom: 0.35rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .issue-ref-preview-a {
+      padding: 0.25rem 0.45rem;
+      border-radius: 4px;
+      background: var(--answer-bg);
+      margin-left: 0.45rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .issue-ref-preview-a.issue-ref-preview-pending {
+      background: var(--tone-1);
+      color: var(--muted);
+      font-style: italic;
+    }
+    .issue-ref-preview-missing {
+      margin: 0;
+      color: var(--muted);
+      font-style: italic;
+    }
+    .issue-ref-preview-answer-ref .issue-ref-preview-a {
+      margin-left: 0;
+    }
+    .issue-ref-preview-answer-slot .issue-ref-preview-q {
+      margin-bottom: 0.35rem;
+    }
+    .issue-ref-preview-upgrade {
+      display: block;
+      width: 100%;
+      margin-top: 0.45rem;
+      padding: 0.35rem 0.5rem;
+      border: none;
+      border-radius: 6px;
+      background: #fef3c7;
+      color: #78350f;
+      font: inherit;
+      font-size: 0.7rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: left;
+    }
+    .issue-ref-preview-upgrade:hover {
+      background: #fde68a;
+    }

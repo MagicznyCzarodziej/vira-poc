@@ -1,0 +1,110 @@
+    .spatial-canvas {
+      position: relative;
+      flex: 1 1 auto;
+      min-width: 0;
+      width: 100%;
+      min-height: 0;
+      overflow: auto;
+      border-radius: 12px;
+      border: 1px dashed var(--tone-2);
+      background: var(--canvas-bg);
+      cursor: grab;
+      touch-action: pan-x pan-y;
+      scrollbar-width: none;
+    }
+    .spatial-canvas::-webkit-scrollbar {
+      display: none;
+      width: 0;
+      height: 0;
+    }
+    .canvas-fake-scrollbars {
+      z-index: 6;
+      pointer-events: none;
+      align-self: stretch;
+      justify-self: stretch;
+      position: relative;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .canvas-fake-scrollbars[hidden] {
+      display: none !important;
+    }
+    .canvas-fake-scrollbar {
+      position: absolute;
+      pointer-events: none;
+      border-radius: 999px;
+      opacity: 0;
+      transition: opacity 0.28s ease;
+    }
+    .canvas-fake-scrollbar.is-visible {
+      opacity: 1;
+      pointer-events: auto;
+      transition: opacity 0.14s ease;
+    }
+    .canvas-fake-scrollbar[hidden] {
+      display: none !important;
+    }
+    .canvas-fake-scrollbar--v {
+      top: 14px;
+      right: 4px;
+      bottom: 14px;
+      width: 5px;
+    }
+    .canvas-fake-scrollbars.has-h .canvas-fake-scrollbar--v {
+      bottom: 13px;
+    }
+    .canvas-fake-scrollbar--h {
+      left: 14px;
+      right: 14px;
+      bottom: 4px;
+      height: 5px;
+    }
+    .canvas-fake-scrollbars.has-v .canvas-fake-scrollbar--h {
+      right: 13px;
+    }
+    .canvas-fake-scrollbar-track {
+      position: absolute;
+      inset: 0;
+    }
+    .canvas-fake-scrollbar-thumb {
+      position: absolute;
+      border-radius: 999px;
+      background: #bcbcc4;
+      cursor: default;
+      transition: background 0.14s ease;
+    }
+    .canvas-fake-scrollbar--v .canvas-fake-scrollbar-thumb {
+      top: 0;
+      left: 0;
+      width: 100%;
+      min-height: 16px;
+    }
+    .canvas-fake-scrollbar--h .canvas-fake-scrollbar-thumb {
+      left: 0;
+      top: 0;
+      height: 100%;
+      min-width: 16px;
+    }
+    .canvas-fake-scrollbar-thumb:hover {
+      background: #a8a8b0;
+    }
+    .canvas-fake-scrollbars.is-dragging .canvas-fake-scrollbar {
+      opacity: 1;
+      transition: none;
+    }
+    .canvas-fake-scrollbars.is-dragging .canvas-fake-scrollbar-thumb {
+      background: #9898a0;
+      transition: none;
+    }
+    .canvas-scroll-content {
+      position: relative;
+      overflow: hidden;
+    }
+    .spatial-canvas.is-panning {
+      cursor: grabbing;
+      user-select: none;
+    }
+    body.canvas-space-pan .spatial-canvas,
+    body.canvas-space-pan .spatial-canvas .canvas-placed-card {
+      cursor: grabbing;
+    }

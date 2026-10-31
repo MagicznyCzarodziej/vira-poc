@@ -1,0 +1,171 @@
+import type { StateCreator } from "zustand";
+import {
+  addRandomCards,
+  archiveCard,
+  archiveQuestion,
+  archiveStepAnswerField,
+  createCard,
+  normalizeTagName,
+  recomputeNextId,
+  replaceIssueRefRevisionInText,
+  setStepFieldHeadText,
+  toggleAnswerTentative,
+  type Card,
+  type FieldName,
+  type IssueRef,
+} from "../domain/index.ts";
+import type { DocumentState } from "./documentTypes.ts";
+import { bagOf, schedule } from "./documentPersistence.ts";
+
+function findRefSource(items: Record<string, Card>, parsed: IssueRef): { itemId: string; stepIndex: number; field: FieldName } | null {
+  const needles = parsed.revision == null ? [] : [String(parsed.revision)];
+  for (const item of Object.values(items)) {
+    for (let stepIndex = 0; stepIndex < item.steps.length; stepIndex++) {
+      const step = item.steps[stepIndex];
+      if (!step) continue;
+      for (const field of ["problem", "answer"] as const) {
+        const text = field === "answer" ? (step.answer ?? "") : step.problem;
+        if (parsed.revision != null && text.includes(`@v${parsed.revision}`) && needles.length) {
+          return { itemId: item.id, stepIndex, field };
+        }
+      }
+    }
+  }
+  return null;
+}
+
+type CardSlice = Pick<
+  DocumentState,
+  | "addTag"
+  | "toggleTentative"
+  | "archiveAnswer"
+  | "archiveQuestionAt"
+  | "archiveCardById"
+  | "createBlankCard"
+  | "addRandom"
+  | "clearAll"
+  | "setFieldHeadText"
+  | "upgradeIssueRef"
+>;
+
+export const createCardSlice: StateCreator<DocumentState, [], [], CardSlice> = (set, get) => ({
+  addTag: (id, tag) => {
+    const name = normalizeTagName(tag);
+    const card = get().items[id];
+    if (!name || !card || card.tags.includes(name)) return;
+    const copy = structuredClone(card);
+    copy.tags.push(name);
+    set({ items: { ...get().items, [id]: copy } });
+    schedule(get);
+  },
+  toggleTentative: (id, stepIndex) => {
+    const card = get().items[id];
+    const step = card?.steps[stepIndex];
+    if (!card || !step) return;
+    const copy = structuredClone(card);
+    const next = copy.steps[stepIndex];
+    if (!next) return;
+    toggleAnswerTentative(next);
+    set({ items: { ...get().items, [id]: copy } });
+    schedule(get);
+  },
+  archiveAnswer: (id, stepIndex) => {
+    const card = get().items[id];
+    const step = card?.steps[stepIndex];
+    if (!card || !step) return;
+    const copy = structuredClone(card);
+    const next = copy.steps[stepIndex];
+    if (!next || !archiveStepAnswerField(next)) return;
+    set({ items: { ...get().items, [id]: copy } });
+    schedule(get);
+  },
+  archiveQuestionAt: (id, stepIndex) => {
+    const card = get().items[id];
+    if (!card) return;
+    const copy = structuredClone(card);
+    if (!archiveQuestion(copy, stepIndex)) return;
+    set({ items: { ...get().items, [id]: copy } });
+    schedule(get);
+  },
+  archiveCardById: (id) => {
+    const bag = bagOf(get());
+    bag.items = structuredClone(bag.items);
+    bag.canvasPlacements = { ...bag.canvasPlacements };
+    archiveCard(bag, id);
+    const drafts = { ...get().followupDrafts };
+    delete drafts[id];
+    set({ items: bag.items, canvasPlacements: bag.canvasPlacements, followupDrafts: drafts });
+    schedule(get);
+  },
+  createBlankCard: (where) => {
+    const bag = bagOf(get());
+    const id = createCard(bag, { problem: "New decision" });
+    if (!id) return null;
+    set({
+      items: bag.items,
+      nextId: bag.nextId,
+      editing: { id, field: "problem", step: 0, surface: where },
+      editInitial: "New decision",
+      focusNonce: get().focusNonce + 1,
+      revealId: where === "canvas" ? id : null,
+    });
+    schedule(get);
+    return id;
+  },
+  addRandom: () => {
+    const bag = bagOf(get());
+    bag.items = structuredClone(bag.items);
+    bag.canvasPlacements = structuredClone(bag.canvasPlacements);
+    addRandomCards(bag);
+    set({
+      items: bag.items,
+      nextId: bag.nextId,
+      canvasPlacements: bag.canvasPlacements,
+      openComposer: false,
+    });
+    schedule(get);
+  },
+  clearAll: () => {
+    set({
+      items: {},
+      nextId: recomputeNextId({}),
+      canvasPlacements: {},
+      canvasViewport: { scrollLeft: 0, scrollTop: 0, zoom: 1 },
+      canvasViewportUserSet: false,
+      followupDrafts: {},
+      openComposer: false,
+      composerTags: [],
+      editing: null,
+      editInitial: "",
+    });
+    schedule(get);
+  },
+  setFieldHeadText: (itemId, stepIndex, field, text) => {
+    const card = get().items[itemId];
+    const step = card?.steps[stepIndex];
+    if (!card || !step) return;
+    const copy = structuredClone(card);
+    const next = copy.steps[stepIndex];
+    if (!next) return;
+    setStepFieldHeadText(next, field, text);
+    set({ items: { ...get().items, [itemId]: copy } });
+    schedule(get);
+  },
+  upgradeIssueRef: (parsed, source) => {
+    if (parsed.revision == null || parsed.stepIndex == null) return false;
+    const target = get().items[parsed.itemId]?.steps[parsed.stepIndex];
+    if (!target) return false;
+    const field: FieldName = parsed.focusAnswer ? "answer" : "problem";
+    const head = field === "answer" ? target.answerRev : target.problemRev;
+    const located = source ?? findRefSource(get().items, parsed);
+    if (!located) return false;
+    const card = get().items[located.itemId];
+    const step = card?.steps[located.stepIndex];
+    if (!card || !step) return false;
+    const before = located.field === "answer" ? (step.answer ?? "") : step.problem;
+    const updated = replaceIssueRefRevisionInText(before, parsed, head);
+    if (updated === before) return false;
+    get().setFieldHeadText(located.itemId, located.stepIndex, located.field, updated);
+    return true;
+  },
+});

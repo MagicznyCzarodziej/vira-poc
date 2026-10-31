@@ -1,0 +1,169 @@
+    .workspace-canvas {
+      position: relative;
+      flex: 1 1 auto;
+      min-width: 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      align-self: stretch;
+    }
+    .canvas-spawn-btn {
+      position: absolute;
+      left: 0.75rem;
+      bottom: 0.75rem;
+      z-index: 5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 3.35rem;
+      height: 3.35rem;
+      padding: 0;
+      border: 1px solid var(--tone-2);
+      border-radius: 10px;
+      background: var(--bg);
+      color: var(--text);
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+      cursor: pointer;
+      touch-action: none;
+    }
+    .canvas-spawn-btn:hover {
+      background: var(--tone-1);
+      border-color: var(--tone-3);
+    }
+    .canvas-spawn-btn:focus-visible {
+      outline: 2px solid var(--link);
+      outline-offset: 2px;
+    }
+    .canvas-spawn-btn .icon-card svg {
+      display: block;
+      width: 1.55rem;
+      height: 1.55rem;
+    }
+    .canvas-spawn-drag-ghost {
+      position: fixed;
+      left: 0;
+      top: 0;
+      z-index: 10000;
+      width: 420px;
+      pointer-events: none;
+      opacity: 0.001;
+    }
+    .canvas-spawn-drag-ghost .card {
+      box-shadow: 0 10px 32px rgba(0, 0, 0, 0.18);
+    }
+    .canvas-spawn-drag-ghost button,
+    .canvas-spawn-drag-ghost [data-editable] {
+      pointer-events: none;
+    }
+    .canvas-zoom-controls {
+      position: absolute;
+      right: 0.75rem;
+      bottom: 0.75rem;
+      z-index: 5;
+      display: flex;
+      align-items: stretch;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid var(--tone-2);
+      background: var(--bg);
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    }
+    .canvas-zoom-btn {
+      font: inherit;
+      font-size: 0.8rem;
+      font-weight: 600;
+      line-height: 1;
+      min-width: 2rem;
+      padding: 0.45rem 0.55rem;
+      border: none;
+      border-right: 1px solid var(--tone-2);
+      background: var(--bg);
+      color: var(--text);
+      cursor: pointer;
+    }
+    .canvas-zoom-btn:last-child {
+      border-right: none;
+    }
+    .canvas-zoom-btn:hover {
+      background: var(--tone-1);
+    }
+    .canvas-zoom-btn--label {
+      min-width: 3.25rem;
+      font-size: 0.72rem;
+      font-weight: 500;
+      font-variant-numeric: tabular-nums;
+      color: var(--muted);
+    }
+    .canvas-zoom-btn--label:hover {
+      color: var(--text);
+    }
+    .canvas-frame {
+      position: relative;
+      flex: 1 1 auto;
+      min-height: 0;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    .list-cards {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .canvas-view {
+      display: flex;
+      gap: 1rem;
+      align-items: stretch;
+      flex: 1 1 auto;
+      min-height: calc(100vh - var(--app-header-h) - 5rem);
+      width: 100%;
+    }
+    .canvas-tray {
+      flex: 0 0 260px;
+      max-width: min(280px, 28vw);
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      padding: 0.65rem;
+      background: var(--surface);
+      border-radius: 12px;
+      border: 1px solid var(--tone-2);
+      overflow: auto;
+      max-height: none;
+      align-self: stretch;
+    }
+    .canvas-tray-title {
+      margin: 0 0 0.25rem;
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+    }
+    .canvas-tray-item {
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+      padding: 0.45rem 0.5rem;
+      border-radius: 8px;
+      background: var(--bg);
+      border: 1px solid var(--tone-2);
+      cursor: grab;
+      user-select: none;
+    }
+    .canvas-tray-item:active { cursor: grabbing; }
+    .canvas-tray-item.is-on-canvas {
+      border-color: var(--link);
+      box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.15);
+    }
+    .canvas-tray-id {
+      font-size: 0.68rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      color: var(--text);
+    }
+    .canvas-tray-q {
+      font-size: 0.75rem;
+      line-height: 1.35;
+      color: var(--muted);
+    }
