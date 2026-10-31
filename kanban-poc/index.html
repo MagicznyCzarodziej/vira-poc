@@ -320,11 +320,14 @@
       background: var(--answer-bg);
       color: var(--answer-text);
     }
+    .card.card-incomplete .card-header,
+    .card.card-partial .card-header,
     .card.card-incomplete .tags-row,
     .card.card-partial .tags-row {
       background: var(--question-bg);
       color: var(--question-text);
     }
+    .card.card-complete .card-header,
     .card.card-complete .tags-row {
       background: var(--answer-card-bg);
       color: var(--answer-text);
@@ -1048,6 +1051,12 @@
       cursor: not-allowed !important;
       user-select: none;
     }
+    .workspace-list .list-cards .card.is-list-reveal-pop {
+      position: relative;
+      z-index: 4;
+      animation: canvas-placed-reveal-pop 0.45s cubic-bezier(0.34, 1.4, 0.64, 1);
+      transition: none;
+    }
     body.canvas-list-drag-blocked-active {
       cursor: not-allowed !important;
       user-select: none;
@@ -1063,7 +1072,34 @@
       box-shadow: 0 10px 22px rgba(0, 0, 0, 0.14);
     }
     .canvas-placed-card.is-workspace-link-hover {
+      z-index: 14;
+    }
+    .canvas-surface-shell {
+      position: relative;
+      flex: 1 1 auto;
+      min-height: 0;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    .canvas-surface-shell .spatial-canvas {
+      flex: 1 1 auto;
+    }
+    .canvas-surface-shell .canvas-ref-links {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
       z-index: 3;
+      overflow: hidden;
+      border-radius: 12px;
+    }
+    .canvas-surface-shell .canvas-ref-links line {
+      stroke: rgba(113, 113, 122, 0.72);
+      stroke-width: 3;
+      stroke-linecap: round;
+      stroke-dasharray: 8 6;
     }
     .workspace-canvas {
       position: relative;
@@ -1123,16 +1159,13 @@
       display: flex;
       flex-direction: column;
     }
-    .canvas-frame .spatial-canvas {
-      flex: 1 1 auto;
-      min-height: 0;
-    }
-    .canvas-edge-indicators {
+    .canvas-surface-shell .canvas-edge-indicators {
       position: absolute;
       inset: 0;
       z-index: 4;
       pointer-events: none;
       overflow: hidden;
+      border-radius: 12px;
     }
     .canvas-edge-tick {
       position: absolute;
@@ -2425,6 +2458,7 @@
     let canvasViewport = { scrollLeft: 0, scrollTop: 0, zoom: 1 };
 
     let canvasScrollSyncing = false;
+    let canvasSmoothScrolling = false;
 
     let canvasViewportUserSet = false;
 
@@ -2832,46 +2866,153 @@
       render();
     }
 
-    const RANDOM_CARD_PROBLEMS = [
-      'Should notifications batch overnight or send immediately?',
-      'Default sort for shared lists: recently edited or alphabetical?',
-      'Allow guests to edit lists without an account?',
-      'Show stock availability on list items by default?',
-      'Merge duplicate items automatically when titles match?',
-      'Require two-person approval before deleting a household list?',
-      'Expose list history to all collaborators or admins only?',
-      'Use optimistic UI for drag reorder on slow networks?',
-    ];
-    const RANDOM_CARD_ANSWERS = [
-      'Batch between 22:00–07:00 local time; urgent @mentions bypass.',
-      'Recently edited; user can switch per list in settings.',
-      'Read-only link for guests; edit requires sign-in.',
-      'Yes for SKUs we can resolve; hide badge when unknown.',
-      'Suggest merge inline; never auto-merge without confirmation.',
-      'No — single owner can delete; audit log retained 90 days.',
-      'Admins only for now; revisit with enterprise tier.',
-    ];
-    const RANDOM_CARD_TAGS = ['allegro', 'product', 'ux', 'api', 'ops', 'mobile', 'privacy'];
+    function addRandomCards() {
+      const refNum = (id) => id.replace(/^item-/i, '');
+      const placeOnCanvas = (id, x, y) => {
+        canvasPlacements[id] = clampCanvasPlacement(x, y);
+        ensureCanvasPlacementOrder(id);
+      };
+      const cx = Math.round(CANVAS_WORLD_MIN_W / 2);
+      const cy = Math.round(CANVAS_WORLD_MIN_H / 2);
 
-    function pickRandom(list) {
-      return list[Math.floor(Math.random() * list.length)];
-    }
+      const apiId = createItem({
+        tags: ['fixtures', 'api'],
+        steps: [
+          {
+            problem: 'Version the shared List API under /v1 or negotiate via Accept-Version?',
+            answer: 'Path prefix /v1/lists; breaking changes only in /v2 with a 12-month sunset.',
+            decidedAt: new Date().toISOString(),
+          },
+        ],
+      });
 
-    function randomTags() {
-      const count = 1 + Math.floor(Math.random() * 2);
-      const pool = [...RANDOM_CARD_TAGS].sort(() => Math.random() - 0.5);
-      return pool.slice(0, count);
-    }
+      const privacyId = createItem({
+        tags: ['fixtures', 'privacy'],
+        steps: [
+          {
+            problem: 'Do shared lists need explicit GDPR consent when adding a co-shopper?',
+            answer: 'Yes — invitee accepts visibility of nickname and list activity before joining.',
+            decidedAt: new Date().toISOString(),
+          },
+        ],
+      });
 
-    function addRandomCards(count = 8) {
-      for (let i = 0; i < count; i += 1) {
-        const withAnswer = Math.random() > 0.4;
-        createItem({
-          problem: `${pickRandom(RANDOM_CARD_PROBLEMS)} #${Math.random().toString(36).slice(2, 6)}`,
-          tags: randomTags(),
-          answer: withAnswer ? pickRandom(RANDOM_CARD_ANSWERS) : null,
-        });
-      }
+      const notifId = createItem({
+        tags: ['fixtures', 'notifications'],
+        steps: [
+          {
+            problem: 'Push when someone adds an item to a shared list — include in beta?',
+            answer: 'Yes; batch pushes to at most one notification per list every 15 minutes.',
+            decidedAt: new Date().toISOString(),
+          },
+          {
+            problem: 'Also notify when a list item is linked to a purchased offer?',
+            answer: null,
+          },
+        ],
+      });
+
+      const mobileId = createItem({
+        tags: ['fixtures', 'mobile'],
+        steps: [
+          {
+            problem: 'Ship collaborative lists on iOS and Android in the same sprint?',
+            answer: null,
+          },
+        ],
+      });
+
+      const designId = createItem({
+        tags: ['fixtures', 'ux'],
+        steps: [
+          {
+            problem: 'Show checked-off items struck through or move them to a done section?',
+            answer: null,
+          },
+        ],
+      });
+
+      const syncId = createItem({
+        tags: ['fixtures', 'api'],
+        steps: [
+          {
+            problem: 'Do collaborators see list changes in real time without refreshing?',
+            answer: 'Websocket fan-out with offline queue; polling fallback after 30s disconnect.',
+            decidedAt: new Date().toISOString(),
+          },
+          {
+            problem: 'How do list sync and checkout stay consistent when services split?',
+            answer: null,
+          },
+        ],
+      });
+
+      const rolloutId = createItem({
+        tags: ['fixtures', 'rollout'],
+        steps: [
+          {
+            problem: 'Who gets the collaborative shopping list beta first?',
+            answer: 'Smart households in PL — invite from account settings only.',
+            decidedAt: new Date().toISOString(),
+          },
+          {
+            problem: 'What counts as beta success for shared lists?',
+            answer: '10k active shared lists with ≥2 members and weekly add-to-cart from a list item.',
+            decidedAt: new Date().toISOString(),
+          },
+          {
+            problem: 'Is Smart required during the shared-list beta?',
+            answer: 'Free until GA; Smart not required to join during beta.',
+            decidedAt: new Date().toISOString(),
+          },
+          {
+            problem: 'When do we enable list sharing for all accounts in PL?',
+            answer: null,
+          },
+        ],
+      });
+
+      const nApi = refNum(apiId);
+      const nPrivacy = refNum(privacyId);
+      const nNotif = refNum(notifId);
+      const nRollout = refNum(rolloutId);
+      const nSync = refNum(syncId);
+
+      items[syncId].steps[1].problem =
+        `How do list sync and checkout stay consistent when we split services? See [List API versioning](!${nApi}).`;
+
+      items[mobileId].steps[0].problem =
+        `Ship collaborative lists on iOS and Android in the same sprint? Invite flow must follow !${nPrivacy}.`;
+
+      items[notifId].steps[1].problem =
+        `Notify when a list item links to a purchased offer? Depends on rollout scope in !${nRollout}/2.`;
+
+      items[rolloutId].steps[3].problem =
+        `When do we enable list sharing for all accounts in PL? Blocked until !${nSync}/2 and push policy !${nNotif} are settled.`;
+
+      const hubId = createItem({
+        tags: ['fixtures', 'graph'],
+        steps: [
+          {
+            problem: 'Fixture hub: cross-links for canvas ref-line testing.',
+            answer:
+              `Rollout: [beta scope](!${nRollout}). `
+              + `API: [!${nApi}](!${nApi}). `
+              + `Sync: !${nSync}/2. `
+              + `Notifications: !${nNotif}/a1. `
+              + `Privacy: !${nPrivacy}.`,
+            decidedAt: new Date().toISOString(),
+          },
+        ],
+      });
+
+      placeOnCanvas(apiId, cx - 540, cy - 40);
+      placeOnCanvas(syncId, cx + 160, cy - 60);
+      placeOnCanvas(rolloutId, cx - 220, cy - 340);
+      placeOnCanvas(notifId, cx + 200, cy + 220);
+      placeOnCanvas(hubId, cx - 240, cy + 300);
+      placeOnCanvas(mobileId, cx + 480, cy + 40);
+
       openComposer = null;
       render();
     }
@@ -4476,6 +4617,81 @@
       });
     }
 
+    function popListCard(itemId) {
+      if (viewMode !== 'list' || !itemId) return;
+      const card = document.querySelector(`.workspace-list .list-cards .card[data-id="${itemId}"]`);
+      if (!card) return;
+      card.classList.remove('is-list-reveal-pop');
+      void card.offsetWidth;
+      card.classList.add('is-list-reveal-pop');
+      const onEnd = (e) => {
+        if (e.target !== card) return;
+        card.classList.remove('is-list-reveal-pop');
+        card.removeEventListener('animationend', onEnd);
+      };
+      card.addEventListener('animationend', onEnd);
+    }
+
+    let listScrollRevealToken = 0;
+
+    function whenListBodyScrollFinishes(callback) {
+      const scroller = document.querySelector('.workspace-list .list-body');
+      if (!scroller) {
+        callback();
+        return;
+      }
+      let finished = false;
+      let idleTimer;
+      let sawScroll = false;
+      const startTop = scroller.scrollTop;
+      const finish = () => {
+        if (finished) return;
+        finished = true;
+        scroller.removeEventListener('scrollend', onScrollEnd);
+        scroller.removeEventListener('scroll', onScroll);
+        clearTimeout(fallbackTimer);
+        clearTimeout(idleTimer);
+        callback();
+      };
+      const onScrollEnd = () => finish();
+      const onScroll = () => {
+        sawScroll = true;
+        clearTimeout(idleTimer);
+        idleTimer = setTimeout(finish, 90);
+      };
+      scroller.addEventListener('scrollend', onScrollEnd);
+      scroller.addEventListener('scroll', onScroll);
+      const fallbackTimer = setTimeout(finish, 1200);
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (!sawScroll && scroller.scrollTop === startTop) {
+            idleTimer = setTimeout(finish, 48);
+          }
+        });
+      });
+    }
+
+    function scrollListToItem(itemId) {
+      if (viewMode !== 'list' || !itemId) return;
+      const card = document.querySelector(`.workspace-list .list-cards .card[data-id="${itemId}"]`);
+      if (!card) return;
+      const token = ++listScrollRevealToken;
+      card.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      whenListBodyScrollFinishes(() => {
+        if (token !== listScrollRevealToken) return;
+        popListCard(itemId);
+      });
+    }
+
+    function revealReferencedItemInWorkspace(refId) {
+      const parsed = parseIssueRef(refId);
+      if (!parsed?.itemId) return;
+      scrollListToItem(parsed.itemId);
+      if (canvasPlacements[parsed.itemId]) {
+        centerCanvasViewportOnCard(parsed.itemId, { smooth: true, pop: false });
+      }
+    }
+
     function goToIssue(refId, anchorEl = null) {
       const parsed = parseIssueRef(refId);
       const upgradeSource = anchorEl && parsed ? resolveIssueRefSourceField(anchorEl, parsed) : null;
@@ -4995,6 +5211,7 @@
       surface.scrollTop = canvasViewport.scrollTop;
       canvasScrollSyncing = false;
       updateCanvasEdgeIndicators();
+      updateCanvasRefLinkLinesIfHover();
     }
 
     function canvasViewportWorldRect(surface = canvasSurfaceEl()) {
@@ -5265,9 +5482,189 @@
       card.addEventListener('animationend', onEnd);
     }
 
-    function centerCanvasViewportOnCard(itemId) {
+    let canvasSmoothScrollToken = 0;
+
+    function canvasViewportCenterWorld(surface) {
+      const zoom = canvasViewport.zoom;
+      return {
+        x: (canvasViewport.scrollLeft + surface.clientWidth / 2) / zoom,
+        y: (canvasViewport.scrollTop + surface.clientHeight / 2) / zoom,
+      };
+    }
+
+    function canvasScrollForWorldCenter(worldX, worldY, zoom, surface) {
+      return {
+        scrollLeft: worldX * zoom - surface.clientWidth / 2,
+        scrollTop: worldY * zoom - surface.clientHeight / 2,
+      };
+    }
+
+    function syncCanvasSurfaceScrollImmediate(surface) {
+      clampCanvasViewportScroll(surface);
+      canvasScrollSyncing = true;
+      surface.scrollLeft = canvasViewport.scrollLeft;
+      surface.scrollTop = canvasViewport.scrollTop;
+      canvasScrollSyncing = false;
+    }
+
+    function setCanvasViewportWorldCenter(worldX, worldY, zoom) {
+      const surface = canvasSurfaceEl();
+      if (!surface) return;
+      canvasViewport.zoom = clampCanvasZoom(zoom);
+      applyCanvasScrollLayout();
+      const scroll = canvasScrollForWorldCenter(worldX, worldY, canvasViewport.zoom, surface);
+      canvasViewport.scrollLeft = scroll.scrollLeft;
+      canvasViewport.scrollTop = scroll.scrollTop;
+      syncCanvasSurfaceScrollImmediate(surface);
+      updateCanvasZoomControlLabel();
+    }
+
+    function canvasEaseInOut(t) {
+      return t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
+    }
+
+    function animateCanvasFlyStep(token, durationMs, onStep) {
+      return new Promise((resolve) => {
+        const t0 = performance.now();
+        const frame = (now) => {
+          if (token !== canvasSmoothScrollToken) {
+            resolve(false);
+            return;
+          }
+          const p = Math.min(1, (now - t0) / durationMs);
+          onStep(canvasEaseInOut(p));
+          updateCanvasEdgeIndicators();
+          updateCanvasRefLinkLinesIfHover();
+          if (p < 1) requestAnimationFrame(frame);
+          else resolve(true);
+        };
+        requestAnimationFrame(frame);
+      });
+    }
+
+    function canvasFlyZoomForWorldSpan(worldA, worldB, surface, maxZoom) {
+      const padX = CANVAS_CARD_WIDTH + 140;
+      const padY = 320;
+      const minX = Math.min(worldA.x, worldB.x) - padX * 0.5;
+      const maxX = Math.max(worldA.x, worldB.x) + padX * 0.5;
+      const minY = Math.min(worldA.y, worldB.y) - padY * 0.5;
+      const maxY = Math.max(worldA.y, worldB.y) + padY * 0.5;
+      const spanW = Math.max(1, maxX - minX);
+      const spanH = Math.max(1, maxY - minY);
+      const fit = Math.min(surface.clientWidth / spanW, surface.clientHeight / spanH);
+      return clampCanvasZoom(Math.min(fit * 0.9, maxZoom));
+    }
+
+    async function animateWorldCenterAndZoom(
+      token,
+      fromWorld,
+      toWorld,
+      fromZoom,
+      toZoom,
+      durationMs,
+    ) {
+      const worldStill =
+        Math.hypot(toWorld.x - fromWorld.x, toWorld.y - fromWorld.y) < 0.5;
+      const zoomStill = Math.abs(toZoom - fromZoom) < 0.012;
+      if (worldStill && zoomStill) return;
+      await animateCanvasFlyStep(token, durationMs, (e) => {
+        const worldX = fromWorld.x + (toWorld.x - fromWorld.x) * e;
+        const worldY = fromWorld.y + (toWorld.y - fromWorld.y) * e;
+        const zoom = fromZoom + (toZoom - fromZoom) * e;
+        setCanvasViewportWorldCenter(worldX, worldY, zoom);
+      });
+    }
+
+    async function animateFlyToCardViewport(
+      token,
+      viewCenter,
+      cardCenter,
+      desiredZoom,
+      midZoom,
+      durationMs,
+    ) {
+      await animateCanvasFlyStep(token, durationMs, (linearProgress) => {
+        const moveT = canvasEaseInOut(linearProgress);
+        const worldX = viewCenter.x + (cardCenter.x - viewCenter.x) * moveT;
+        const worldY = viewCenter.y + (cardCenter.y - viewCenter.y) * moveT;
+        const zoomArc = Math.sin(linearProgress * Math.PI);
+        const zoom = desiredZoom + (midZoom - desiredZoom) * zoomArc;
+        setCanvasViewportWorldCenter(worldX, worldY, zoom);
+      });
+    }
+
+    async function flyCanvasViewportToCard(itemId, finishCenter) {
       const surface = canvasSurfaceEl();
       if (!surface || !itemId || !canvasPlacements[itemId]) return;
+      const token = ++canvasSmoothScrollToken;
+      canvasSmoothScrolling = true;
+      canvasViewport.scrollLeft = surface.scrollLeft;
+      canvasViewport.scrollTop = surface.scrollTop;
+      applyCanvasScrollLayout();
+      const bounds = canvasPlacedCardBoundsWorld(itemId);
+      if (!bounds) {
+        canvasSmoothScrolling = false;
+        return;
+      }
+      const desiredZoom = canvasViewport.zoom;
+      const cardCenter = {
+        x: (bounds.minX + bounds.maxX) / 2,
+        y: (bounds.minY + bounds.maxY) / 2,
+      };
+      const viewCenter = canvasViewportCenterWorld(surface);
+      const worldDist = Math.hypot(cardCenter.x - viewCenter.x, cardCenter.y - viewCenter.y);
+      const useFly = worldDist > 520;
+
+      try {
+        if (!useFly) {
+          await animateWorldCenterAndZoom(
+            token,
+            viewCenter,
+            cardCenter,
+            desiredZoom,
+            desiredZoom,
+            480,
+          );
+        } else {
+          let midZoom = clampCanvasZoom(
+            Math.min(
+              canvasFlyZoomForWorldSpan(viewCenter, cardCenter, surface, desiredZoom),
+              desiredZoom * 0.42,
+            ),
+          );
+          if (midZoom >= desiredZoom - 0.025) {
+            midZoom = clampCanvasZoom(Math.max(CANVAS_ZOOM_MIN, desiredZoom * 0.35));
+          }
+          await animateFlyToCardViewport(
+            token,
+            viewCenter,
+            cardCenter,
+            desiredZoom,
+            midZoom,
+            960,
+          );
+        }
+        setCanvasViewportWorldCenter(cardCenter.x, cardCenter.y, desiredZoom);
+      } finally {
+        canvasSmoothScrolling = false;
+        canvasViewportUserSet = true;
+        scheduleSaveState();
+        finishCenter();
+      }
+    }
+
+    function centerCanvasViewportOnCard(itemId, { smooth = false, pop = true } = {}) {
+      const surface = canvasSurfaceEl();
+      if (!surface || !itemId || !canvasPlacements[itemId]) return;
+      const finishCenter = () => {
+        updateCanvasEdgeIndicators();
+        updateCanvasRefLinkLinesIfHover();
+        if (pop) popCanvasPlacedCard(itemId);
+      };
+      if (smooth) {
+        void flyCanvasViewportToCard(itemId, finishCenter);
+        return;
+      }
       applyCanvasScrollLayout();
       const bounds = canvasPlacedCardBoundsWorld(itemId);
       if (!bounds) return;
@@ -5277,13 +5674,12 @@
       canvasViewport.scrollLeft = centerX * zoom - surface.clientWidth / 2;
       canvasViewport.scrollTop = centerY * zoom - surface.clientHeight / 2;
       clampCanvasViewportScroll(surface);
+      canvasViewportUserSet = true;
       canvasScrollSyncing = true;
       surface.scrollLeft = canvasViewport.scrollLeft;
       surface.scrollTop = canvasViewport.scrollTop;
       canvasScrollSyncing = false;
-      canvasViewportUserSet = true;
-      updateCanvasEdgeIndicators();
-      popCanvasPlacedCard(itemId);
+      finishCenter();
     }
 
     function canvasZoomAt(clientX, clientY, scaleFactor) {
@@ -5334,6 +5730,11 @@
       if (!surface) return;
       canvasViewport.scrollLeft = surface.scrollLeft;
       canvasViewport.scrollTop = surface.scrollTop;
+      if (canvasSmoothScrolling) {
+        updateCanvasEdgeIndicators();
+        updateCanvasRefLinkLinesIfHover();
+        return;
+      }
       clampCanvasViewportScroll(surface);
       if (surface.scrollLeft !== canvasViewport.scrollLeft) {
         canvasScrollSyncing = true;
@@ -5343,6 +5744,7 @@
       }
       canvasViewportUserSet = true;
       updateCanvasEdgeIndicators();
+      updateCanvasRefLinkLinesIfHover();
       scheduleSaveState();
     }
 
@@ -5550,19 +5952,131 @@
     function renderCanvasFrameHtml() {
       return `
         <div class="canvas-frame" data-canvas-frame>
-          ${renderCanvasSurfaceHtml()}
-          <div class="canvas-edge-indicators" data-canvas-edge-indicators aria-hidden="true"></div>
+          <div class="canvas-surface-shell">
+            ${renderCanvasSurfaceHtml()}
+            <svg class="canvas-ref-links" data-canvas-ref-links aria-hidden="true"></svg>
+            <div class="canvas-edge-indicators" data-canvas-edge-indicators aria-hidden="true"></div>
+          </div>
         </div>
       `;
     }
 
+    /** @type {{ anchorId: string, targetId: string } | null} */
+    let canvasRefLinkHover = null;
+    /** @type {{ id: string, surface: string } | null} */
     let workspaceLinkHover = null;
 
-    function clearWorkspaceLinkHover() {
+    function clearWorkspaceListCanvasHover() {
       workspaceLinkHover = null;
       document.querySelectorAll('.is-workspace-link-hover').forEach((el) => {
         el.classList.remove('is-workspace-link-hover');
       });
+    }
+
+    function clearWorkspaceLinkHover() {
+      clearCanvasRefLinkHover();
+      clearWorkspaceListCanvasHover();
+    }
+
+    function canvasRefLinksSvgEl() {
+      return document.querySelector('[data-canvas-frame] [data-canvas-ref-links]');
+    }
+
+    function clientRectBorderToward(rect, targetX, targetY) {
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      let dx = targetX - cx;
+      let dy = targetY - cy;
+      const len = Math.hypot(dx, dy);
+      if (len < 1e-6) return { x: cx, y: cy };
+      dx /= len;
+      dy /= len;
+      const hw = rect.width / 2;
+      const hh = rect.height / 2;
+      const t = Math.min(
+        Math.abs(dx) > 1e-9 ? hw / Math.abs(dx) : Infinity,
+        Math.abs(dy) > 1e-9 ? hh / Math.abs(dy) : Infinity,
+      );
+      return { x: cx + dx * t, y: cy + dy * t };
+    }
+
+    function clearCanvasRefLinkHover() {
+      canvasRefLinkHover = null;
+      canvasRefLinksSvgEl()?.replaceChildren();
+    }
+
+    function updateCanvasRefLinkLines(anchorId, targetId) {
+      const svg = canvasRefLinksSvgEl();
+      const surface = canvasSurfaceEl();
+      const world = canvasWorldEl();
+      if (!svg || !surface || !world) return;
+      svg.replaceChildren();
+      if (!targetId || !canvasPlacements[anchorId] || !canvasPlacements[targetId]) return;
+      const anchorEl = world.querySelector(`[data-canvas-placed="${anchorId}"]`);
+      const targetEl = world.querySelector(`[data-canvas-placed="${targetId}"]`);
+      if (!anchorEl || !targetEl) return;
+      const viewportRect = surface.getBoundingClientRect();
+      if (viewportRect.width <= 0 || viewportRect.height <= 0) return;
+      svg.setAttribute('width', String(viewportRect.width));
+      svg.setAttribute('height', String(viewportRect.height));
+      svg.setAttribute('viewBox', `0 0 ${viewportRect.width} ${viewportRect.height}`);
+      const anchorRect = anchorEl.getBoundingClientRect();
+      const targetRect = targetEl.getBoundingClientRect();
+      const anchorCx = anchorRect.left + anchorRect.width / 2;
+      const anchorCy = anchorRect.top + anchorRect.height / 2;
+      const targetCx = targetRect.left + targetRect.width / 2;
+      const targetCy = targetRect.top + targetRect.height / 2;
+      const start = clientRectBorderToward(anchorRect, targetCx, targetCy);
+      const end = clientRectBorderToward(targetRect, anchorCx, anchorCy);
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      line.setAttribute('x1', String(start.x - viewportRect.left));
+      line.setAttribute('y1', String(start.y - viewportRect.top));
+      line.setAttribute('x2', String(end.x - viewportRect.left));
+      line.setAttribute('y2', String(end.y - viewportRect.top));
+      svg.appendChild(line);
+    }
+
+    function updateCanvasRefLinkLinesIfHover() {
+      if (!canvasRefLinkHover) return;
+      updateCanvasRefLinkLines(canvasRefLinkHover.anchorId, canvasRefLinkHover.targetId);
+    }
+
+    function applyWorkspaceListCanvasHover(link) {
+      if (!link?.id || !canvasPlacements[link.id]) {
+        clearWorkspaceListCanvasHover();
+        return;
+      }
+      if (
+        workspaceLinkHover
+        && workspaceLinkHover.id === link.id
+        && workspaceLinkHover.surface === link.surface
+      ) {
+        return;
+      }
+      clearWorkspaceListCanvasHover();
+      workspaceLinkHover = { id: link.id, surface: link.surface };
+      const app = document.getElementById('app');
+      if (!app) return;
+      const peerSelector = link.surface === 'list'
+        ? `.canvas-placed-card[data-canvas-placed="${link.id}"]`
+        : `.workspace-list .list-cards .card[data-id="${link.id}"]`;
+      app.querySelector(peerSelector)?.classList.add('is-workspace-link-hover');
+    }
+
+    function applyCanvasRefLinkHover(anchorId, targetId) {
+      if (!anchorId || !targetId || anchorId === targetId || viewMode !== 'list') {
+        clearCanvasRefLinkHover();
+        return;
+      }
+      if (
+        canvasRefLinkHover
+        && canvasRefLinkHover.anchorId === anchorId
+        && canvasRefLinkHover.targetId === targetId
+      ) {
+        return;
+      }
+      canvasRefLinkHover = { anchorId, targetId };
+      updateCanvasRefLinkLines(anchorId, targetId);
     }
 
     function workspaceLinkFromNode(node) {
@@ -5578,28 +6092,6 @@
       return workspaceLinkFromNode(node)?.id ?? null;
     }
 
-    function applyWorkspaceLinkHover(link) {
-      if (!link?.id || !canvasPlacements[link.id]) {
-        clearWorkspaceLinkHover();
-        return;
-      }
-      if (
-        workspaceLinkHover
-        && workspaceLinkHover.id === link.id
-        && workspaceLinkHover.surface === link.surface
-      ) {
-        return;
-      }
-      clearWorkspaceLinkHover();
-      workspaceLinkHover = { id: link.id, surface: link.surface };
-      const app = document.getElementById('app');
-      if (!app) return;
-      const peerSelector = link.surface === 'list'
-        ? `.canvas-placed-card[data-canvas-placed="${link.id}"]`
-        : `.workspace-list .list-cards .card[data-id="${link.id}"]`;
-      app.querySelector(peerSelector)?.classList.add('is-workspace-link-hover');
-    }
-
     function bindCanvasInteractions() {
       if (canvasInteractionsBound) return;
       canvasInteractionsBound = true;
@@ -5607,21 +6099,40 @@
 
       app.addEventListener('mouseover', (e) => {
         if (viewMode !== 'list') return;
-        const link = workspaceLinkFromNode(e.target);
-        if (!link) {
-          if (workspaceLinkHover) clearWorkspaceLinkHover();
+        const refBtn = e.target.closest('[data-action="goto-issue"][data-issue-ref]');
+        if (refBtn) {
+          clearWorkspaceListCanvasHover();
+          const from = workspaceLinkFromNode(refBtn);
+          const parsed = parseIssueRef(refBtn.dataset.issueRef);
+          if (from && parsed?.itemId) {
+            applyCanvasRefLinkHover(from.id, parsed.itemId);
+          } else {
+            clearCanvasRefLinkHover();
+          }
           return;
         }
-        applyWorkspaceLinkHover(link);
+        clearCanvasRefLinkHover();
+        const link = workspaceLinkFromNode(e.target);
+        if (!link) {
+          clearWorkspaceListCanvasHover();
+          return;
+        }
+        applyWorkspaceListCanvasHover(link);
       });
 
       app.addEventListener('mouseout', (e) => {
-        if (viewMode !== 'list' || !workspaceLinkHover) return;
+        if (viewMode !== 'list') return;
+        if (canvasRefLinkHover && e.target.closest('[data-action="goto-issue"]')) {
+          if (!e.relatedTarget?.closest('[data-action="goto-issue"]')) {
+            clearCanvasRefLinkHover();
+          }
+        }
+        if (!workspaceLinkHover) return;
         const from = workspaceLinkFromNode(e.target);
         if (!from || from.id !== workspaceLinkHover.id || from.surface !== workspaceLinkHover.surface) return;
         const to = e.relatedTarget ? workspaceLinkFromNode(e.relatedTarget) : null;
         if (to?.id === workspaceLinkHover.id) return;
-        clearWorkspaceLinkHover();
+        clearWorkspaceListCanvasHover();
       });
 
       let listDragBlockedPointer = null;
@@ -5760,6 +6271,7 @@
           pan.surface.scrollTop = canvasViewport.scrollTop;
           canvasViewportUserSet = true;
           updateCanvasEdgeIndicators();
+          updateCanvasRefLinkLinesIfHover();
           return;
         }
         const state = canvasPointerState;
@@ -5793,6 +6305,7 @@
         state.placed.style.left = `${canvasPlacements[state.id].x}px`;
         state.placed.style.top = `${canvasPlacements[state.id].y}px`;
         updateCanvasEdgeIndicators();
+        updateCanvasRefLinkLinesIfHover();
       }, true);
 
       const endCanvasPointer = (e) => {
@@ -6433,6 +6946,12 @@
           e.preventDefault();
           e.stopPropagation();
           upgradeIssueRefLink(actionEl);
+          return;
+        }
+        if (e.ctrlKey || e.metaKey) {
+          e.preventDefault();
+          e.stopPropagation();
+          revealReferencedItemInWorkspace(actionEl.dataset.issueRef);
           return;
         }
         e.preventDefault();
