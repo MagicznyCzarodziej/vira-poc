@@ -4,10 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta http-equiv="Cache-Control" content="no-cache" />
-  <title>Kanban decisions PoC</title>
+  <title>Vira</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <style>
     :root {
       --page: #d4d4d8;
@@ -174,6 +174,7 @@
       flex: 1 1 auto;
       min-height: 0;
       overflow: hidden;
+      padding: 1.25rem 1.5rem 1.25rem;
     }
     .main-layout {
       width: fit-content;
@@ -492,6 +493,25 @@
     .field-remove-btn:hover,
     .answer-mark-btn:hover {
       background: rgba(0, 0, 0, 0.12);
+    }
+    .icon-trash,
+    .icon-dismiss {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 0;
+    }
+    .field-remove-btn .icon-trash svg {
+      width: 12px;
+      height: 12px;
+    }
+    .btn-delete .icon-trash svg {
+      width: 14px;
+      height: 14px;
+    }
+    .btn-delete .icon-dismiss {
+      font-size: 1.1rem;
+      line-height: 1;
     }
     .problem-row:has(.field-remove-btn--problem) .problem {
       padding-right: calc(var(--card-text-x) + 1.35rem);
@@ -905,13 +925,6 @@
       color: var(--bg);
     }
     .btn-sm:hover { filter: brightness(0.96); }
-    .state-dump { margin-top: 2rem; font-size: 0.7rem; color: var(--muted); }
-    .state-dump summary { cursor: pointer; }
-    .state-dump pre {
-      overflow: auto; max-height: 200px;
-      background: var(--surface);
-      padding: 0.75rem; border-radius: 8px; margin-top: 0.5rem;
-    }
     .highlight { outline: 2px solid var(--tone-3); outline-offset: 2px; }
     .timeline-step.highlight {
       outline: 2px solid var(--tone-3);
@@ -927,15 +940,61 @@
       gap: 0.5rem;
     }
     .list-header {
-      padding: 0.25rem 0.75rem 0.5rem 6px;
+      padding: 0.35rem 0.65rem 0.55rem 6px;
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 0.65rem;
       font-size: 0.75rem;
       color: var(--muted);
       text-transform: uppercase;
       letter-spacing: 0.04em;
       font-weight: 600;
+    }
+    .list-header-title {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+    .list-filter-toggle {
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      padding: 3px;
+      gap: 2px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.45);
+      box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
+    }
+    .list-filter-chip {
+      font: inherit;
+      font-size: 0.6875rem;
+      font-weight: 500;
+      letter-spacing: -0.01em;
+      text-transform: none;
+      padding: 0.34rem 0.62rem;
+      border: none;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
+    }
+    .list-filter-chip:hover:not([aria-pressed="true"]) {
+      color: var(--subtle);
+      background: rgba(255, 255, 255, 0.4);
+    }
+    .list-filter-chip[aria-pressed="true"] {
+      background: var(--bg);
+      color: var(--text);
+      font-weight: 600;
+      box-shadow:
+        0 1px 2px rgba(0, 0, 0, 0.07),
+        0 0 0 1px rgba(0, 0, 0, 0.04);
+    }
+    .list-filter-chip:focus-visible {
+      outline: 2px solid var(--focus-ring);
+      outline-offset: 1px;
     }
     .list-body { display: flex; flex-direction: column; gap: 0; }
     .list-body > .add-trigger,
@@ -1098,9 +1157,58 @@
       position: relative;
       flex: 1 1 auto;
       min-width: 0;
+      min-height: 0;
       display: flex;
       flex-direction: column;
       align-self: stretch;
+    }
+    .canvas-spawn-btn {
+      position: absolute;
+      left: 0.75rem;
+      bottom: 0.75rem;
+      z-index: 5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 2.35rem;
+      height: 2.35rem;
+      padding: 0;
+      border: 1px solid var(--tone-2);
+      border-radius: 8px;
+      background: var(--bg);
+      color: var(--text);
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+      cursor: pointer;
+      touch-action: none;
+    }
+    .canvas-spawn-btn:hover {
+      background: var(--tone-1);
+      border-color: var(--tone-3);
+    }
+    .canvas-spawn-btn:focus-visible {
+      outline: 2px solid var(--link);
+      outline-offset: 2px;
+    }
+    .canvas-spawn-btn .icon-card svg {
+      display: block;
+      width: 1.15rem;
+      height: 1.15rem;
+    }
+    .canvas-spawn-drag-ghost {
+      position: fixed;
+      left: 0;
+      top: 0;
+      z-index: 10000;
+      width: 420px;
+      pointer-events: none;
+      opacity: 0.001;
+    }
+    .canvas-spawn-drag-ghost .card {
+      box-shadow: 0 10px 32px rgba(0, 0, 0, 0.18);
+    }
+    .canvas-spawn-drag-ghost button,
+    .canvas-spawn-drag-ghost [data-editable] {
+      pointer-events: none;
     }
     .canvas-zoom-controls {
       position: absolute;
@@ -2325,7 +2433,7 @@
 <body>
   <div class="app-shell">
     <header>
-      <h1>Decisions</h1>
+      <h1>Vira</h1>
       <div class="header-right">
         <nav class="view-tabs" aria-label="View">
           <button type="button" class="view-tab" data-view="board">Board</button>
@@ -2344,10 +2452,6 @@
         <div class="main-layout" id="main-layout">
           <div id="app"></div>
         </div>
-        <details class="state-dump">
-          <summary>Full state (JSON)</summary>
-          <pre id="state-json"></pre>
-        </details>
       </main>
     </div>
   </div>
@@ -2361,8 +2465,6 @@
     let nextId = 1;
     /** @type {Record<string, { id: string, tags: string[], steps: object[] }>} */
     let items = {};
-
-    const MENTION_PEOPLE = ['Alex', 'Casey', 'Jordan', 'Morgan', 'Riley', 'Sam'];
 
     /** @type {{ type: 'root' } | null} */
     let openComposer = null;
@@ -2445,6 +2547,9 @@
     /** @type {{ id: string, field: string, step: number } | null} */
     let pendingEditableHandoff = null;
 
+    /** @type {{ id: string, panel: boolean, canvas: boolean } | null} */
+    let pendingFollowupFocus = null;
+
     const PANEL_CARD_ID_PREFIX = 'panel-';
     const CANVAS_CARD_ID_PREFIX = 'canvas-';
 
@@ -2484,6 +2589,17 @@
 
     let canvasSuppressClickUntil = 0;
 
+    let canvasSpawnSuppressClickUntil = 0;
+
+    const CANVAS_SPAWN_DRAG_TYPE = '__canvas_new_card__';
+
+    /** @type {HTMLElement | null} */
+    let canvasSpawnDragGhostEl = null;
+
+    let canvasSpawnDragActive = false;
+
+    let canvasSpawnPointerActive = false;
+
     let canvasInteractionsBound = false;
 
     /** @type {{ axis: 'v' | 'h', pointerId: number, startPointer: number, startScroll: number, trackSize: number, thumbSize: number, scrollPanMin: number, panSpan: number, thumbFrac: number } | null} */
@@ -2491,6 +2607,8 @@
     const CANVAS_FAKE_SCROLLBAR_FADE_MS = 280;
 
     let showAllDates = false;
+
+    let listFilterNotOnCanvas = false;
 
     const STORAGE_KEY = 'kanban-poc:v1';
     const STORAGE_VERSION = 1;
@@ -2515,6 +2633,7 @@
           items,
           viewMode,
           showAllDates,
+          listFilterNotOnCanvas,
           canvasPlacements,
           canvasViewport,
           canvasViewportUserSet,
@@ -2589,6 +2708,9 @@
           viewMode = 'list';
         }
         if (typeof data.showAllDates === 'boolean') showAllDates = data.showAllDates;
+        if (typeof data.listFilterNotOnCanvas === 'boolean') {
+          listFilterNotOnCanvas = data.listFilterNotOnCanvas;
+        }
         if (data.canvasPlacements && typeof data.canvasPlacements === 'object') {
           canvasPlacements = data.canvasPlacements;
         }
@@ -2662,6 +2784,40 @@
         for (const t of item.tags) set.add(t);
       }
       return [...set].sort((a, b) => a.localeCompare(b));
+    }
+
+    const MENTION_NAME_PATTERN = /@(?!v\d+)([\w.-]+)/g;
+
+    function mentionNamesInText(text) {
+      if (!text) return [];
+      const names = [];
+      const re = new RegExp(MENTION_NAME_PATTERN.source, 'g');
+      let match = re.exec(text);
+      while (match) {
+        const name = match[1]?.trim();
+        if (name) names.push(name);
+        match = re.exec(text);
+      }
+      return names;
+    }
+
+    /** Distinct @handles already used in decision text (persisted via item bodies in localStorage). */
+    function allKnownMentions() {
+      const set = new Set();
+      const addText = (text) => {
+        for (const name of mentionNamesInText(text)) set.add(name);
+      };
+      for (const item of Object.values(items)) {
+        for (const step of item.steps) {
+          addText(step.problem);
+          addText(step.answer);
+          ensureStepRevisions(step);
+          for (const entry of step.problemRevisions || []) addText(entry.text);
+          for (const entry of step.answerRevisions || []) addText(entry.text);
+        }
+      }
+      for (const draft of Object.values(followupDrafts)) addText(draft);
+      return [...set].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
     }
 
     function resolveTagTargetItemId(ta) {
@@ -3191,6 +3347,7 @@
       openComposer = null;
       pendingFocus = null;
       pendingEditableHandoff = null;
+      pendingFollowupFocus = null;
       recomputeNextId();
       render();
     }
@@ -3373,6 +3530,16 @@
       return liveItems().sort((a, b) => a.id.localeCompare(b.id));
     }
 
+    function isItemPlacedOnCanvas(itemId) {
+      return !!(itemId && canvasPlacements[itemId] && items[itemId] && !isItemArchived(items[itemId]));
+    }
+
+    function listItemsForView() {
+      const ordered = allItemsOrdered();
+      if (!listFilterNotOnCanvas) return ordered;
+      return ordered.filter((item) => !isItemPlacedOnCanvas(item.id));
+    }
+
     function renderGroupedCards(itemList, { draggableToCanvas = false } = {}) {
       if (!itemList.length) return '';
       const cards = itemList.map((item) => renderCard(item, { draggableToCanvas })).join('');
@@ -3386,6 +3553,12 @@
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;');
     }
+
+    const ICON_TRASH_HTML = '<span class="icon-trash" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></span>';
+
+    const ICON_DISMISS_HTML = '<span class="icon-dismiss" aria-hidden="true">×</span>';
+
+    const ICON_CARD_HTML = '<span class="icon-card" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="16" rx="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="13" y2="13"/></svg></span>';
 
     function escapeAttr(s) {
       return escapeHtml(s).replace(/'/g, '&#39;');
@@ -4840,21 +5013,27 @@
 
         if (mentionMatch) {
           const query = mentionMatch[1].toLowerCase();
-          const hits = MENTION_PEOPLE.filter((p) => p.toLowerCase().startsWith(query)).slice(0, 8);
-          mountAutocompleteMenu(ta, () => hits.map((name) => {
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'mention-menu-item';
-            btn.setAttribute('role', 'option');
-            btn.textContent = `@${name}`;
-            btn.addEventListener('mousedown', (e) => {
-              e.preventDefault();
-              insertMention(ta, name);
-              removeMentionMenu();
-            });
-            return btn;
-          }));
-          return;
+          if (!/^v\d+$/.test(mentionMatch[1])) {
+            const hits = allKnownMentions()
+              .filter((p) => p.toLowerCase().startsWith(query))
+              .slice(0, 8);
+            if (hits.length) {
+              mountAutocompleteMenu(ta, () => hits.map((name) => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'mention-menu-item';
+                btn.setAttribute('role', 'option');
+                btn.textContent = `@${name}`;
+                btn.addEventListener('mousedown', (e) => {
+                  e.preventDefault();
+                  insertMention(ta, name);
+                  removeMentionMenu();
+                });
+                return btn;
+              }));
+              return;
+            }
+          }
         }
 
         if (issueStepMatch) {
@@ -6296,6 +6475,42 @@
       });
     }
 
+    function canvasSpawnPreviewItem() {
+      return {
+        id: 'item-new',
+        tags: [],
+        archivedAt: null,
+        steps: [normalizeStep({ problem: 'New decision', answer: null })],
+      };
+    }
+
+    function prepareCanvasSpawnDragGhost() {
+      if (!canvasSpawnDragGhostEl) {
+        canvasSpawnDragGhostEl = document.createElement('div');
+        canvasSpawnDragGhostEl.className = 'canvas-spawn-drag-ghost';
+        canvasSpawnDragGhostEl.setAttribute('aria-hidden', 'true');
+        document.body.appendChild(canvasSpawnDragGhostEl);
+      }
+      canvasSpawnDragGhostEl.innerHTML = renderCard(canvasSpawnPreviewItem(), { idPrefix: CANVAS_CARD_ID_PREFIX });
+      return canvasSpawnDragGhostEl;
+    }
+
+    function setCanvasSpawnDragImage(e) {
+      const ghost = prepareCanvasSpawnDragGhost();
+      const card = ghost.querySelector('.card');
+      const w = card?.offsetWidth || CANVAS_CARD_WIDTH;
+      const h = card?.offsetHeight || 96;
+      e.dataTransfer.setDragImage(ghost, Math.round(w / 2), Math.round(Math.min(h * 0.38, 52)));
+    }
+
+    function renderCanvasSpawnControlHtml() {
+      return `
+        <button type="button" class="canvas-spawn-btn" data-action="canvas-spawn-card" data-canvas-spawn draggable="true" aria-label="Add card — click or drag onto canvas" title="Add card (click or drag)">
+          ${ICON_CARD_HTML}
+        </button>
+      `;
+    }
+
     function renderCanvasZoomControlsHtml() {
       const pct = Math.round(canvasViewport.zoom * 100);
       return `
@@ -6350,13 +6565,35 @@
       }
     }
 
-    function createCardOnCanvasAtPointer() {
-      if (!canvasHotspot.over || viewMode !== 'list' || !canvasSurfaceEl()) return;
+    function canvasClientPointAtViewportCenter() {
+      const surface = canvasSurfaceEl();
+      if (!surface) return null;
+      const r = surface.getBoundingClientRect();
+      return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+    }
+
+    function createNewCardOnList() {
+      if (viewMode !== 'list') return;
+      const id = createItem({ problem: 'New decision' });
+      if (!id) return;
+      pendingFocus = { id, field: 'problem', step: 0, panel: false, canvas: false };
+      scheduleSaveState();
+      render();
+      scrollListToItem(id);
+    }
+
+    function createNewCardOnCanvasAtClient(clientX, clientY) {
+      if (viewMode !== 'list' || !canvasSurfaceEl()) return;
       const id = createItem({ problem: 'New decision' });
       if (!id) return;
       pendingFocus = { id, field: 'problem', step: 0, canvas: true };
-      placeCardOnCanvas(id, canvasHotspot.x, canvasHotspot.y);
+      placeCardOnCanvas(id, clientX, clientY);
       popCanvasPlacedCard(id);
+    }
+
+    function createCardOnCanvasAtPointer() {
+      if (!canvasHotspot.over || viewMode !== 'list' || !canvasSurfaceEl()) return;
+      createNewCardOnCanvasAtClient(canvasHotspot.x, canvasHotspot.y);
     }
 
     function canvasWorldExtent() {
@@ -6373,14 +6610,76 @@
       }
     }
 
-    function canvasActiveEditTextarea() {
+    function endCanvasSpawnDragSession() {
+      if (!canvasSpawnDragActive) return;
+      canvasSpawnDragActive = false;
+      render();
+    }
+
+    function saveActiveFieldEditWithoutRender() {
       const el = document.activeElement;
-      if (!el?.matches('textarea.inline-input, textarea[data-followup-input]')) return null;
-      return el.closest('.canvas-placed-card') ? el : null;
+      if (!el?.matches('textarea.inline-input, textarea[data-followup-input], input.inline-input.single, textarea[data-composer-input]')) {
+        return;
+      }
+      lockCanvasViewportFromSurface();
+      removeMentionMenu();
+      pendingInlineEditCommit = null;
+
+      if (el.matches('textarea[data-composer-input]')) {
+        scheduleSaveState();
+        return;
+      }
+
+      if (el.matches('[data-followup-input]')) {
+        followupDrafts[el.dataset.id] = el.value;
+        scheduleSaveState();
+        return;
+      }
+
+      if (el.matches('input.inline-input.single')) {
+        const editable = el.closest('[data-editable]');
+        const id = editable?.dataset.id;
+        if (id && items[id]) items[id].tags = parseTags(el.value);
+        scheduleSaveState();
+        return;
+      }
+
+      inlineEditCommitByTa.delete(el);
+      consumeTrailingHashTag(el);
+      const id = el.dataset.refItemId;
+      const field = el.dataset.refField;
+      const stepIndex = Number(el.dataset.refStep);
+      const step = items[id]?.steps[stepIndex];
+      if (!step) return;
+      const val = el.value.trim();
+      const isProblem = field === 'problem';
+      if (isProblem) {
+        if (val) recordProblemEdit(step, val);
+      } else if (val) {
+        recordAnswerEdit(step, val);
+      } else {
+        step.answer = null;
+        step.decidedAt = null;
+        step.answerTentative = false;
+      }
+      scheduleSaveState();
+    }
+
+    function prepareCanvasSpawnDragPointer() {
+      canvasSpawnPointerActive = true;
+      saveActiveFieldEditWithoutRender();
+    }
+
+    function activeInlineFieldEdit() {
+      const el = document.activeElement;
+      if (!el?.matches('textarea.inline-input, textarea[data-followup-input], input.inline-input.single')) return null;
+      if (el.closest('.canvas-placed-card, .workspace-list, .issue-ref-panel-body')) return el;
+      return null;
     }
 
     function shouldFlushCanvasFieldEditForTarget(target) {
-      const ta = canvasActiveEditTextarea();
+      if (target.closest('[data-canvas-spawn]')) return false;
+      const ta = activeInlineFieldEdit();
       if (!ta) return false;
       if (ta === target || ta.contains(target)) return false;
       if (mentionMenuEl?.contains(target)) return false;
@@ -6388,13 +6687,79 @@
       return true;
     }
 
+    function noteEditableSwitchFromTarget(target, activeEl) {
+      if (!activeEl?.matches('textarea.inline-input, input.inline-input.single, [data-followup-input]')) return;
+
+      const followup = target.closest('[data-followup-input]');
+      if (followup) {
+        if (followup === activeEl) return;
+        pendingFollowupFocus = {
+          id: followup.dataset.id,
+          ...editSurfaceFromElement(followup),
+        };
+        return;
+      }
+
+      const editable = target.closest('[data-editable]');
+      if (!editable || editable.closest('.issue-ref-panel-body')) return;
+      if (target.closest('[data-action]')) return;
+      if (target.closest('textarea, input') && editable.contains(target)) {
+        if (activeEl.closest('[data-editable]') === editable || activeEl === target) return;
+      }
+
+      const activeEditable = activeEl.closest('[data-editable]');
+      const sameField = !activeEl.matches('[data-followup-input]')
+        && activeEditable === editable;
+      if (sameField) return;
+
+      const surface = editSurfaceFromElement(editable);
+      const step = editable.dataset.editable === 'tags' ? 0 : Number(editable.dataset.step);
+      const id = editable.dataset.id;
+      const field = editable.dataset.editable;
+      if (surface.canvas) {
+        pendingFocus = {
+          id,
+          field,
+          step,
+          panel: false,
+          canvas: true,
+        };
+        return;
+      }
+      pendingEditableHandoff = {
+        id,
+        field,
+        step,
+        panel: !!surface.panel,
+        canvas: false,
+      };
+    }
+
     function flushActiveCanvasFieldEditForPointer(target) {
       if (!shouldFlushCanvasFieldEditForTarget(target)) return false;
-      const ta = canvasActiveEditTextarea();
+      const ta = activeInlineFieldEdit();
       if (!ta) return false;
+      noteEditableSwitchFromTarget(target, ta);
       lockCanvasViewportFromSurface();
+      if (ta.matches('input.inline-input.single')) {
+        removeMentionMenu();
+        const editable = ta.closest('[data-editable]');
+        const id = editable?.dataset.id;
+        if (id && items[id]) items[id].tags = parseTags(ta.value);
+        render();
+        return true;
+      }
       if (ta.matches('[data-followup-input]')) {
-        tryCommitFollowupField(ta);
+        if (ta.value.trim()) {
+          tryCommitFollowupField(ta);
+        } else {
+          removeMentionMenu();
+          if (pendingFocus || pendingEditableHandoff || pendingFollowupFocus) {
+            render();
+          } else {
+            ta.blur();
+          }
+        }
         return true;
       }
       removeMentionMenu();
@@ -6508,6 +6873,11 @@
       if (!host) return null;
       if (field === 'tags') return host.querySelector(`[data-editable="tags"][data-id="${id}"]`);
       return host.querySelector(`[data-editable="${field}"][data-id="${id}"][data-step="${step}"]`);
+    }
+
+    function findFollowupInput(app, { id, panel = false, canvas = false }) {
+      const host = editableHostForItem(app, id, { panel, canvas });
+      return host?.querySelector(`[data-followup-input][data-id="${id}"]`) || null;
     }
 
     function renderCanvasSurfaceHtml() {
@@ -6809,6 +7179,15 @@
       });
 
       app.addEventListener('dragstart', (e) => {
+        const spawn = e.target.closest('[data-canvas-spawn]');
+        if (spawn) {
+          canvasSpawnDragActive = true;
+          canvasSpawnPointerActive = false;
+          e.dataTransfer.setData('text/plain', CANVAS_SPAWN_DRAG_TYPE);
+          e.dataTransfer.effectAllowed = 'copy';
+          setCanvasSpawnDragImage(e);
+          return;
+        }
         const source = e.target.closest('[data-canvas-drag-id]');
         if (!source) return;
         if (e.target.closest('textarea, input, button, [data-editable], [contenteditable="true"]')) {
@@ -6826,22 +7205,40 @@
       });
 
       app.addEventListener('dragend', (e) => {
+        if (e.target.closest('[data-canvas-spawn]')) {
+          canvasSpawnSuppressClickUntil = Date.now() + 400;
+          endCanvasSpawnDragSession();
+        }
         const source = e.target.closest('[data-canvas-drag-id]');
         if (source?.hasAttribute('aria-grabbed')) source.setAttribute('aria-grabbed', 'false');
       });
 
       app.addEventListener('dragover', (e) => {
-        if (!e.target.closest('[data-canvas-surface]')) return;
+        const onList = e.target.closest('.workspace-list');
+        const onCanvas = e.target.closest('[data-canvas-surface]');
+        if (!onList && !onCanvas) return;
         e.preventDefault();
         e.dataTransfer.dropEffect = 'copy';
       });
 
       app.addEventListener('drop', (e) => {
+        const payload = e.dataTransfer.getData('text/plain');
+        if (payload === CANVAS_SPAWN_DRAG_TYPE) {
+          if (e.target.closest('.workspace-list')) {
+            e.preventDefault();
+            createNewCardOnList();
+            return;
+          }
+          const surface = e.target.closest('[data-canvas-surface]');
+          if (!surface) return;
+          e.preventDefault();
+          createNewCardOnCanvasAtClient(e.clientX, e.clientY);
+          return;
+        }
         const surface = e.target.closest('[data-canvas-surface]');
         if (!surface) return;
         e.preventDefault();
-        const id = e.dataTransfer.getData('text/plain');
-        if (id && items[id]) placeCardOnCanvas(id, e.clientX, e.clientY);
+        if (payload && items[payload]) placeCardOnCanvas(payload, e.clientX, e.clientY);
       });
 
       app.addEventListener('auxclick', (e) => {
@@ -6849,17 +7246,13 @@
       });
 
       app.addEventListener('pointerdown', (e) => {
-        if (e.button === 0 && flushActiveCanvasFieldEditForPointer(e.target)) return;
         if (tryStartCanvasPan(e)) return;
         if (e.button !== 0) return;
         if (canvasSpaceHeld) return;
         const placed = e.target.closest('.canvas-placed-card');
         if (!placed) return;
-        const followup = e.target.closest('[data-followup-input]');
-        if (e.target.closest('input') && !followup) return;
-        if (e.target.closest('textarea')) {
-          if (!followup) return;
-          if (document.activeElement === followup) return;
+        if (e.target.closest('[data-action], [data-followup-input], textarea.inline-input, input.inline-input.single')) {
+          return;
         }
         const id = placed.dataset.canvasPlaced;
         if (!id || !canvasPlacements[id]) return;
@@ -7040,7 +7433,7 @@
       commitFollowup(followup.dataset.id, followup.value, {
         inPanel: !!followup.closest('.issue-ref-panel-body'),
         ta: followup,
-        focusAnswer: !pendingEditableHandoff,
+        focusAnswer: !pendingEditableHandoff && !pendingFocus,
       });
     }
 
@@ -7127,7 +7520,7 @@
         ? ''
         : ` data-editable="${field}" data-id="${item.id}" data-step="${index}"`;
       const answerClearBtn = !inRefPanel && !answerEmpty
-        ? `<button type="button" class="field-remove-btn" data-action="clear-answer" data-id="${item.id}" data-step="${index}" aria-label="Archive answer">×</button>`
+        ? `<button type="button" class="field-remove-btn" data-action="clear-answer" data-id="${item.id}" data-step="${index}" aria-label="Archive answer">${ICON_TRASH_HTML}</button>`
         : '';
       const answerMetaHtml = inRefPanel
         ? (dateHtml ? `<div class="answer-meta">${dateHtml}</div>` : '')
@@ -7147,7 +7540,7 @@
             </div>
           </div>`;
       const stepRemoveBtn = !inRefPanel && !isStepArchived(step) && itemActiveSteps(item).length > 1
-        ? `<button type="button" class="field-remove-btn field-remove-btn--problem" data-action="remove-step" data-id="${item.id}" data-step="${index}" aria-label="Archive question">×</button>`
+        ? `<button type="button" class="field-remove-btn field-remove-btn--problem" data-action="remove-step" data-id="${item.id}" data-step="${index}" aria-label="Archive question">${ICON_TRASH_HTML}</button>`
         : '';
       const problemHtml = `<div class="problem-row">${stepRemoveBtn}<div class="problem${inRefPanel ? '' : ' editable'}${refBarOnProblem ? refTargetBar : ''}"${fieldEditAttrs('problem')}>${formatRichText(problemText)}</div></div>`;
       const stepHighlight = highlightStep && !highlightRef?.focusAnswer ? ' highlight' : '';
@@ -7186,8 +7579,8 @@
               <div class="card-header">
                 ${renderTagsHtml(item, { readOnly: inRefPanel })}
                 ${inCanvasSurface
-                  ? `<button type="button" class="btn-delete" data-action="remove-from-canvas" data-id="${item.id}" aria-label="Remove from canvas">×</button>`
-                  : `<button type="button" class="btn-delete" data-action="delete" data-id="${item.id}" aria-label="Archive card">×</button>`}
+                  ? `<button type="button" class="btn-delete btn-delete--dismiss" data-action="remove-from-canvas" data-id="${item.id}" aria-label="Remove from canvas">${ICON_DISMISS_HTML}</button>`
+                  : `<button type="button" class="btn-delete btn-delete--archive" data-action="delete" data-id="${item.id}" aria-label="Archive card">${ICON_TRASH_HTML}</button>`}
               </div>
               <div class="timeline">${timeline}</div>
               ${inRefPanel ? '' : `<div class="followup-slot">
@@ -7239,28 +7632,36 @@
     }
 
     function renderListView() {
-      const ordered = allItemsOrdered();
+      const ordered = listItemsForView();
       const showRootComposer = openComposer?.type === 'root';
       const cards = renderGroupedCards(ordered, { draggableToCanvas: true });
       const addBlock = showRootComposer
         ? renderComposerHtml()
         : `<button type="button" class="add-trigger" data-action="add-root">New decision</button>`;
+      const listEmpty = listFilterNotOnCanvas
+        ? '<p style="color:var(--muted);font-size:0.85rem;margin:0">Every decision is on the canvas. Switch to <strong>All</strong> or remove one from the canvas to see it here.</p>'
+        : '<p style="color:var(--muted);font-size:0.85rem;margin:0">No decisions yet</p>';
 
       return `
         <section class="workspace-view">
           <div class="workspace-list">
             <section class="list-view">
               <div class="list-header">
-                <span>All items</span>
+                <span class="list-header-title">Decisions</span>
+                <div class="list-filter-toggle" role="group" aria-label="List filter">
+                  <button type="button" class="list-filter-chip" data-action="set-list-filter" data-list-filter="all" aria-pressed="${listFilterNotOnCanvas ? 'false' : 'true'}">All</button>
+                  <button type="button" class="list-filter-chip" data-action="set-list-filter" data-list-filter="not-on-canvas" aria-pressed="${listFilterNotOnCanvas ? 'true' : 'false'}">Not on canvas</button>
+                </div>
               </div>
               <div class="list-body">
-                ${cards || '<p style="color:var(--muted);font-size:0.85rem;margin:0">No items yet</p>'}
+                ${cards || listEmpty}
                 ${addBlock}
               </div>
             </section>
           </div>
           <div class="workspace-canvas">
             ${renderCanvasFrameHtml()}
+            ${renderCanvasSpawnControlHtml()}
             ${renderCanvasZoomControlsHtml()}
           </div>
         </section>
@@ -7324,8 +7725,6 @@
         datesBtn.classList.toggle('active', showAllDates);
         datesBtn.setAttribute('aria-pressed', String(showAllDates));
       }
-      document.getElementById('state-json').textContent = JSON.stringify(items, null, 2);
-
       if (pendingFocus) {
         const { id, field, step = 0, panel = false, canvas = false } = pendingFocus;
         pendingFocus = null;
@@ -7333,6 +7732,11 @@
         if (el) startInlineEdit(el, field, id, step);
       } else if (pendingEditableHandoff) {
         finishEditableHandoff(document.getElementById('app'));
+      } else if (pendingFollowupFocus) {
+        const focusTarget = pendingFollowupFocus;
+        pendingFollowupFocus = null;
+        const followup = findFollowupInput(document.getElementById('app'), focusTarget);
+        followup?.focus();
       } else {
         const composerInput = document.querySelector('[data-composer-input]');
         if (composerInput) composerInput.focus();
@@ -7394,7 +7798,10 @@
           render();
         };
         input.addEventListener('blur', () => {
-          setTimeout(() => commit(), 0);
+          setTimeout(() => {
+            if (canvasSpawnDragActive) return;
+            commit();
+          }, 0);
         });
         input.addEventListener('keydown', (e) => {
           if (isEnterSubmit(e)) { e.preventDefault(); input.blur(); }
@@ -7456,11 +7863,13 @@
       ta.addEventListener('blur', () => {
         setTimeout(hideSelectionRefToolbar, 120);
         setTimeout(() => {
+          if (!document.body.contains(ta)) return;
+          if (canvasSpawnDragActive) return;
           if (isRefLinkPickerOpen() || selectionRefPick) {
             pendingInlineEditCommit = commit;
             return;
           }
-          if (document.body.contains(ta) && getTextareaSelectionLabel(ta)) {
+          if (getTextareaSelectionLabel(ta)) {
             return;
           }
           removeMentionMenu();
@@ -7517,6 +7926,18 @@
       saveComposer(composer);
     }
 
+    function flushComposerOnOutsideClick(target) {
+      if (canvasSpawnDragActive) return false;
+      const input = document.activeElement;
+      if (!input?.matches('[data-composer-input]') || !openComposer) return false;
+      if (target.closest('[data-composer]')) return false;
+      if (target.closest('[data-canvas-spawn]')) return false;
+      if (mentionMenuEl?.contains(target)) return false;
+      if (selectionRefToolbarEl?.contains(target)) return false;
+      tryCommitComposerField(input);
+      return true;
+    }
+
     document.querySelector('.header-right').addEventListener('click', (e) => {
       if (e.target.closest('[data-action="toggle-dates"]')) {
         showAllDates = !showAllDates;
@@ -7535,29 +7956,36 @@
       if (tab) setView(tab.dataset.view);
     });
 
+    document.getElementById('app-body').addEventListener('pointerdown', (e) => {
+      if (e.button !== 0) return;
+      if (!flushActiveCanvasFieldEditForPointer(e.target)) {
+        flushComposerOnOutsideClick(e.target);
+      } else if (activeInlineFieldEdit()?.closest('.canvas-placed-card')) {
+        e.preventDefault();
+      }
+      if (!e.target.closest('[data-canvas-spawn]')) return;
+      prepareCanvasSpawnDragPointer();
+    }, true);
+
+    document.getElementById('app-body').addEventListener('pointerup', (e) => {
+      if (!canvasSpawnPointerActive) return;
+      canvasSpawnPointerActive = false;
+      if (!canvasSpawnDragActive) render();
+    }, true);
+
     document.getElementById('app-body').addEventListener('mousedown', (e) => {
       if (e.button !== 0) return;
       if (Date.now() < canvasSuppressClickUntil && e.target.closest('.canvas-placed-card')) return;
       if (e.target.closest('.issue-ref-panel-body')) return;
 
-      const editable = e.target.closest('[data-editable]');
-      if (!editable) return;
-      if (e.target.closest('[data-action]')) return;
-      if (e.target.closest('textarea, input') && editable.contains(e.target)) return;
+      if (!e.target.closest('[data-editable], [data-followup-input]')) return;
 
       const active = document.activeElement;
       if (!active?.matches('textarea.inline-input, input.inline-input.single, [data-followup-input]')) return;
 
-      const sameField = !active.matches('[data-followup-input]')
-        && active.closest('[data-editable]') === editable;
-      if (sameField) return;
+      noteEditableSwitchFromTarget(e.target, active);
+      if (!pendingEditableHandoff && !pendingFollowupFocus && !pendingFocus) return;
 
-      pendingEditableHandoff = {
-        id: editable.dataset.id,
-        field: editable.dataset.editable,
-        step: editable.dataset.editable === 'tags' ? 0 : Number(editable.dataset.step),
-        ...editSurfaceFromElement(editable),
-      };
       e.preventDefault();
       active.blur();
     }, true);
@@ -7567,7 +7995,13 @@
 
       const editable = e.target.closest('[data-editable]');
       if (editable && !editable.closest('.issue-ref-panel-body') && !e.target.closest('textarea, input, [data-action]')) {
+        const active = document.activeElement;
+        if (active?.matches('textarea.inline-input, input.inline-input.single')
+          && (editable.contains(active) || active.closest('[data-editable]') === editable)) {
+          return;
+        }
         pendingEditableHandoff = null;
+        pendingFocus = null;
         const id = editable.dataset.id;
         const field = editable.dataset.editable;
         const step = field === 'tags' ? 0 : Number(editable.dataset.step);
@@ -7580,6 +8014,16 @@
 
       const action = actionEl.dataset.action;
       const id = actionEl.dataset.id;
+
+      if (action === 'set-list-filter') {
+        const mode = actionEl.dataset.listFilter;
+        const next = mode === 'not-on-canvas';
+        if (listFilterNotOnCanvas === next) return;
+        listFilterNotOnCanvas = next;
+        scheduleSaveState();
+        render();
+        return;
+      }
 
       if (action === 'pick-ref-target') {
         e.preventDefault();
@@ -7781,6 +8225,16 @@
         return;
       }
 
+      if (action === 'canvas-spawn-card') {
+        if (Date.now() < canvasSpawnSuppressClickUntil) return;
+        e.preventDefault();
+        canvasSpawnDragActive = false;
+        const pt = canvasClientPointAtViewportCenter();
+        if (!pt) return;
+        createNewCardOnCanvasAtClient(pt.x, pt.y);
+        return;
+      }
+
       if (action === 'canvas-zoom-in') {
         canvasZoomByFactor(1.15);
         return;
@@ -7835,6 +8289,7 @@
       const followup = e.target.matches('[data-followup-input]') ? e.target : null;
       if (!composerInput && !followup) return;
       setTimeout(() => {
+        if (canvasSpawnDragActive) return;
         if (composerInput) {
           const active = document.activeElement;
           const composer = composerInput.closest('[data-composer]');
