@@ -99,5 +99,15 @@ export {
   recomputeNextId,
 } from "./cards.ts";
 export { addRandomCards } from "./fixtures.ts";
+export {
+  importFigJamStickies,
+  isFigJamStickyTagLine,
+  parseCsvRows,
+  parseFigJamStickyBody,
+  parseFigJamStickyCsv,
+  parseHashtagsFromStickyLine,
+  splitStickyQuestionAnswer,
+  type FigJamStickyRow,
+} from "./figjamStickyCsv.ts";
 export { createDocumentFromSeed } from "./seed.ts";
 export { loadDocument, saveDocument } from "./persistence.ts";

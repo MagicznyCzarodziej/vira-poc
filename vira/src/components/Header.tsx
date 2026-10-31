@@ -1,4 +1,5 @@
 import { useDocument } from "../store/index.ts";
+import { FigJamImportButton } from "./FigJamImportButton.tsx";
 
 export function Header() {
   const viewMode = useDocument((state) => state.viewMode);
@@ -18,6 +19,7 @@ export function Header() {
         </nav>
         <button type="button" className={`view-tab dates-toggle${showAllDates ? " active" : ""}`} data-action="toggle-dates" aria-pressed={showAllDates} onClick={toggleDates}>Dates</button>
         <div className="header-proto-actions" aria-label="PoC data">
+          <FigJamImportButton />
           <button type="button" className="header-proto-btn" data-action="add-random-cards" onClick={addRandom}>Random cards</button>
           <button
             type="button"
