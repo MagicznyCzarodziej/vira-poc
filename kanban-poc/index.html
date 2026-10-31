@@ -1032,11 +1032,54 @@
       z-index: 3;
     }
     .workspace-canvas {
+      position: relative;
       flex: 1 1 auto;
       min-width: 0;
       display: flex;
       flex-direction: column;
       align-self: stretch;
+    }
+    .canvas-zoom-controls {
+      position: absolute;
+      right: 0.75rem;
+      bottom: 0.75rem;
+      z-index: 5;
+      display: flex;
+      align-items: stretch;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid var(--tone-2);
+      background: var(--bg);
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    }
+    .canvas-zoom-btn {
+      font: inherit;
+      font-size: 0.8rem;
+      font-weight: 600;
+      line-height: 1;
+      min-width: 2rem;
+      padding: 0.45rem 0.55rem;
+      border: none;
+      border-right: 1px solid var(--tone-2);
+      background: var(--bg);
+      color: var(--text);
+      cursor: pointer;
+    }
+    .canvas-zoom-btn:last-child {
+      border-right: none;
+    }
+    .canvas-zoom-btn:hover {
+      background: var(--tone-1);
+    }
+    .canvas-zoom-btn--label {
+      min-width: 3.25rem;
+      font-size: 0.72rem;
+      font-weight: 500;
+      font-variant-numeric: tabular-nums;
+      color: var(--muted);
+    }
+    .canvas-zoom-btn--label:hover {
+      color: var(--text);
     }
     .workspace-canvas .spatial-canvas {
       flex: 1 1 auto;
@@ -1110,10 +1153,27 @@
       min-width: 0;
       width: 100%;
       min-height: 0;
-      overflow: auto;
+      overflow: hidden;
       border-radius: 12px;
       border: 1px dashed var(--tone-2);
       background: var(--canvas-bg);
+      cursor: grab;
+      touch-action: none;
+    }
+    .spatial-canvas.is-panning {
+      cursor: grabbing;
+      user-select: none;
+    }
+    body.canvas-space-pan .spatial-canvas,
+    body.canvas-space-pan .spatial-canvas .canvas-placed-card {
+      cursor: grabbing;
+    }
+    .canvas-world {
+      position: absolute;
+      left: 0;
+      top: 0;
+      transform-origin: 0 0;
+      will-change: transform;
     }
     .canvas-hint {
       position: absolute;
@@ -2113,6 +2173,11 @@
     </div>
   </div>
 
+  <script type="module">
+    import { generateKeyBetween, generateNKeysBetween } from './fractional-indexing.js';
+    window.__canvasFidx = { generateKeyBetween, generateNKeysBetween };
+    window.dispatchEvent(new Event('canvas-fidx-ready'));
+  </script>
   <script>
     let nextId = 1;
     /** @type {Record<string, { id: string, tags: string[], steps: object[] }>} */
@@ -2196,11 +2261,21 @@
     /** @type {'board' | 'list' | 'canvas'} */
     let viewMode = 'list';
 
-    /** @type {Record<string, { x: number, y: number }>} */
+    /** @type {Record<string, { x: number, y: number, order?: string }>} */
     let canvasPlacements = {};
+
+    /** @type {{ panX: number, panY: number, zoom: number }} */
+    let canvasViewport = { panX: 0, panY: 0, zoom: 1 };
+
+    let canvasViewportUserSet = false;
 
     /** @type {{ placed: HTMLElement, id: string, pointerId: number, offX: number, offY: number, startX: number, startY: number, dragging: boolean } | null} */
     let canvasPointerState = null;
+
+    /** @type {{ surface: HTMLElement, pointerId: number, startX: number, startY: number, startPanX: number, startPanY: number } | null} */
+    let canvasPanState = null;
+
+    let canvasSpaceHeld = false;
 
     let canvasSuppressClickUntil = 0;
 
@@ -2232,6 +2307,8 @@
           viewMode,
           showAllDates,
           canvasPlacements,
+          canvasViewport,
+          canvasViewportUserSet,
         }));
       } catch (err) {
         console.warn('Could not save to localStorage', err);
@@ -2298,6 +2375,14 @@
         if (data.canvasPlacements && typeof data.canvasPlacements === 'object') {
           canvasPlacements = data.canvasPlacements;
         }
+        if (data.canvasViewport && typeof data.canvasViewport === 'object') {
+          canvasViewport = normalizeCanvasViewport(data.canvasViewport);
+        }
+        if (typeof data.canvasViewportUserSet === 'boolean') {
+          canvasViewportUserSet = data.canvasViewportUserSet;
+        }
+        migrateCanvasPlacementsToCenteredWorld();
+        migrateCanvasPlacementOrders();
         return true;
       } catch (err) {
         console.warn('Could not load from localStorage', err);
@@ -2638,6 +2723,8 @@
       removeIssuePreview();
       items = {};
       canvasPlacements = {};
+      canvasViewport = { panX: 0, panY: 0, zoom: 1 };
+      canvasViewportUserSet = false;
       followupDrafts = {};
       openComposer = null;
       pendingFocus = null;
@@ -4599,16 +4686,271 @@
 
     const CANVAS_CARD_WIDTH = 420;
     const CANVAS_DROP_OFFSET_Y = 24;
+    const CANVAS_WORLD_MIN_W = 7200;
+    const CANVAS_WORLD_MIN_H = 5400;
+    const CANVAS_ZOOM_MIN = 0.2;
+    const CANVAS_ZOOM_MAX = 2.5;
+
+    // Layer order uses fractional indexing (Figma / Evan Wallace) — one string key per
+    // object; sort keys lexicographically; reorder = assign a new key between neighbors.
+    function canvasGenerateKeyBetween(a, b) {
+      if (window.__canvasFidx) return window.__canvasFidx.generateKeyBetween(a, b);
+      return canvasGenerateKeyBetweenFallback(a, b);
+    }
+
+    function canvasGenerateKeyBetweenFallback(a, b) {
+      if (a == null && b == null) return 'a0';
+      if (b == null) return `${a || 'a0'}U`;
+      if (a == null) return `Z${b}`;
+      if (a >= b) throw new Error('invalid layer order');
+      return `${a}U`;
+    }
+
+    function canvasPlacementsSortedIds() {
+      return Object.keys(canvasPlacements)
+        .filter((id) => items[id])
+        .sort((a, b) => {
+          const oa = canvasPlacements[a].order || '';
+          const ob = canvasPlacements[b].order || '';
+          if (oa < ob) return -1;
+          if (oa > ob) return 1;
+          return a.localeCompare(b);
+        });
+    }
+
+    function ensureCanvasPlacementOrder(id) {
+      const placement = canvasPlacements[id];
+      if (!placement || placement.order) return;
+      const sorted = canvasPlacementsSortedIds().filter((x) => x !== id && canvasPlacements[x].order);
+      const back = sorted.length ? canvasPlacements[sorted[sorted.length - 1]].order : null;
+      placement.order = canvasGenerateKeyBetween(back, null);
+    }
+
+    function migrateCanvasPlacementOrders() {
+      for (const id of Object.keys(canvasPlacements)) {
+        if (items[id]) ensureCanvasPlacementOrder(id);
+      }
+    }
+
+    function canvasAssignOrderAtFront(id) {
+      if (!canvasPlacements[id]) return;
+      const sorted = canvasPlacementsSortedIds();
+      if (sorted[sorted.length - 1] === id) return;
+      const sortedWithout = sorted.filter((x) => x !== id);
+      const backKey = sortedWithout.length
+        ? canvasPlacements[sortedWithout[sortedWithout.length - 1]].order
+        : null;
+      canvasPlacements[id].order = canvasGenerateKeyBetween(backKey, null);
+    }
 
     function canvasSurfaceEl() {
       return document.querySelector('[data-canvas-surface]');
     }
 
+    function canvasWorldEl() {
+      return canvasSurfaceEl()?.querySelector('.canvas-world') ?? null;
+    }
+
+    function clampCanvasZoom(zoom) {
+      return Math.min(CANVAS_ZOOM_MAX, Math.max(CANVAS_ZOOM_MIN, zoom));
+    }
+
+    function normalizeCanvasViewport(raw) {
+      if (raw && typeof raw.zoom === 'number') {
+        return {
+          panX: Number(raw.panX) || 0,
+          panY: Number(raw.panY) || 0,
+          zoom: clampCanvasZoom(Number(raw.zoom) || 1),
+        };
+      }
+      const scrollLeft = Number(raw?.scrollLeft) || 0;
+      const scrollTop = Number(raw?.scrollTop) || 0;
+      return { panX: -scrollLeft, panY: -scrollTop, zoom: 1 };
+    }
+
+    function applyCanvasWorldTransform(world = canvasWorldEl()) {
+      if (!world) return;
+      const { panX, panY, zoom } = canvasViewport;
+      world.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom})`;
+    }
+
+    function updateCanvasZoomControlLabel() {
+      const label = document.querySelector('[data-canvas-zoom-label]');
+      if (label) label.textContent = `${Math.round(canvasViewport.zoom * 100)}%`;
+    }
+
+    function canvasViewportCenterClient() {
+      const surface = canvasSurfaceEl();
+      if (!surface) return null;
+      const rect = surface.getBoundingClientRect();
+      return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+    }
+
+    function canvasZoomByFactor(factor) {
+      const center = canvasViewportCenterClient();
+      if (!center) return;
+      canvasZoomAt(center.x, center.y, factor);
+    }
+
+    function canvasZoomReset() {
+      const center = canvasViewportCenterClient();
+      if (!center || canvasViewport.zoom === 1) return;
+      canvasZoomAt(center.x, center.y, 1 / canvasViewport.zoom);
+    }
+
+    function syncCanvasViewport() {
+      applyCanvasWorldTransform();
+      updateCanvasZoomControlLabel();
+      scheduleSaveState();
+    }
+
+    function centerCanvasViewport(surface, world) {
+      const zoom = canvasViewport.zoom;
+      canvasViewport.panX = Math.round((surface.clientWidth - world.offsetWidth * zoom) / 2);
+      canvasViewport.panY = Math.round((surface.clientHeight - world.offsetHeight * zoom) / 2);
+    }
+
+    function canvasZoomAt(clientX, clientY, scaleFactor) {
+      const surface = canvasSurfaceEl();
+      if (!surface || !scaleFactor) return;
+      const rect = surface.getBoundingClientRect();
+      const mx = clientX - rect.left;
+      const my = clientY - rect.top;
+      const { panX, panY, zoom } = canvasViewport;
+      const worldX = (mx - panX) / zoom;
+      const worldY = (my - panY) / zoom;
+      const newZoom = clampCanvasZoom(zoom * scaleFactor);
+      canvasViewport.zoom = newZoom;
+      canvasViewport.panX = mx - worldX * newZoom;
+      canvasViewport.panY = my - worldY * newZoom;
+      canvasViewportUserSet = true;
+      syncCanvasViewport();
+    }
+
+    function onCanvasWheel(e) {
+      if (!e.target.closest('[data-canvas-surface]')) return;
+      const pinchOrZoom = e.ctrlKey || e.metaKey;
+      if (pinchOrZoom) {
+        e.preventDefault();
+        const factor = Math.exp(-e.deltaY * 0.002);
+        canvasZoomAt(e.clientX, e.clientY, factor);
+        return;
+      }
+      if (e.deltaX === 0 && e.deltaY === 0) return;
+      e.preventDefault();
+      canvasViewport.panX -= e.deltaX;
+      canvasViewport.panY -= e.deltaY;
+      canvasViewportUserSet = true;
+      syncCanvasViewport();
+    }
+
+    function bindCanvasSurfaceWheel(surface) {
+      if (surface.dataset.wheelBound) return;
+      surface.dataset.wheelBound = '1';
+      surface.addEventListener('wheel', onCanvasWheel, { passive: false });
+    }
+
+    function applyCanvasViewport() {
+      const surface = canvasSurfaceEl();
+      if (!surface) return;
+      bindCanvasSurfaceWheel(surface);
+      requestAnimationFrame(() => {
+        const world = surface.querySelector('.canvas-world');
+        if (world && !canvasViewportUserSet) {
+          centerCanvasViewport(surface, world);
+        }
+        applyCanvasWorldTransform(world);
+        updateCanvasZoomControlLabel();
+      });
+    }
+
+    function renderCanvasZoomControlsHtml() {
+      const pct = Math.round(canvasViewport.zoom * 100);
+      return `
+        <div class="canvas-zoom-controls" aria-label="Canvas zoom">
+          <button type="button" class="canvas-zoom-btn" data-action="canvas-zoom-out" aria-label="Zoom out">−</button>
+          <button type="button" class="canvas-zoom-btn canvas-zoom-btn--label" data-action="canvas-zoom-reset" data-canvas-zoom-label aria-label="Reset zoom to 100%">${pct}%</button>
+          <button type="button" class="canvas-zoom-btn" data-action="canvas-zoom-in" aria-label="Zoom in">+</button>
+        </div>
+      `;
+    }
+
+    function migrateCanvasPlacementsToCenteredWorld() {
+      const positions = Object.values(canvasPlacements);
+      if (!positions.length) return;
+      const maxX = Math.max(...positions.map((p) => p.x));
+      const maxY = Math.max(...positions.map((p) => p.y));
+      if (maxX > CANVAS_WORLD_MIN_W * 0.35) return;
+      const shiftX = Math.round(CANVAS_WORLD_MIN_W / 2 - 480);
+      const shiftY = Math.round(CANVAS_WORLD_MIN_H / 2 - 360);
+      for (const id of Object.keys(canvasPlacements)) {
+        canvasPlacements[id] = {
+          x: canvasPlacements[id].x + shiftX,
+          y: canvasPlacements[id].y + shiftY,
+        };
+      }
+    }
+
+    function canvasTypingFocus() {
+      const el = document.activeElement;
+      if (!el) return false;
+      if (el.matches('textarea, input, select, [contenteditable="true"]')) return true;
+      return !!el.closest('[contenteditable="true"]');
+    }
+
+    function canvasWorldExtent() {
+      let w = CANVAS_WORLD_MIN_W;
+      let h = CANVAS_WORLD_MIN_H;
+      for (const pos of Object.values(canvasPlacements)) {
+        w = Math.max(w, pos.x + CANVAS_CARD_WIDTH + 320);
+        h = Math.max(h, pos.y + 360 + 320);
+      }
+      return { w, h };
+    }
+
+    function tryStartCanvasPan(e) {
+      if (viewMode !== 'list') return false;
+      const surface = e.target.closest('[data-canvas-surface]');
+      if (!surface) return false;
+      const onCard = e.target.closest('.canvas-placed-card');
+      const middle = e.button === 1;
+      const spacePan = canvasSpaceHeld && e.button === 0;
+      const backgroundPan = e.button === 0 && !onCard;
+      if (!middle && !spacePan && !backgroundPan) return false;
+      if (canvasPointerState || canvasPanState) return false;
+
+      canvasPanState = {
+        surface,
+        pointerId: e.pointerId,
+        startX: e.clientX,
+        startY: e.clientY,
+        startPanX: canvasViewport.panX,
+        startPanY: canvasViewport.panY,
+      };
+      surface.classList.add('is-panning');
+      surface.setPointerCapture(e.pointerId);
+      e.preventDefault();
+      return true;
+    }
+
+    function endCanvasPan(e) {
+      const pan = canvasPanState;
+      if (!pan || e.pointerId !== pan.pointerId) return false;
+      pan.surface.classList.remove('is-panning');
+      canvasPanState = null;
+      canvasViewportUserSet = true;
+      scheduleSaveState();
+      return true;
+    }
+
     function canvasPointFromClient(surface, clientX, clientY) {
       const rect = surface.getBoundingClientRect();
+      const mx = clientX - rect.left;
+      const my = clientY - rect.top;
+      const { panX, panY, zoom } = canvasViewport;
       return {
-        x: clientX - rect.left + surface.scrollLeft,
-        y: clientY - rect.top + surface.scrollTop,
+        x: (mx - panX) / zoom,
+        y: (my - panY) / zoom,
       };
     }
 
@@ -4620,13 +4962,15 @@
         x: Math.max(8, Math.round(pt.x - CANVAS_CARD_WIDTH / 2)),
         y: Math.max(8, Math.round(pt.y - CANVAS_DROP_OFFSET_Y)),
       };
+      ensureCanvasPlacementOrder(itemId);
+      canvasAssignOrderAtFront(itemId);
       scheduleSaveState();
       render();
     }
 
-    function renderCanvasPlacedCard(item, pos) {
+    function renderCanvasPlacedCard(item, pos, layerIndex) {
       return `
-        <div class="canvas-placed-card" data-canvas-placed="${escapeAttr(item.id)}" style="left:${pos.x}px;top:${pos.y}px">
+        <div class="canvas-placed-card" data-canvas-placed="${escapeAttr(item.id)}" style="left:${pos.x}px;top:${pos.y}px;z-index:${layerIndex}">
           ${renderCard(item, { idPrefix: CANVAS_CARD_ID_PREFIX })}
         </div>
       `;
@@ -4658,15 +5002,20 @@
     }
 
     function renderCanvasSurfaceHtml() {
-      const placed = Object.entries(canvasPlacements)
-        .filter(([id]) => items[id])
-        .map(([id, pos]) => renderCanvasPlacedCard(items[id], pos))
+      const sortedIds = canvasPlacementsSortedIds();
+      const placed = sortedIds
+        .map((id, i) => renderCanvasPlacedCard(items[id], canvasPlacements[id], i + 1))
         .join('');
-      const hint = placed ? '' : '<p class="canvas-hint">Drag cards from the list onto the canvas</p>';
+      const hint = placed
+        ? ''
+        : '<p class="canvas-hint">Drag cards from the list · drag to pan · pinch or ⌘/Ctrl+scroll to zoom</p>';
+      const { w, h } = canvasWorldExtent();
       return `
         <div class="spatial-canvas" data-canvas-surface role="region" aria-label="Decision canvas">
-          ${hint}
-          ${placed}
+          <div class="canvas-world" style="width:${w}px;height:${h}px">
+            ${hint}
+            ${placed}
+          </div>
         </div>
       `;
     }
@@ -4775,8 +5124,14 @@
         if (id && items[id]) placeCardOnCanvas(id, e.clientX, e.clientY);
       });
 
+      app.addEventListener('auxclick', (e) => {
+        if (e.button === 1 && e.target.closest('[data-canvas-surface]')) e.preventDefault();
+      });
+
       app.addEventListener('pointerdown', (e) => {
+        if (tryStartCanvasPan(e)) return;
         if (e.button !== 0) return;
+        if (canvasSpaceHeld) return;
         const placed = e.target.closest('.canvas-placed-card');
         if (!placed) return;
         const followup = e.target.closest('[data-followup-input]');
@@ -4803,6 +5158,15 @@
       }, true);
 
       app.addEventListener('pointermove', (e) => {
+        const pan = canvasPanState;
+        if (pan && e.pointerId === pan.pointerId) {
+          e.preventDefault();
+          canvasViewport.panX = pan.startPanX + (e.clientX - pan.startX);
+          canvasViewport.panY = pan.startPanY + (e.clientY - pan.startY);
+          canvasViewportUserSet = true;
+          applyCanvasWorldTransform();
+          return;
+        }
         const state = canvasPointerState;
         if (!state || e.pointerId !== state.pointerId) return;
         if (!state.dragging) {
@@ -4812,6 +5176,16 @@
           state.dragging = true;
           state.placed.classList.add('is-dragging');
           state.placed.setPointerCapture(e.pointerId);
+          if (canvasPlacements[state.id]) {
+            canvasAssignOrderAtFront(state.id);
+            const world = canvasWorldEl();
+            if (world) {
+              canvasPlacementsSortedIds().forEach((cid, i) => {
+                const el = world.querySelector(`[data-canvas-placed="${cid}"]`);
+                if (el) el.style.zIndex = String(i + 1);
+              });
+            }
+          }
         }
         e.preventDefault();
         const surface = canvasSurfaceEl();
@@ -4826,6 +5200,7 @@
       }, true);
 
       const endCanvasPointer = (e) => {
+        if (endCanvasPan(e)) return;
         const state = canvasPointerState;
         if (!state || e.pointerId !== state.pointerId) return;
         if (state.dragging) {
@@ -4846,6 +5221,26 @@
           e.stopPropagation();
         }
       }, true);
+
+      window.addEventListener('keydown', (e) => {
+        if (e.code !== 'Space' || e.repeat) return;
+        if (canvasTypingFocus()) return;
+        if (viewMode !== 'list' || !canvasSurfaceEl()) return;
+        canvasSpaceHeld = true;
+        document.body.classList.add('canvas-space-pan');
+        e.preventDefault();
+      });
+
+      window.addEventListener('keyup', (e) => {
+        if (e.code !== 'Space') return;
+        canvasSpaceHeld = false;
+        document.body.classList.remove('canvas-space-pan');
+      });
+
+      window.addEventListener('blur', () => {
+        canvasSpaceHeld = false;
+        document.body.classList.remove('canvas-space-pan');
+      });
     }
 
     function renderComposerHtml() {
@@ -5107,6 +5502,7 @@
           </div>
           <div class="workspace-canvas">
             ${renderCanvasSurfaceHtml()}
+            ${renderCanvasZoomControlsHtml()}
           </div>
         </section>
       `;
@@ -5149,7 +5545,10 @@
       if (drawerRef) populateIssueRefDrawer(drawerRef);
 
       syncAutoGrowTextareas(document.getElementById('app'));
-      if (viewMode === 'list') bindCanvasInteractions();
+      if (viewMode === 'list') {
+        bindCanvasInteractions();
+        applyCanvasViewport();
+      }
       scheduleSaveState();
     }
 
@@ -5554,6 +5953,19 @@
         return;
       }
 
+      if (action === 'canvas-zoom-in') {
+        canvasZoomByFactor(1.15);
+        return;
+      }
+      if (action === 'canvas-zoom-out') {
+        canvasZoomByFactor(1 / 1.15);
+        return;
+      }
+      if (action === 'canvas-zoom-reset') {
+        canvasZoomReset();
+        return;
+      }
+
       if (action === 'delete' && id && items[id]) {
         const openParsed = issueDrawerRefId ? parseIssueRef(issueDrawerRefId) : null;
         if (openParsed?.itemId === id) closeIssueRefDrawer();
@@ -5659,6 +6071,10 @@
         saveStateTimer = null;
       }
       saveState();
+    });
+
+    window.addEventListener('canvas-fidx-ready', () => {
+      migrateCanvasPlacementOrders();
     });
 
     initState();
