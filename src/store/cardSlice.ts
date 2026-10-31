@@ -5,7 +5,9 @@ import {
   archiveQuestion,
   archiveStepAnswerField,
   createBlankCard as createBlankCardInBag,
+  importFigJamStickies,
   normalizeTagName,
+  parseFigJamStickyCsv,
   recomputeNextId,
   locateIssueRefSource,
   replaceIssueRefRevisionInText,
@@ -25,6 +27,7 @@ type CardSlice = Pick<
   | "archiveCardById"
   | "createBlankCard"
   | "addRandom"
+  | "importFigJamStickiesFromCsv"
   | "clearAll"
   | "setFieldHeadText"
   | "upgradeIssueRef"
@@ -106,6 +109,22 @@ export const createCardSlice: StateCreator<DocumentState, [], [], CardSlice> = (
       openComposer: false,
     });
     schedule(get);
+  },
+  importFigJamStickiesFromCsv: (csvText) => {
+    const stickies = parseFigJamStickyCsv(csvText);
+    if (stickies.length === 0) return 0;
+    const bag = bagOf(get());
+    bag.items = { ...bag.items };
+    const ids = importFigJamStickies(bag, stickies);
+    set({
+      items: bag.items,
+      nextId: bag.nextId,
+      openComposer: false,
+      editing: null,
+      editInitial: "",
+    });
+    schedule(get);
+    return ids.length;
   },
   clearAll: () => {
     set({

@@ -47,6 +47,7 @@ export type DocumentState = SavedDocument & {
   setViewport: (viewport: SavedDocument["canvasViewport"], userSet?: boolean) => void;
   createBlankCard: (where: Surface) => string | null;
   addRandom: () => void;
+  importFigJamStickiesFromCsv: (csvText: string) => number;
   clearAll: () => void;
   setFieldHeadText: (itemId: string, stepIndex: number, field: FieldName, text: string) => void;
   upgradeIssueRef: (parsed: IssueRef, source?: { itemId: string; stepIndex: number; field: FieldName }) => boolean;
