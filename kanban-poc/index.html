@@ -1079,11 +1079,17 @@
       flex: 1 1 auto;
       min-height: 0;
       min-width: 0;
-      display: flex;
-      flex-direction: column;
+      display: grid;
+      overflow: visible;
+    }
+    .canvas-surface-shell > * {
+      grid-area: 1 / 1;
+      min-width: 0;
+      min-height: 0;
     }
     .canvas-surface-shell .spatial-canvas {
-      flex: 1 1 auto;
+      width: 100%;
+      height: 100%;
     }
     .canvas-surface-shell .canvas-ref-links {
       position: absolute;
@@ -1159,77 +1165,6 @@
       display: flex;
       flex-direction: column;
     }
-    .canvas-surface-shell .canvas-edge-indicators {
-      position: absolute;
-      inset: 0;
-      z-index: 4;
-      pointer-events: none;
-      overflow: hidden;
-      border-radius: 12px;
-    }
-    .canvas-edge-tick {
-      position: absolute;
-      background: rgba(37, 99, 235, 0.88);
-      box-shadow: 0 0 6px rgba(37, 99, 235, 0.45);
-      border-radius: 999px;
-      opacity: 0;
-      animation: canvas-edge-tick-in 0.12s ease forwards;
-    }
-    @keyframes canvas-edge-tick-in {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
-    .canvas-edge-tick--top {
-      top: 1px;
-      height: 3px;
-    }
-    .canvas-edge-tick--bottom {
-      bottom: 1px;
-      height: 3px;
-    }
-    .canvas-edge-tick--left {
-      left: 1px;
-      width: 3px;
-    }
-    .canvas-edge-tick--right {
-      right: 1px;
-      width: 3px;
-    }
-    .canvas-edge-corner {
-      position: absolute;
-      width: 9px;
-      height: 9px;
-      box-sizing: border-box;
-      border-color: rgba(37, 99, 235, 0.9);
-      border-style: solid;
-      opacity: 0;
-      animation: canvas-edge-tick-in 0.12s ease forwards;
-      filter: drop-shadow(0 0 4px rgba(37, 99, 235, 0.35));
-    }
-    .canvas-edge-corner--tl {
-      top: 0;
-      left: 0;
-      border-width: 3px 0 0 3px;
-      border-radius: 2px 0 0 0;
-    }
-    .canvas-edge-corner--tr {
-      top: 0;
-      right: 0;
-      border-width: 3px 3px 0 0;
-      border-radius: 0 2px 0 0;
-    }
-    .canvas-edge-corner--bl {
-      bottom: 0;
-      left: 0;
-      border-width: 0 0 3px 3px;
-      border-radius: 0 0 0 2px;
-    }
-    .canvas-edge-corner--br {
-      bottom: 0;
-      right: 0;
-      border-width: 0 3px 3px 0;
-      border-radius: 0 0 2px 0;
-    }
     .list-cards {
       display: flex;
       flex-direction: column;
@@ -1304,24 +1239,91 @@
       background: var(--canvas-bg);
       cursor: grab;
       touch-action: pan-x pan-y;
-      scrollbar-width: thin;
-      scrollbar-color: var(--tone-3) var(--canvas-bg);
+      scrollbar-width: none;
     }
     .spatial-canvas::-webkit-scrollbar {
-      width: 10px;
-      height: 10px;
+      display: none;
+      width: 0;
+      height: 0;
     }
-    .spatial-canvas::-webkit-scrollbar-track {
-      background: var(--canvas-bg);
+    .canvas-fake-scrollbars {
+      z-index: 6;
+      pointer-events: none;
+      align-self: stretch;
+      justify-self: stretch;
+      position: relative;
+      border-radius: 12px;
+      overflow: hidden;
     }
-    .spatial-canvas::-webkit-scrollbar-thumb {
-      background: var(--tone-3);
+    .canvas-fake-scrollbars[hidden] {
+      display: none !important;
+    }
+    .canvas-fake-scrollbar {
+      position: absolute;
+      pointer-events: none;
       border-radius: 999px;
-      border: 2px solid var(--canvas-bg);
-      background-clip: padding-box;
+      opacity: 0;
+      transition: opacity 0.28s ease;
     }
-    .spatial-canvas::-webkit-scrollbar-thumb:hover {
-      background: var(--faint);
+    .canvas-fake-scrollbar.is-visible {
+      opacity: 1;
+      pointer-events: auto;
+      transition: opacity 0.14s ease;
+    }
+    .canvas-fake-scrollbar[hidden] {
+      display: none !important;
+    }
+    .canvas-fake-scrollbar--v {
+      top: 14px;
+      right: 4px;
+      bottom: 14px;
+      width: 5px;
+    }
+    .canvas-fake-scrollbars.has-h .canvas-fake-scrollbar--v {
+      bottom: 13px;
+    }
+    .canvas-fake-scrollbar--h {
+      left: 14px;
+      right: 14px;
+      bottom: 4px;
+      height: 5px;
+    }
+    .canvas-fake-scrollbars.has-v .canvas-fake-scrollbar--h {
+      right: 13px;
+    }
+    .canvas-fake-scrollbar-track {
+      position: absolute;
+      inset: 0;
+    }
+    .canvas-fake-scrollbar-thumb {
+      position: absolute;
+      border-radius: 999px;
+      background: #bcbcc4;
+      cursor: default;
+      transition: background 0.14s ease;
+    }
+    .canvas-fake-scrollbar--v .canvas-fake-scrollbar-thumb {
+      top: 0;
+      left: 0;
+      width: 100%;
+      min-height: 16px;
+    }
+    .canvas-fake-scrollbar--h .canvas-fake-scrollbar-thumb {
+      left: 0;
+      top: 0;
+      height: 100%;
+      min-width: 16px;
+    }
+    .canvas-fake-scrollbar-thumb:hover {
+      background: #a8a8b0;
+    }
+    .canvas-fake-scrollbars.is-dragging .canvas-fake-scrollbar {
+      opacity: 1;
+      transition: none;
+    }
+    .canvas-fake-scrollbars.is-dragging .canvas-fake-scrollbar-thumb {
+      background: #9898a0;
+      transition: none;
     }
     .canvas-scroll-content {
       position: relative;
@@ -2460,6 +2462,10 @@
     let canvasScrollSyncing = false;
     let canvasSmoothScrolling = false;
 
+    /** @type {Record<string, { w: number, h: number }>} */
+    const canvasPlacedSizeCache = Object.create(null);
+    let canvasShellOverlayRaf = 0;
+
     let canvasViewportUserSet = false;
 
     /** @type {{ placed: HTMLElement, id: string, pointerId: number, offX: number, offY: number, startX: number, startY: number, dragging: boolean } | null} */
@@ -2473,6 +2479,10 @@
     let canvasSuppressClickUntil = 0;
 
     let canvasInteractionsBound = false;
+
+    /** @type {{ axis: 'v' | 'h', pointerId: number, startPointer: number, startScroll: number, trackSize: number, thumbSize: number, scrollPanMin: number, panSpan: number, thumbFrac: number } | null} */
+    let canvasFakeScrollbarDrag = null;
+    const CANVAS_FAKE_SCROLLBAR_FADE_MS = 280;
 
     let showAllDates = false;
 
@@ -5052,10 +5062,12 @@
       delete items[id];
       delete followupDrafts[id];
       delete canvasPlacements[id];
+      invalidateCanvasPlacedSizeCache(id);
     }
 
     function removeFromCanvas(id) {
       delete canvasPlacements[id];
+      invalidateCanvasPlacedSizeCache(id);
       scheduleSaveState();
       render();
     }
@@ -5184,7 +5196,7 @@
       canvasViewport.scrollTop = Math.min(Math.max(0, canvasViewport.scrollTop), maxTop);
     }
 
-    function applyCanvasScrollLayout() {
+    function applyCanvasScrollLayout({ syncOverlays = true } = {}) {
       const surface = canvasSurfaceEl();
       const world = canvasWorldEl();
       const scrollContent = canvasScrollContentEl();
@@ -5210,8 +5222,7 @@
       surface.scrollLeft = canvasViewport.scrollLeft;
       surface.scrollTop = canvasViewport.scrollTop;
       canvasScrollSyncing = false;
-      updateCanvasEdgeIndicators();
-      updateCanvasRefLinkLinesIfHover();
+      if (syncOverlays) syncCanvasShellOverlays();
     }
 
     function canvasViewportWorldRect(surface = canvasSurfaceEl()) {
@@ -5227,186 +5238,345 @@
       };
     }
 
-    const CANVAS_EDGE_TICK_MIN = 8;
-    const CANVAS_EDGE_CORNER_INSET = 11;
+    function invalidateCanvasPlacedSizeCache(itemId) {
+      if (itemId) {
+        delete canvasPlacedSizeCache[itemId];
+        return;
+      }
+      for (const k of Object.keys(canvasPlacedSizeCache)) delete canvasPlacedSizeCache[k];
+    }
 
-    function canvasEdgeProjectHorizontal(card, surface) {
+    function scheduleCanvasShellOverlayUpdate() {
+      if (canvasShellOverlayRaf) return;
+      canvasShellOverlayRaf = requestAnimationFrame(() => {
+        canvasShellOverlayRaf = 0;
+        updateCanvasRefLinkLinesIfHover();
+        updateCanvasFakeScrollbars();
+      });
+    }
+
+    function syncCanvasShellOverlays() {
+      if (canvasShellOverlayRaf) {
+        cancelAnimationFrame(canvasShellOverlayRaf);
+        canvasShellOverlayRaf = 0;
+      }
+      updateCanvasRefLinkLinesIfHover();
+      updateCanvasFakeScrollbars();
+    }
+
+    function canvasPlacementsUnionBoundsWorld() {
+      let minX = Infinity;
+      let minY = Infinity;
+      let maxX = -Infinity;
+      let maxY = -Infinity;
+      let any = false;
+      for (const id of Object.keys(canvasPlacements)) {
+        if (!items[id]) continue;
+        const card = canvasPlacedCardBoundsWorld(id);
+        if (!card) continue;
+        any = true;
+        minX = Math.min(minX, card.minX);
+        minY = Math.min(minY, card.minY);
+        maxX = Math.max(maxX, card.maxX);
+        maxY = Math.max(maxY, card.maxY);
+      }
+      if (!any) return null;
+      return { minX, minY, maxX, maxY };
+    }
+
+    /** FigJam-style: thumb length ∝ viewport vs how much of placements stick outside view. */
+    function canvasFakeScrollbarAxisMetrics(axis, surface) {
+      const bounds = canvasPlacementsUnionBoundsWorld();
+      const view = canvasViewportWorldRect(surface);
+      if (!bounds || !view || !surface) return null;
+
+      const isV = axis === 'v';
       const zoom = canvasViewport.zoom;
-      const sl = canvasViewport.scrollLeft;
-      const vw = surface.clientWidth;
-      let x0 = card.minX * zoom - sl;
-      let x1 = card.maxX * zoom - sl;
-      if (x1 < 0 || x0 > vw) {
-        const cx = ((card.minX + card.maxX) / 2) * zoom - sl;
-        const c = Math.max(0, Math.min(vw, cx));
-        return { left: c - CANVAS_EDGE_TICK_MIN / 2, width: CANVAS_EDGE_TICK_MIN };
+      const client = isV ? surface.clientHeight : surface.clientWidth;
+      const viewWorld = isV ? view.y1 - view.y0 : view.x1 - view.x0;
+      const viewStart = isV ? view.y0 : view.x0;
+      const viewEnd = isV ? view.y1 : view.x1;
+      const contentMin = isV ? bounds.minY : bounds.minX;
+      const contentMax = isV ? bounds.maxY : bounds.maxX;
+      const scrollPx = isV ? canvasViewport.scrollTop : canvasViewport.scrollLeft;
+      const { maxLeft, maxTop } = canvasMaxScroll(surface);
+      const maxScroll = isV ? maxTop : maxLeft;
+
+      const outsideWorld =
+        Math.max(0, viewStart - contentMin) + Math.max(0, contentMax - viewEnd);
+
+      const contained = outsideWorld <= 0;
+      if (contained || maxScroll <= 1) {
+        return {
+          show: false,
+          panSpan: 0,
+          scrollPanMin: 0,
+          scrollPanMax: 0,
+          thumbFrac: 1,
+          client,
+          scrollPx,
+          maxScroll,
+        };
       }
-      x0 = Math.max(0, Math.min(vw, x0));
-      x1 = Math.max(0, Math.min(vw, x1));
-      let width = x1 - x0;
-      let left = x0;
-      if (width < CANVAS_EDGE_TICK_MIN) {
-        const mid = (x0 + x1) / 2;
-        left = Math.max(0, Math.min(vw - CANVAS_EDGE_TICK_MIN, mid - CANVAS_EDGE_TICK_MIN / 2));
-        width = CANVAS_EDGE_TICK_MIN;
+
+      const thumbFrac = viewWorld / (viewWorld + outsideWorld);
+
+      // Pan range while placements can still intersect the viewport (not “snap to fit” range).
+      const scrollPanMin = Math.max(0, (contentMin - viewWorld) * zoom);
+      const scrollPanMax = Math.min(maxScroll, contentMax * zoom);
+      let panSpan = Math.max(0, scrollPanMax - scrollPanMin);
+      if (panSpan < 1) {
+        panSpan = maxScroll;
       }
-      return { left, width };
+
+      return {
+        show: true,
+        panSpan,
+        scrollPanMin,
+        scrollPanMax,
+        thumbFrac,
+        client,
+        scrollPx,
+        maxScroll,
+      };
     }
 
-    function canvasEdgeProjectVertical(card, surface) {
-      const zoom = canvasViewport.zoom;
-      const st = canvasViewport.scrollTop;
-      const vh = surface.clientHeight;
-      let y0 = card.minY * zoom - st;
-      let y1 = card.maxY * zoom - st;
-      if (y1 < 0 || y0 > vh) {
-        const cy = ((card.minY + card.maxY) / 2) * zoom - st;
-        const c = Math.max(0, Math.min(vh, cy));
-        return { top: c - CANVAS_EDGE_TICK_MIN / 2, height: CANVAS_EDGE_TICK_MIN };
-      }
-      y0 = Math.max(0, Math.min(vh, y0));
-      y1 = Math.max(0, Math.min(vh, y1));
-      let height = y1 - y0;
-      let top = y0;
-      if (height < CANVAS_EDGE_TICK_MIN) {
-        const mid = (y0 + y1) / 2;
-        top = Math.max(0, Math.min(vh - CANVAS_EDGE_TICK_MIN, mid - CANVAS_EDGE_TICK_MIN / 2));
-        height = CANVAS_EDGE_TICK_MIN;
-      }
-      return { top, height };
+    function canvasFakeScrollbarPlacementMetrics(surface) {
+      return {
+        v: canvasFakeScrollbarAxisMetrics('v', surface),
+        h: canvasFakeScrollbarAxisMetrics('h', surface),
+      };
     }
 
-    function appendCanvasEdgeTick(root, side, style) {
-      const el = document.createElement('span');
-      el.className = `canvas-edge-tick canvas-edge-tick--${side}`;
-      Object.assign(el.style, style);
-      root.appendChild(el);
+    /** Placement-aware metrics, or full-axis fallback while dragging a thumb. */
+    function canvasFakeScrollbarThumbMetrics(axis, surface, pin) {
+      const met = canvasFakeScrollbarAxisMetrics(axis, surface);
+      if (met?.show && met.panSpan > 0) return met;
+      if (!pin) return null;
+      const isV = axis === 'v';
+      const { maxLeft, maxTop } = canvasMaxScroll(surface);
+      const maxScroll = isV ? maxTop : maxLeft;
+      if (maxScroll <= 1) return null;
+      const client = isV ? surface.clientHeight : surface.clientWidth;
+      const scrollPx = isV ? canvasViewport.scrollTop : canvasViewport.scrollLeft;
+      return {
+        show: true,
+        panSpan: maxScroll,
+        scrollPanMin: 0,
+        scrollPanMax: maxScroll,
+        thumbFrac: 1,
+        client,
+        scrollPx,
+        maxScroll,
+      };
     }
 
-    function appendCanvasEdgeCorner(root, corner) {
-      const el = document.createElement('span');
-      el.className = `canvas-edge-corner canvas-edge-corner--${corner}`;
-      root.appendChild(el);
+    function canvasFakeScrollbarSyncRootHidden() {
+      const root = document.querySelector('[data-canvas-fake-scrollbars]');
+      if (!root) return;
+      const vWrap = root.querySelector('[data-canvas-scrollbar-v]');
+      const hWrap = root.querySelector('[data-canvas-scrollbar-h]');
+      const any = (vWrap && !vWrap.hidden) || (hWrap && !hWrap.hidden);
+      root.hidden = !any;
+      root.setAttribute('aria-hidden', any ? 'false' : 'true');
+    }
+
+    /** @param {HTMLElement | null} wrap */
+    function canvasFakeScrollbarSetAxisVisible(wrap, show) {
+      if (!wrap) return;
+      if (show) {
+        if (wrap._canvasScrollbarFadeTimer) {
+          clearTimeout(wrap._canvasScrollbarFadeTimer);
+          wrap._canvasScrollbarFadeTimer = 0;
+        }
+        const root = wrap.closest('[data-canvas-fake-scrollbars]');
+        if (root) root.hidden = false;
+        const wasHidden = wrap.hidden;
+        wrap.hidden = false;
+        if (wasHidden || !wrap.classList.contains('is-visible')) {
+          wrap.classList.remove('is-visible');
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => wrap.classList.add('is-visible'));
+          });
+        }
+        return;
+      }
+      if (wrap.hidden && !wrap.classList.contains('is-visible')) return;
+      wrap.classList.remove('is-visible');
+      if (wrap._canvasScrollbarFadeTimer) clearTimeout(wrap._canvasScrollbarFadeTimer);
+      wrap._canvasScrollbarFadeTimer = setTimeout(() => {
+        wrap._canvasScrollbarFadeTimer = 0;
+        wrap.hidden = true;
+        canvasFakeScrollbarSyncRootHidden();
+      }, CANVAS_FAKE_SCROLLBAR_FADE_MS);
+    }
+
+    function updateCanvasFakeScrollbars() {
+      const surface = canvasSurfaceEl();
+      const root = document.querySelector('[data-canvas-fake-scrollbars]');
+      if (!surface || !root) return;
+
+      const metrics = canvasFakeScrollbarPlacementMetrics(surface);
+      const drag = canvasFakeScrollbarDrag;
+      const pinV = drag?.axis === 'v';
+      const pinH = drag?.axis === 'h';
+      const showV = (metrics?.v?.show || pinV) ?? false;
+      const showH = (metrics?.h?.show || pinH) ?? false;
+
+      root.classList.toggle('is-dragging', !!drag);
+      root.classList.toggle('has-v', showV);
+      root.classList.toggle('has-h', showH);
+
+      const vTrack = root.querySelector('[data-canvas-scrollbar-v-track]');
+      const hTrack = root.querySelector('[data-canvas-scrollbar-h-track]');
+      const vWrap = root.querySelector('[data-canvas-scrollbar-v]');
+      const hWrap = root.querySelector('[data-canvas-scrollbar-h]');
+      const vThumb = root.querySelector('[data-canvas-scrollbar-v-thumb]');
+      const hThumb = root.querySelector('[data-canvas-scrollbar-h-thumb]');
+
+      canvasFakeScrollbarSetAxisVisible(vWrap, showV);
+      canvasFakeScrollbarSetAxisVisible(hWrap, showH);
+      if (showV || showH) root.hidden = false;
+
+      const vMet = canvasFakeScrollbarThumbMetrics('v', surface, pinV);
+      if (showV && vTrack && vThumb && vMet && vMet.panSpan > 0) {
+        const trackH = vTrack.clientHeight;
+        const vThumbFrac = pinV && drag?.thumbFrac != null ? drag.thumbFrac : vMet.thumbFrac;
+        const thumbH = Math.max(
+          16,
+          Math.min(trackH, Math.round(trackH * vThumbFrac)),
+        );
+        const travel = Math.max(1, trackH - thumbH);
+        const ratio = Math.max(
+          0,
+          Math.min(1, (vMet.scrollPx - vMet.scrollPanMin) / vMet.panSpan),
+        );
+        vThumb.style.height = `${thumbH}px`;
+        vThumb.style.transform = `translateY(${ratio * travel}px)`;
+      }
+
+      const hMet = canvasFakeScrollbarThumbMetrics('h', surface, pinH);
+      if (showH && hTrack && hThumb && hMet && hMet.panSpan > 0) {
+        const trackW = hTrack.clientWidth;
+        const hThumbFrac = pinH && drag?.thumbFrac != null ? drag.thumbFrac : hMet.thumbFrac;
+        const thumbW = Math.max(
+          16,
+          Math.min(trackW, Math.round(trackW * hThumbFrac)),
+        );
+        const travel = Math.max(1, trackW - thumbW);
+        const ratio = Math.max(
+          0,
+          Math.min(1, (hMet.scrollPx - hMet.scrollPanMin) / hMet.panSpan),
+        );
+        hThumb.style.width = `${thumbW}px`;
+        hThumb.style.transform = `translateX(${ratio * travel}px)`;
+      }
+    }
+
+    function canvasFakeScrollbarDragStart(axis, e) {
+      const surface = canvasSurfaceEl();
+      const root = document.querySelector('[data-canvas-fake-scrollbars]');
+      if (!surface || !root || e.button !== 0) return false;
+      const track = root.querySelector(
+        axis === 'v' ? '[data-canvas-scrollbar-v-track]' : '[data-canvas-scrollbar-h-track]',
+      );
+      const thumb = root.querySelector(
+        axis === 'v' ? '[data-canvas-scrollbar-v-thumb]' : '[data-canvas-scrollbar-h-thumb]',
+      );
+      if (!track || !thumb) return false;
+
+      const met = canvasFakeScrollbarAxisMetrics(axis, surface);
+      if (!met || !met.show || met.panSpan <= 0) return false;
+
+      const trackRect = track.getBoundingClientRect();
+      const thumbRect = thumb.getBoundingClientRect();
+      const trackSize = axis === 'v' ? trackRect.height : trackRect.width;
+      const thumbSize = axis === 'v' ? thumbRect.height : thumbRect.width;
+      const travel = Math.max(1, trackSize - thumbSize);
+
+      if (e.target === track) {
+        const pos = axis === 'v' ? e.clientY - trackRect.top : e.clientX - trackRect.left;
+        const thumbOffset = Math.max(0, Math.min(travel, pos - thumbSize / 2));
+        const ratio = thumbOffset / travel;
+        const nextScroll = met.scrollPanMin + ratio * met.panSpan;
+        if (axis === 'v') {
+          surface.scrollTop = nextScroll;
+          canvasViewport.scrollTop = surface.scrollTop;
+        } else {
+          surface.scrollLeft = nextScroll;
+          canvasViewport.scrollLeft = surface.scrollLeft;
+        }
+        canvasViewportUserSet = true;
+        syncCanvasShellOverlays();
+      }
+
+      canvasFakeScrollbarDrag = {
+        axis,
+        pointerId: e.pointerId,
+        startPointer: axis === 'v' ? e.clientY : e.clientX,
+        startScroll: axis === 'v' ? surface.scrollTop : surface.scrollLeft,
+        trackSize,
+        thumbSize,
+        scrollPanMin: met.scrollPanMin,
+        panSpan: met.panSpan,
+        thumbFrac: met.thumbFrac,
+      };
+      root.classList.add('is-dragging');
+      thumb.setPointerCapture(e.pointerId);
+      e.preventDefault();
+      e.stopPropagation();
+      return true;
+    }
+
+    function canvasFakeScrollbarDragMove(e) {
+      const drag = canvasFakeScrollbarDrag;
+      if (!drag || e.pointerId !== drag.pointerId) return;
+      const surface = canvasSurfaceEl();
+      if (!surface) return;
+      const travel = Math.max(1, drag.trackSize - drag.thumbSize);
+      const delta = (drag.axis === 'v' ? e.clientY : e.clientX) - drag.startPointer;
+      const scrollPanMax = drag.scrollPanMin + drag.panSpan;
+      const nextScroll = drag.startScroll + (delta / travel) * drag.panSpan;
+      if (drag.axis === 'v') {
+        surface.scrollTop = Math.max(drag.scrollPanMin, Math.min(scrollPanMax, nextScroll));
+        canvasViewport.scrollTop = surface.scrollTop;
+      } else {
+        surface.scrollLeft = Math.max(drag.scrollPanMin, Math.min(scrollPanMax, nextScroll));
+        canvasViewport.scrollLeft = surface.scrollLeft;
+      }
+      canvasViewportUserSet = true;
+      syncCanvasShellOverlays();
+      e.preventDefault();
+    }
+
+    function canvasFakeScrollbarDragEnd(e) {
+      const drag = canvasFakeScrollbarDrag;
+      if (!drag || e.pointerId !== drag.pointerId) return;
+      canvasFakeScrollbarDrag = null;
+      document.querySelector('[data-canvas-fake-scrollbars]')?.classList.remove('is-dragging');
+      updateCanvasFakeScrollbars();
+      scheduleSaveState();
     }
 
     function canvasPlacedCardBoundsWorld(id) {
       const p = canvasPlacements[id];
       if (!p) return null;
-      const world = canvasWorldEl();
-      const el = world?.querySelector(`[data-canvas-placed="${id}"]`);
-      const w = el?.offsetWidth || CANVAS_CARD_WIDTH;
-      const h = el?.offsetHeight || CANVAS_CARD_EST_H;
+      let size = canvasPlacedSizeCache[id];
+      if (!size) {
+        const world = canvasWorldEl();
+        const el = world?.querySelector(`[data-canvas-placed="${id}"]`);
+        size = {
+          w: el?.offsetWidth || CANVAS_CARD_WIDTH,
+          h: el?.offsetHeight || CANVAS_CARD_EST_H,
+        };
+        canvasPlacedSizeCache[id] = size;
+      }
       return {
         minX: p.x,
         minY: p.y,
-        maxX: p.x + w,
-        maxY: p.y + h,
+        maxX: p.x + size.w,
+        maxY: p.y + size.h,
       };
-    }
-
-    function canvasEdgeTrimHorizontalSpan(span, surface, trimStart, trimEnd) {
-      const vw = surface.clientWidth;
-      let left = span.left;
-      let right = span.left + span.width;
-      if (trimStart) left = Math.max(left, CANVAS_EDGE_CORNER_INSET);
-      if (trimEnd) right = Math.min(right, vw - CANVAS_EDGE_CORNER_INSET);
-      const width = right - left;
-      if (width < CANVAS_EDGE_TICK_MIN) return null;
-      return { left, width };
-    }
-
-    function canvasEdgeTrimVerticalSpan(span, surface, trimStart, trimEnd) {
-      const vh = surface.clientHeight;
-      let top = span.top;
-      let bottom = span.top + span.height;
-      if (trimStart) top = Math.max(top, CANVAS_EDGE_CORNER_INSET);
-      if (trimEnd) bottom = Math.min(bottom, vh - CANVAS_EDGE_CORNER_INSET);
-      const height = bottom - top;
-      if (height < CANVAS_EDGE_TICK_MIN) return null;
-      return { top, height };
-    }
-
-    function updateCanvasEdgeIndicators() {
-      const surface = canvasSurfaceEl();
-      const root = document.querySelector('[data-canvas-edge-indicators]');
-      if (!surface || !root) return;
-
-      root.replaceChildren();
-      const view = canvasViewportWorldRect(surface);
-      if (!view) return;
-
-      for (const id of Object.keys(canvasPlacements)) {
-        if (!items[id]) continue;
-        const card = canvasPlacedCardBoundsWorld(id);
-        if (!card) continue;
-
-        const offTop = card.maxY <= view.y0;
-        const offBottom = card.minY >= view.y1;
-        const offLeft = card.maxX <= view.x0;
-        const offRight = card.minX >= view.x1;
-
-        if (offTop && offLeft) appendCanvasEdgeCorner(root, 'tl');
-        if (offTop && offRight) appendCanvasEdgeCorner(root, 'tr');
-        if (offBottom && offLeft) appendCanvasEdgeCorner(root, 'bl');
-        if (offBottom && offRight) appendCanvasEdgeCorner(root, 'br');
-
-        if (offTop) {
-          const trimmed = canvasEdgeTrimHorizontalSpan(
-            canvasEdgeProjectHorizontal(card, surface),
-            surface,
-            offLeft,
-            offRight,
-          );
-          if (trimmed) {
-            appendCanvasEdgeTick(root, 'top', {
-              left: `${trimmed.left}px`,
-              width: `${trimmed.width}px`,
-            });
-          }
-        }
-        if (offBottom) {
-          const trimmed = canvasEdgeTrimHorizontalSpan(
-            canvasEdgeProjectHorizontal(card, surface),
-            surface,
-            offLeft,
-            offRight,
-          );
-          if (trimmed) {
-            appendCanvasEdgeTick(root, 'bottom', {
-              left: `${trimmed.left}px`,
-              width: `${trimmed.width}px`,
-            });
-          }
-        }
-        if (offLeft) {
-          const trimmed = canvasEdgeTrimVerticalSpan(
-            canvasEdgeProjectVertical(card, surface),
-            surface,
-            offTop,
-            offBottom,
-          );
-          if (trimmed) {
-            appendCanvasEdgeTick(root, 'left', {
-              top: `${trimmed.top}px`,
-              height: `${trimmed.height}px`,
-            });
-          }
-        }
-        if (offRight) {
-          const trimmed = canvasEdgeTrimVerticalSpan(
-            canvasEdgeProjectVertical(card, surface),
-            surface,
-            offTop,
-            offBottom,
-          );
-          if (trimmed) {
-            appendCanvasEdgeTick(root, 'right', {
-              top: `${trimmed.top}px`,
-              height: `${trimmed.height}px`,
-            });
-          }
-        }
-      }
     }
 
     function updateCanvasZoomControlLabel() {
@@ -5462,8 +5632,9 @@
     }
 
     function centerCanvasViewport(surface) {
-      applyCanvasScrollLayout();
+      applyCanvasScrollLayout({ syncOverlays: false });
       alignCanvasScrollAfterLayout(surface);
+      syncCanvasShellOverlays();
     }
 
     function popCanvasPlacedCard(itemId) {
@@ -5511,12 +5682,13 @@
       const surface = canvasSurfaceEl();
       if (!surface) return;
       canvasViewport.zoom = clampCanvasZoom(zoom);
-      applyCanvasScrollLayout();
+      applyCanvasScrollLayout({ syncOverlays: false });
       const scroll = canvasScrollForWorldCenter(worldX, worldY, canvasViewport.zoom, surface);
       canvasViewport.scrollLeft = scroll.scrollLeft;
       canvasViewport.scrollTop = scroll.scrollTop;
       syncCanvasSurfaceScrollImmediate(surface);
       updateCanvasZoomControlLabel();
+      syncCanvasShellOverlays();
     }
 
     function canvasEaseInOut(t) {
@@ -5533,8 +5705,7 @@
           }
           const p = Math.min(1, (now - t0) / durationMs);
           onStep(canvasEaseInOut(p));
-          updateCanvasEdgeIndicators();
-          updateCanvasRefLinkLinesIfHover();
+          syncCanvasShellOverlays();
           if (p < 1) requestAnimationFrame(frame);
           else resolve(true);
         };
@@ -5657,15 +5828,14 @@
       const surface = canvasSurfaceEl();
       if (!surface || !itemId || !canvasPlacements[itemId]) return;
       const finishCenter = () => {
-        updateCanvasEdgeIndicators();
-        updateCanvasRefLinkLinesIfHover();
+        syncCanvasShellOverlays();
         if (pop) popCanvasPlacedCard(itemId);
       };
       if (smooth) {
         void flyCanvasViewportToCard(itemId, finishCenter);
         return;
       }
-      applyCanvasScrollLayout();
+      applyCanvasScrollLayout({ syncOverlays: false });
       const bounds = canvasPlacedCardBoundsWorld(itemId);
       if (!bounds) return;
       const zoom = canvasViewport.zoom;
@@ -5695,7 +5865,7 @@
       const worldY = (surface.scrollTop + my - padY) / zoom;
       const newZoom = clampCanvasZoom(zoom * scaleFactor);
       canvasViewport.zoom = newZoom;
-      applyCanvasScrollLayout();
+      applyCanvasScrollLayout({ syncOverlays: false });
       const { padX: nextPadX, padY: nextPadY } = canvasWorldPadding(surface, world);
       canvasViewport.scrollLeft = Math.max(0, worldX * newZoom + nextPadX - mx);
       canvasViewport.scrollTop = Math.max(0, worldY * newZoom + nextPadY - my);
@@ -5711,6 +5881,7 @@
       surface.scrollTop = canvasViewport.scrollTop;
       canvasScrollSyncing = false;
       updateCanvasZoomControlLabel();
+      syncCanvasShellOverlays();
       scheduleSaveState();
     }
 
@@ -5731,8 +5902,7 @@
       canvasViewport.scrollLeft = surface.scrollLeft;
       canvasViewport.scrollTop = surface.scrollTop;
       if (canvasSmoothScrolling) {
-        updateCanvasEdgeIndicators();
-        updateCanvasRefLinkLinesIfHover();
+        scheduleCanvasShellOverlayUpdate();
         return;
       }
       clampCanvasViewportScroll(surface);
@@ -5743,8 +5913,7 @@
         canvasScrollSyncing = false;
       }
       canvasViewportUserSet = true;
-      updateCanvasEdgeIndicators();
-      updateCanvasRefLinkLinesIfHover();
+      scheduleCanvasShellOverlayUpdate();
       scheduleSaveState();
     }
 
@@ -5772,7 +5941,7 @@
           centerCanvasViewport(surface);
         }
         updateCanvasZoomControlLabel();
-        updateCanvasEdgeIndicators();
+        updateCanvasFakeScrollbars();
       });
     }
 
@@ -5955,7 +6124,18 @@
           <div class="canvas-surface-shell">
             ${renderCanvasSurfaceHtml()}
             <svg class="canvas-ref-links" data-canvas-ref-links aria-hidden="true"></svg>
-            <div class="canvas-edge-indicators" data-canvas-edge-indicators aria-hidden="true"></div>
+            <div class="canvas-fake-scrollbars" data-canvas-fake-scrollbars hidden aria-hidden="true">
+              <div class="canvas-fake-scrollbar canvas-fake-scrollbar--v" data-canvas-scrollbar-v hidden>
+                <div class="canvas-fake-scrollbar-track" data-canvas-scrollbar-v-track>
+                  <div class="canvas-fake-scrollbar-thumb" data-canvas-scrollbar-v-thumb></div>
+                </div>
+              </div>
+              <div class="canvas-fake-scrollbar canvas-fake-scrollbar--h" data-canvas-scrollbar-h hidden>
+                <div class="canvas-fake-scrollbar-track" data-canvas-scrollbar-h-track>
+                  <div class="canvas-fake-scrollbar-thumb" data-canvas-scrollbar-h-thumb></div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       `;
@@ -6096,6 +6276,31 @@
       if (canvasInteractionsBound) return;
       canvasInteractionsBound = true;
       const app = document.getElementById('app');
+
+      app.addEventListener(
+        'pointerdown',
+        (e) => {
+          if (e.target.closest('[data-canvas-scrollbar-v-thumb], [data-canvas-scrollbar-v-track]')) {
+            canvasFakeScrollbarDragStart('v', e);
+            return;
+          }
+          if (e.target.closest('[data-canvas-scrollbar-h-thumb], [data-canvas-scrollbar-h-track]')) {
+            canvasFakeScrollbarDragStart('h', e);
+          }
+        },
+        true,
+      );
+
+      app.addEventListener(
+        'pointermove',
+        (e) => {
+          if (canvasFakeScrollbarDrag) canvasFakeScrollbarDragMove(e);
+        },
+        true,
+      );
+
+      app.addEventListener('pointerup', canvasFakeScrollbarDragEnd, true);
+      app.addEventListener('pointercancel', canvasFakeScrollbarDragEnd, true);
 
       app.addEventListener('mouseover', (e) => {
         if (viewMode !== 'list') return;
@@ -6270,8 +6475,7 @@
           pan.surface.scrollLeft = canvasViewport.scrollLeft;
           pan.surface.scrollTop = canvasViewport.scrollTop;
           canvasViewportUserSet = true;
-          updateCanvasEdgeIndicators();
-          updateCanvasRefLinkLinesIfHover();
+          scheduleCanvasShellOverlayUpdate();
           return;
         }
         const state = canvasPointerState;
@@ -6304,8 +6508,7 @@
         );
         state.placed.style.left = `${canvasPlacements[state.id].x}px`;
         state.placed.style.top = `${canvasPlacements[state.id].y}px`;
-        updateCanvasEdgeIndicators();
-        updateCanvasRefLinkLinesIfHover();
+        scheduleCanvasShellOverlayUpdate();
       }, true);
 
       const endCanvasPointer = (e) => {
@@ -6621,6 +6824,7 @@
     function render() {
       removeIssuePreview();
       clearWorkspaceLinkHover();
+      invalidateCanvasPlacedSizeCache();
       const drawerRef = issueDrawerRefId;
       const app = document.getElementById('app');
       app.className = viewMode;
