@@ -1,0 +1,56 @@
+    .issue-ref-preview-revision-item {
+      margin-top: 0.35rem;
+      padding: 0.35rem 0.45rem;
+      border-radius: 6px;
+      background: var(--tone-1);
+      font-size: 0.75rem;
+    }
+    .rev-linked-badge {
+      display: inline-block;
+      margin-left: 0.25rem;
+      padding: 0.05rem 0.35rem;
+      border-radius: 4px;
+      background: #fde68a;
+      color: #92400e;
+      font-size: 0.6rem;
+      font-weight: 600;
+      vertical-align: 0.05em;
+    }
+    .issue-ref-panel-revisions-toggle {
+      display: block;
+      width: 100%;
+      margin-top: 0.35rem;
+      padding: 0.35rem 0.5rem;
+      border: none;
+      border-radius: 6px;
+      background: var(--tone-1);
+      color: var(--subtle);
+      font: inherit;
+      font-size: 0.7rem;
+      font-weight: 500;
+      cursor: pointer;
+      text-align: left;
+    }
+    .issue-ref-panel-revisions-toggle:hover {
+      background: var(--tone-2);
+    }
+    .issue-ref-panel-history-block {
+      margin-top: 0.65rem;
+    }
+    .issue-ref-panel-history-block:first-of-type {
+      margin-top: 0.15rem;
+    }
+    .issue-ref-panel-history-label {
+      margin: 0 0 0.2rem;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--muted);
+    }
+    .issue-ref-panel-revisions-title {
+      margin: 0.35rem 0 0.25rem;
+      font-size: 0.68rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+    }

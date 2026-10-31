@@ -1,0 +1,138 @@
+    .editable {
+      cursor: default;
+      border-radius: 4px;
+      padding: 2px 4px;
+      margin: -2px -4px;
+      line-height: 1.45;
+    }
+    .card .editable {
+      margin-left: 0;
+      margin-right: 0;
+      border-radius: 0;
+    }
+    .card .problem,
+    .card .answer-block {
+      border-radius: 0;
+    }
+    .problem.editable {
+      margin: 0;
+      padding: var(--qa-py) var(--card-text-x);
+      padding-bottom: var(--qa-join-py);
+    }
+    .answer-block.editable {
+      margin: 0;
+      padding: var(--qa-join-py) var(--card-text-x) var(--qa-py);
+      padding-left: calc(var(--card-text-x) + var(--answer-indent));
+    }
+    .answer-text.editable {
+      display: block;
+      padding: 0;
+      margin: 0;
+    }
+    .editable:hover { background: var(--hover-fill); }
+    .problem.editable:hover {
+      background: var(--question-bg);
+    }
+    .timeline-step.answered .problem.editable:hover,
+    .card.card-complete .problem.editable:hover {
+      background: var(--answer-bg);
+    }
+    .answer-block:not(.empty).editable:hover,
+    .answer-block:not(.empty) .answer-text.editable:hover {
+      background: transparent;
+    }
+    .answer-block:not(.empty):has(.answer-text.editable:hover) {
+      background: var(--answer-bg);
+    }
+    .answer-block.answer-marked:not(.empty):has(.answer-text.editable:hover),
+    .answer-block.answer-marked:not(.empty).editable:hover {
+      background: var(--answer-tentative-bg);
+    }
+    .editable.empty { color: var(--muted); font-style: italic; }
+    .problem-row {
+      position: relative;
+    }
+    .field-remove-btn {
+      font: inherit;
+      font-size: 0.85rem;
+      line-height: 1;
+      width: 1.25rem;
+      height: 1.25rem;
+      padding: 0;
+      margin: 0;
+      border: none;
+      border-radius: 4px;
+      background: rgba(0, 0, 0, 0.08);
+      color: inherit;
+      cursor: pointer;
+      opacity: 0;
+      flex-shrink: 0;
+    }
+    .field-remove-btn--problem {
+      position: absolute;
+      top: var(--qa-join-py);
+      right: var(--card-text-x);
+      z-index: 1;
+    }
+    .timeline-step:first-child .field-remove-btn--problem {
+      top: var(--qa-py);
+    }
+    .problem-row:hover .field-remove-btn--problem,
+    .problem-row:focus-within .field-remove-btn--problem {
+      opacity: 1;
+    }
+    .answer-block:not(.empty):hover .answer-meta-actions .field-remove-btn,
+    .answer-block:not(.empty):focus-within:has(textarea, input) .answer-meta-actions .field-remove-btn {
+      opacity: 1;
+    }
+    .field-remove-btn:hover,
+    .answer-mark-btn:hover {
+      background: rgba(0, 0, 0, 0.12);
+    }
+    .icon-trash,
+    .icon-dismiss {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 0;
+    }
+    .field-remove-btn .icon-trash svg {
+      width: 12px;
+      height: 12px;
+    }
+    .btn-delete .icon-trash svg {
+      width: 14px;
+      height: 14px;
+    }
+    .btn-delete .icon-dismiss {
+      font-size: 1.1rem;
+      line-height: 1;
+    }
+    .problem-row:has(.field-remove-btn--problem) .problem {
+      padding-right: calc(var(--card-text-x) + 1.35rem);
+    }
+    .problem {
+      font-weight: 400;
+      font-size: 0.9rem;
+      padding: var(--qa-py) var(--card-text-x) var(--qa-join-py);
+      background: var(--question-bg);
+      color: var(--question-text);
+      line-height: 1.45;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .timeline-step:first-child .problem {
+      font-weight: 600;
+      font-size: 0.95rem;
+      padding-top: var(--qa-py);
+      padding-bottom: var(--qa-join-py);
+    }
+    .timeline-step:last-child:not(:has(.answer-block:not(.empty))) .problem {
+      padding-bottom: var(--qa-py);
+    }
+    .timeline-step + .timeline-step .problem {
+      padding-top: var(--qa-join-py);
+    }
+    .timeline-step:not(:last-child) .answer-block:not(.empty) {
+      padding-bottom: var(--qa-join-py);
+    }

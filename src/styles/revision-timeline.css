@@ -1,0 +1,130 @@
+    .revision-timeline {
+      --tl-date-col: 4rem;
+      --tl-axis-col: 1.35rem;
+      display: flex;
+      flex-direction: column;
+      margin-top: 0.25rem;
+      padding-top: 0.15rem;
+    }
+    .revision-timeline-item {
+      display: grid;
+      grid-template-columns: var(--tl-date-col) var(--tl-axis-col) minmax(0, 1fr);
+      column-gap: 0.65rem;
+      align-items: center;
+      width: 100%;
+      margin: 0;
+      padding: 0;
+      border: none;
+      background: transparent;
+      text-align: left;
+      font: inherit;
+      font-size: 0.75rem;
+      cursor: pointer;
+      color: inherit;
+    }
+    button.revision-timeline-item {
+      font: inherit;
+    }
+    .revision-timeline-date {
+      grid-column: 1;
+      justify-self: end;
+      align-self: center;
+      padding-right: 0.15rem;
+      font-size: 0.65rem;
+      font-weight: 500;
+      font-variant-numeric: tabular-nums;
+      color: var(--muted);
+      line-height: 1.15;
+      white-space: nowrap;
+    }
+    .revision-timeline-node {
+      grid-column: 2;
+      align-self: stretch;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100%;
+    }
+    .revision-timeline-marker {
+      flex-shrink: 0;
+      width: 0.625rem;
+      height: 0.625rem;
+      border-radius: 50%;
+      box-sizing: border-box;
+      background: var(--bg);
+      border: 2px solid var(--tone-3);
+      position: relative;
+      z-index: 1;
+    }
+    .revision-timeline-stem-top,
+    .revision-timeline-stem-bottom {
+      flex: 1 1 0;
+      width: 2px;
+      min-height: 0.35rem;
+      border-radius: 1px;
+      background: var(--tone-2);
+    }
+    .revision-timeline-item:first-child .revision-timeline-stem-top {
+      visibility: hidden;
+    }
+    .revision-timeline-item:last-child .revision-timeline-stem-bottom {
+      visibility: hidden;
+    }
+    .revision-timeline-item.is-active .revision-timeline-marker {
+      border-color: var(--accent);
+      background: var(--accent);
+    }
+    .revision-timeline-item.is-linked-rev .revision-timeline-marker {
+      border-color: #d97706;
+      background: #fde68a;
+    }
+    .revision-timeline-item.is-linked-rev.is-active .revision-timeline-marker {
+      border-color: var(--accent);
+      background: var(--accent);
+      box-shadow: 0 0 0 2px #fde68a;
+    }
+    .revision-timeline-content {
+      grid-column: 3;
+      align-self: center;
+      min-width: 0;
+      margin-bottom: 0.7rem;
+      padding: 0.55rem 0.65rem;
+      border-radius: 10px;
+      border: 1px solid var(--tone-2);
+      background: var(--bg);
+      line-height: 1.45;
+      white-space: pre-wrap;
+      word-break: break-word;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+      transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+    }
+    .revision-timeline-item:last-child .revision-timeline-content {
+      margin-bottom: 0;
+    }
+    .revision-timeline-content .issue-ref-preview-revision-meta {
+      margin-bottom: 0.3rem;
+      font-size: 0.68rem;
+      font-weight: 600;
+      color: var(--subtle);
+    }
+    .revision-timeline-item:hover .revision-timeline-content {
+      border-color: var(--tone-3);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+    }
+    .revision-timeline-item.is-linked-rev .revision-timeline-content {
+      border-color: #fcd34d;
+      background: #fffbeb;
+    }
+    .revision-timeline-item.is-linked-rev:hover .revision-timeline-content {
+      background: #fef3c7;
+    }
+    .revision-timeline-item.is-active .revision-timeline-content {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px var(--accent);
+      background: var(--bg);
+    }
+    .revision-timeline-item.is-linked-rev.is-active .revision-timeline-content {
+      border-color: var(--accent);
+      background: #fffbeb;
+      box-shadow: 0 0 0 1px var(--accent);
+    }

@@ -1,0 +1,149 @@
+    .ref-link-picker-panel[hidden] {
+      display: none !important;
+    }
+    .ref-link-picker-panel {
+      z-index: 91;
+    }
+    .ref-link-picker-panel .issue-ref-panel-toolbar {
+      align-items: flex-start;
+    }
+    .ref-link-picker-heading {
+      min-width: 0;
+      flex: 1 1 auto;
+    }
+    .ref-link-picker-selection {
+      margin: 0.25rem 0 0;
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: var(--muted);
+      line-height: 1.35;
+    }
+    .ref-link-picker-search-wrap {
+      flex-shrink: 0;
+      padding: 0.65rem 1rem;
+      border-bottom: 1px solid var(--tone-2);
+      background: var(--tone-1);
+    }
+    .ref-link-picker-search {
+      width: 100%;
+      padding: 0.5rem 0.65rem;
+      border: none;
+      border-radius: 8px;
+      font: inherit;
+      font-size: 0.85rem;
+      background: var(--bg);
+      color: var(--text);
+      box-shadow: 0 0 0 1px var(--tone-3);
+      outline: none;
+    }
+    .ref-link-picker-search:focus {
+      box-shadow: 0 0 0 2px var(--focus-ring), 0 0 0 1px var(--tone-3);
+    }
+    .ref-link-picker-filters {
+      flex-shrink: 0;
+      padding: 0.55rem 1rem 0.65rem;
+      border-bottom: 1px solid var(--tone-2);
+      background: var(--bg);
+    }
+    .ref-link-picker-filter-label {
+      display: block;
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+      margin-bottom: 0.35rem;
+    }
+    .ref-link-picker-tag-strip,
+    .ref-link-picker-kind-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+      align-items: center;
+    }
+    .ref-link-picker-kind-strip {
+      margin-top: 0.55rem;
+    }
+    .ref-link-picker-tag-btn {
+      font: inherit;
+      cursor: pointer;
+      border: none;
+      padding: 0.15rem 0.45rem;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 500;
+      line-height: 1.35;
+    }
+    .ref-link-picker-tag-btn[aria-pressed="true"] {
+      box-shadow: 0 0 0 2px var(--focus-ring);
+    }
+    .ref-link-picker-chip-btn {
+      font: inherit;
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 0.28rem 0.55rem;
+      border: none;
+      border-radius: 999px;
+      background: var(--tone-1);
+      color: var(--subtle);
+      cursor: pointer;
+    }
+    .ref-link-picker-chip-btn:hover {
+      background: var(--tone-2);
+      color: var(--text);
+    }
+    .ref-link-picker-chip-btn[aria-pressed="true"] {
+      background: var(--text);
+      color: var(--bg);
+    }
+    .ref-link-picker-filter-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      margin-top: 0.45rem;
+      min-height: 1.25rem;
+    }
+    .ref-link-picker-clear-filters {
+      font: inherit;
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 0.15rem 0.35rem;
+      border: none;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+    }
+    .ref-link-picker-clear-filters:hover {
+      color: var(--text);
+      background: var(--tone-1);
+    }
+    .ref-link-picker-clear-filters[hidden] {
+      display: none;
+    }
+    body.ref-pick-active {
+      --ref-pick-hover: #fde68a;
+    }
+    body.ref-pick-active .card:not(.card-readonly) [data-ref-pick] {
+      cursor: pointer;
+      transition: background-color 0.12s ease;
+    }
+    body.ref-pick-active .card:not(.card-readonly) [data-ref-pick="problem"]:hover,
+    body.ref-pick-active .card:not(.card-readonly) [data-ref-pick="answer"]:hover {
+      background-color: var(--ref-pick-hover) !important;
+      color: var(--text);
+    }
+    body.ref-pick-active .card:not(.card-readonly) [data-ref-pick="answer"].empty:hover {
+      font-style: normal;
+    }
+    body.ref-pick-active .card:not(.card-readonly) [data-ref-pick="answer"]:hover .answer-text,
+    body.ref-pick-active .card:not(.card-readonly) [data-ref-pick="answer"]:hover .answer-meta,
+    body.ref-pick-active .card:not(.card-readonly) [data-ref-pick="answer"]:hover .issue-ref,
+    body.ref-pick-active .card:not(.card-readonly) [data-ref-pick="answer"]:hover .issue-ref-link {
+      background: transparent;
+    }
+    body.ref-pick-active .card:not(.card-readonly) [data-ref-pick="problem"]:hover .issue-ref,
+    body.ref-pick-active .card:not(.card-readonly) [data-ref-pick="problem"]:hover .issue-ref-link {
+      background: transparent;
+    }

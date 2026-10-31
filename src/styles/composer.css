@@ -1,0 +1,52 @@
+    .composer {
+      background: var(--question-bg);
+      color: var(--question-text);
+      border-radius: 10px;
+      padding: 0.75rem;
+      box-shadow:
+        0 1px 2px rgba(0, 0, 0, 0.07),
+        0 4px 14px rgba(0, 0, 0, 0.08);
+    }
+    .composer.linked { margin-left: 0.75rem; }
+    .composer textarea {
+      width: 100%;
+      border: none;
+      background: transparent;
+      color: var(--question-text);
+      font: inherit;
+      font-size: 0.9rem;
+      resize: none;
+      outline: none;
+      min-height: 2.75rem;
+      cursor: text;
+    }
+    .composer textarea::placeholder {
+      color: color-mix(in srgb, var(--question-text) 36%, var(--question-bg));
+    }
+    .composer .composer-tags-row {
+      padding: 0.5rem 0.75rem 0;
+    }
+    .composer .composer-tags-row[hidden] {
+      display: none !important;
+    }
+    .btn-sm {
+      font: inherit;
+      font-size: 0.75rem;
+      padding: 0.35rem 0.65rem;
+      border-radius: 6px;
+      border: none;
+      background: var(--tone-2);
+      color: var(--subtle);
+      cursor: pointer;
+    }
+    .btn-sm.primary {
+      background: var(--text);
+      color: var(--bg);
+    }
+    .btn-sm:hover { filter: brightness(0.96); }
+    .highlight { outline: 2px solid var(--tone-3); outline-offset: 2px; }
+    .timeline-step.highlight {
+      outline: 2px solid var(--tone-3);
+      outline-offset: 0;
+      border-radius: 4px;
+    }

@@ -1,0 +1,67 @@
+    .tags-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem 0.55rem;
+      margin: 0;
+      align-items: flex-start;
+      padding: 0.45rem var(--card-text-x) 0.4rem;
+    }
+    .tags-row-edit {
+      flex: 1 1 auto;
+      min-width: 0;
+      display: inline-flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.35rem;
+    }
+    .tags-row-edit .inline-input.single {
+      flex: 0 1 auto;
+      min-width: 0;
+      width: auto;
+      max-width: 100%;
+      font-size: 0.75rem;
+      line-height: 1.25;
+      padding: 0;
+      min-height: 0;
+      box-shadow: none;
+    }
+    .tags-row-edit .inline-input.single:focus {
+      box-shadow: none;
+      background: var(--hover-fill);
+    }
+    .tags-row:has(.tags-row-edit .inline-input.single) {
+      flex-wrap: nowrap;
+    }
+    .tags-row-tags {
+      display: inline-flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.35rem;
+      min-width: 0;
+    }
+    .tags-row .card-id {
+      font: inherit;
+      font-size: 0.72rem;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.02em;
+      color: var(--text);
+      margin: 0;
+      padding: 0;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+    .tags-row .card-id:hover,
+    .tags-row .card-id:focus-visible {
+      text-decoration: underline;
+      outline: none;
+    }
+    .tags-row:not(:has(.tag)) .tags-add {
+      visibility: hidden;
+    }
+    .card:hover .tags-row:not(:has(.tag)) .tags-add {
+      visibility: visible;
+    }

@@ -1,0 +1,70 @@
+    .list-view {
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 0.75rem 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .list-header {
+      padding: 0.35rem 0.65rem 0.55rem 6px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.65rem;
+      font-size: 0.75rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      font-weight: 600;
+    }
+    .list-header-title {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+    .list-filter-toggle {
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      padding: 3px;
+      gap: 2px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.45);
+      box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
+    }
+    .list-filter-chip {
+      font: inherit;
+      font-size: 0.6875rem;
+      font-weight: 500;
+      letter-spacing: -0.01em;
+      text-transform: none;
+      padding: 0.34rem 0.62rem;
+      border: none;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
+    }
+    .list-filter-chip:hover:not([aria-pressed="true"]) {
+      color: var(--subtle);
+      background: rgba(255, 255, 255, 0.4);
+    }
+    .list-filter-chip[aria-pressed="true"] {
+      background: var(--bg);
+      color: var(--text);
+      font-weight: 600;
+      box-shadow:
+        0 1px 2px rgba(0, 0, 0, 0.07),
+        0 0 0 1px rgba(0, 0, 0, 0.04);
+    }
+    .list-filter-chip:focus-visible {
+      outline: 2px solid var(--focus-ring);
+      outline-offset: 1px;
+    }
+    .list-body { display: flex; flex-direction: column; gap: 0; }
+    .list-body > .add-trigger,
+    .list-body > .composer {
+      margin-bottom: 1rem;
+    }

@@ -1,0 +1,60 @@
+    .mention {
+      font-weight: 600;
+      background: rgba(0, 0, 0, 0.08);
+      border-radius: 3px;
+      padding: 0 0.15rem;
+    }
+    .mention-menu {
+      position: fixed;
+      z-index: 1000;
+      background: var(--bg);
+      border-radius: 8px;
+      padding: 0.25rem;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      max-height: 12rem;
+      overflow: auto;
+    }
+    .mention-menu-item {
+      font: inherit;
+      font-size: 0.8rem;
+      text-align: left;
+      padding: 0.35rem 0.5rem;
+      border: none;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--text);
+      cursor: pointer;
+    }
+    .mention-menu-item:hover,
+    .mention-menu-item.active {
+      background: var(--tone-1);
+    }
+    .selection-ref-toolbar {
+      position: fixed;
+      z-index: 10001;
+      padding: 0.2rem;
+      border-radius: 8px;
+      background: var(--bg);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.14), 0 0 0 1px var(--tone-2);
+    }
+    .selection-ref-toolbar[hidden] {
+      display: none !important;
+    }
+    .selection-ref-toolbar-btn {
+      font: inherit;
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 0.35rem 0.55rem;
+      border: none;
+      border-radius: 6px;
+      background: var(--tone-1);
+      color: var(--text);
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .selection-ref-toolbar-btn:hover {
+      background: var(--tone-2);
+    }
