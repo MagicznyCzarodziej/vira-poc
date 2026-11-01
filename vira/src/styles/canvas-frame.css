@@ -8,18 +8,28 @@
       cursor: grabbing;
       z-index: 40 !important;
     }
-    .canvas-placed-frame.is-canvas-selected .canvas-frame-inner {
-      border-color: var(--canvas-drag-border, rgba(59, 130, 246, 0.85));
-    }
     .canvas-frame-inner {
       position: relative;
       box-sizing: border-box;
       height: 100%;
-      border: calc(2px / var(--canvas-zoom, 1)) solid var(--muted);
+      border: none;
       border-radius: calc(6px / var(--canvas-zoom, 1));
       background: transparent;
       overflow: visible;
       pointer-events: none;
+    }
+    .canvas-frame-border-svg {
+      position: absolute;
+      inset: 0;
+      display: block;
+      pointer-events: none;
+      overflow: visible;
+    }
+    .canvas-frame-border-stroke {
+      stroke: var(--muted);
+    }
+    .canvas-placed-frame.is-canvas-selected .canvas-frame-border-stroke {
+      stroke: var(--canvas-drag-border, rgba(59, 130, 246, 0.85));
     }
     .canvas-frame-label {
       position: absolute;

@@ -50,7 +50,17 @@ export {
   type FrameRect,
   type FrameResizeHandle,
 } from "./frameCanvas.ts";
+export { frameRectsIntersect, localOccluderRectsForFrame } from "./frameBorderOcclusion.ts";
 export { createFrame, recomputeNextFrameId } from "./frames.ts";
+export {
+  applyInferredFrameParent,
+  applyInferredFrameParents,
+  reinferAllFrameParents,
+  childFrameIds,
+  clearFrameParentReferences,
+  descendantFrameIds,
+  inferFrameParentId,
+} from "./frameNesting.ts";
 export {
   createActionPoint,
   hasOpenActionPointRefs,

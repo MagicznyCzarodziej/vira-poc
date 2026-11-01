@@ -9,6 +9,7 @@ import { recomputeNextId } from "./cards.ts";
 import { normalizeStep } from "./steps.ts";
 import { normalizeTagsList } from "./tags.ts";
 import { clampFramePlacement } from "./frameCanvas.ts";
+import { applyInferredFrameParent } from "./frameNesting.ts";
 import { recomputeNextFrameId } from "./frames.ts";
 import type {
   ActionPoint,
@@ -56,7 +57,14 @@ function normalizeFramePlacements(
       Number(placement.width) || 520,
       Number(placement.height) || 360,
     );
-    out[id] = { ...clamped, order: placement.order };
+    const parentFrameId =
+      typeof placement.parentFrameId === "string" && frames[placement.parentFrameId]
+        ? placement.parentFrameId
+        : null;
+    out[id] = { ...clamped, order: placement.order, parentFrameId };
+  }
+  for (const id of Object.keys(out)) {
+    applyInferredFrameParent(out, frames, id);
   }
   return out;
 }

@@ -1,5 +1,9 @@
 import type { StateCreator } from "zustand";
 import {
+  applyInferredFrameParent,
+  applyInferredFrameParents,
+  clearFrameParentReferences,
+  reinferAllFrameParents,
   clampFramePlacement,
   createFrame,
   moveFrameAtWorld,
@@ -32,6 +36,7 @@ export const createFrameSlice: StateCreator<DocumentState, [], [], FrameSlice> =
     const bag = { nextFrameId: get().nextFrameId, frames };
     const frame = createFrame(bag, title);
     placeFrameAtWorld(framePlacements, bag.frames, frame.id, x, y);
+    reinferAllFrameParents(framePlacements, bag.frames);
     set({
       frames: bag.frames,
       framePlacements,
@@ -52,6 +57,7 @@ export const createFrameSlice: StateCreator<DocumentState, [], [], FrameSlice> =
       width: next.width,
       height: next.height,
     });
+    reinferAllFrameParents(framePlacements, bag.frames);
     set({
       frames: bag.frames,
       framePlacements,
@@ -77,6 +83,11 @@ export const createFrameSlice: StateCreator<DocumentState, [], [], FrameSlice> =
     for (const { id, x, y } of moves) {
       moveFrameAtWorld(framePlacements, frames, id, x, y);
     }
+    applyInferredFrameParents(
+      framePlacements,
+      frames,
+      moves.map((move) => move.id),
+    );
     set({ framePlacements });
     schedule(get);
   },
@@ -90,6 +101,7 @@ export const createFrameSlice: StateCreator<DocumentState, [], [], FrameSlice> =
       width,
       height,
     })) return;
+    reinferAllFrameParents(framePlacements, get().frames);
     set({ framePlacements });
     schedule(get);
   },
@@ -97,6 +109,7 @@ export const createFrameSlice: StateCreator<DocumentState, [], [], FrameSlice> =
     const framePlacements = structuredClone(get().framePlacements);
     const bounds = resizeFrameRectFromDrag(start, handle, dx, dy);
     if (!setFrameBoundsAtWorld(framePlacements, get().frames, id, bounds)) return;
+    reinferAllFrameParents(framePlacements, get().frames);
     set({ framePlacements });
     schedule(get);
   },
@@ -114,9 +127,11 @@ export const createFrameSlice: StateCreator<DocumentState, [], [], FrameSlice> =
   },
   removeFrameFromCanvas: (id) => {
     const framePlacements = { ...get().framePlacements };
+    const orphaned = clearFrameParentReferences(framePlacements, id);
     removeFrameFromCanvasPlacements(framePlacements, id);
     const frames = { ...get().frames };
     delete frames[id];
+    applyInferredFrameParents(framePlacements, frames, orphaned);
     set({
       frames,
       framePlacements,

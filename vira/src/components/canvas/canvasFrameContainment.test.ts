@@ -19,11 +19,7 @@ describe("canvasFrameContainment", () => {
   });
 
   it("lists card and action placements inside a frame", () => {
-    const cardCenter = { x: 200, y: 200 };
-    const cardPos = {
-      x: cardCenter.x - CARD_WIDTH / 2,
-      y: cardCenter.y - CANVAS_CARD_EST_HEIGHT / 2,
-    };
+    const cardPos = { x: 150, y: 150 };
     const state = {
       items: { "item-1": { id: "item-1", tags: [], archivedAt: null, steps: [] } },
       frames: {},
@@ -53,11 +49,7 @@ describe("canvasFrameContainment", () => {
         "frame-1": { x: 100, y: 100, width: 600, height: 400 },
       },
       canvasPlacements: {
-        "canvas-1": {
-          x: 200 - CARD_WIDTH / 2,
-          y: 200 - CANVAS_CARD_EST_HEIGHT / 2,
-          itemId: "item-1",
-        },
+        "canvas-1": { x: 150, y: 150, itemId: "item-1" },
       },
       actionPointPlacements: {},
       actionPoints: {},
@@ -82,6 +74,61 @@ describe("canvasFrameContainment", () => {
     expect(pickFrameIdAtWorldPoint(placements, frames, 350, 250)).toBe("frame-inner");
     expect(pickFrameIdAtWorldPoint(placements, frames, 50, 50)).toBe("frame-outer");
     expect(distancePointToFrameBorder(350, 250, { x: 200, y: 150, width: 300, height: 200 })).toBe(100);
+  });
+
+  it("expands drag group to explicitly nested child frames", () => {
+    const state = {
+      items: {},
+      frames: {
+        "frame-1": { id: "frame-1", title: "Outer", createdAt: "" },
+        "frame-2": { id: "frame-2", title: "Inner", createdAt: "" },
+      },
+      framePlacements: {
+        "frame-1": { x: 0, y: 0, width: 800, height: 600, parentFrameId: null },
+        "frame-2": { x: 200, y: 150, width: 300, height: 200, parentFrameId: "frame-1" },
+      },
+      canvasPlacements: {},
+      actionPointPlacements: {},
+      actionPoints: {},
+    };
+    const groupStart: Record<string, { x: number; y: number }> = {
+      "frame-1": { x: 0, y: 0 },
+    };
+    expect(expandCanvasDragGroupWithFrameContents(state, ["frame-1"], groupStart)).toEqual([
+      "frame-1",
+      "frame-2",
+    ]);
+  });
+
+  it("when dragging inner frame, only cards anchored in that frame move", () => {
+    const state = {
+      items: {
+        "item-outer": { id: "item-outer", tags: [], archivedAt: null, steps: [] },
+        "item-inner": { id: "item-inner", tags: [], archivedAt: null, steps: [] },
+      },
+      frames: {
+        "frame-outer": { id: "frame-outer", title: "Outer", createdAt: "" },
+        "frame-inner": { id: "frame-inner", title: "Inner", createdAt: "" },
+      },
+      framePlacements: {
+        "frame-outer": { x: 0, y: 0, width: 800, height: 600, parentFrameId: null },
+        "frame-inner": { x: 200, y: 150, width: 300, height: 200, parentFrameId: "frame-outer" },
+      },
+      canvasPlacements: {
+        "canvas-outer": { x: 220, y: 100, itemId: "item-outer" },
+        "canvas-inner": { x: 220, y: 180, itemId: "item-inner" },
+      },
+      actionPointPlacements: {},
+      actionPoints: {},
+    };
+    const groupStart: Record<string, { x: number; y: number }> = {
+      "frame-inner": { x: 200, y: 150 },
+    };
+    expect(expandCanvasDragGroupWithFrameContents(state, ["frame-inner"], groupStart)).toEqual([
+      "frame-inner",
+      "canvas-inner",
+    ]);
+    expect(groupStart["canvas-outer"]).toBeUndefined();
   });
 
   it("does not treat nested frames as contents when dragging a frame", () => {

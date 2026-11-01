@@ -66,6 +66,8 @@ export type Frame = {
 export type FramePlacement = Placement & {
   width: number;
   height: number;
+  /** Explicit canvas nesting (Figma-style parent frame). */
+  parentFrameId?: string | null;
 };
 
 export type SavedDocument = {

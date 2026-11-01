@@ -1,6 +1,7 @@
 import { ACTION_POINT_WIDTH, CARD_WIDTH } from "../../domain/constants.ts";
 import type { DocumentState } from "../../store/documentTypes.ts";
 import { cardPlacementItemId } from "../../domain/cardCanvasPlacements.ts";
+import { childFrameIds } from "../../domain/index.ts";
 import { isCanvasFrameId } from "./canvasPlaced.ts";
 
 /** Rough height for hit-testing “inside frame” (matches fly-to estimate for cards). */
@@ -72,6 +73,61 @@ export function placementCenterInWorld(
   return { x: pos.x + w / 2, y: pos.y + h / 2 };
 }
 
+/** Smallest-area frame whose bounds contain (px, py). */
+export function innermostFrameIdAtWorldPoint(
+  framePlacements: Record<string, { x: number; y: number; width: number; height: number }>,
+  frames: Record<string, { id: string }>,
+  px: number,
+  py: number,
+): string | null {
+  let best: { id: string; area: number } | null = null;
+  for (const [id, placement] of Object.entries(framePlacements)) {
+    if (!frames[id]) continue;
+    const rect: FrameRect = {
+      x: placement.x,
+      y: placement.y,
+      width: placement.width,
+      height: placement.height,
+    };
+    if (!pointInsideFrame(px, py, rect)) continue;
+    const area = rect.width * rect.height;
+    if (!best || area < best.area) best = { id, area };
+  }
+  return best?.id ?? null;
+}
+
+/** Placements whose top-left anchor sits in this frame and not in a smaller nested frame. */
+export function canvasPlacementIdsOwnedByFrameHost(
+  state: Pick<
+    DocumentState,
+    "canvasPlacements" | "items" | "actionPointPlacements" | "actionPoints" | "framePlacements" | "frames"
+  >,
+  frameHostId: string,
+  options: { excludeIds?: ReadonlySet<string> } = {},
+): string[] {
+  const exclude = options.excludeIds ?? new Set<string>();
+  const out: string[] = [];
+
+  for (const [key, placement] of Object.entries(state.canvasPlacements)) {
+    if (exclude.has(key)) continue;
+    const itemId = cardPlacementItemId(key, placement, state.items);
+    if (!itemId) continue;
+    if (innermostFrameIdAtWorldPoint(state.framePlacements, state.frames, placement.x, placement.y) === frameHostId) {
+      out.push(key);
+    }
+  }
+
+  for (const [id, placement] of Object.entries(state.actionPointPlacements)) {
+    if (exclude.has(id)) continue;
+    if (!state.actionPoints[id]) continue;
+    if (innermostFrameIdAtWorldPoint(state.framePlacements, state.frames, placement.x, placement.y) === frameHostId) {
+      out.push(id);
+    }
+  }
+
+  return out;
+}
+
 export function canvasPlacementIdsInsideFrame(
   state: Pick<
     DocumentState,
@@ -85,6 +141,12 @@ export function canvasPlacementIdsInsideFrame(
     includeFrames?: boolean;
   } = {},
 ): string[] {
+  if (options.frameHostId) {
+    return canvasPlacementIdsOwnedByFrameHost(state, options.frameHostId, {
+      excludeIds: options.excludeIds,
+    });
+  }
+
   const exclude = options.excludeIds ?? new Set<string>();
   const out: string[] = [];
 
@@ -134,20 +196,25 @@ export function expandCanvasDragGroupWithFrameContents(
 ): string[] {
   const expanded = new Set(groupIds);
 
+  const addNestedFrames = (parentId: string) => {
+    for (const childId of childFrameIds(parentId, state.framePlacements)) {
+      if (expanded.has(childId)) continue;
+      expanded.add(childId);
+      if (!groupStart[childId]) {
+        const pos = state.framePlacements[childId];
+        if (pos) groupStart[childId] = { x: pos.x, y: pos.y };
+      }
+      addNestedFrames(childId);
+    }
+  };
+
   for (const id of groupIds) {
-    if (!isCanvasFrameId(state, id)) continue;
-    const placement = state.framePlacements[id];
-    if (!placement) continue;
-    const frameRect: FrameRect = {
-      x: placement.x,
-      y: placement.y,
-      width: placement.width,
-      height: placement.height,
-    };
-    const inside = canvasPlacementIdsInsideFrame(state, frameRect, {
-      excludeIds: expanded,
-      frameHostId: id,
-    });
+    if (isCanvasFrameId(state, id)) addNestedFrames(id);
+  }
+
+  const frameIdsInGroup = [...expanded].filter((id) => isCanvasFrameId(state, id));
+  for (const id of frameIdsInGroup) {
+    const inside = canvasPlacementIdsOwnedByFrameHost(state, id, { excludeIds: expanded });
     for (const childId of inside) {
       expanded.add(childId);
       if (!groupStart[childId]) {

@@ -5,6 +5,7 @@ import {
   isItemArchived,
   sortedActionPointPlacementIds,
   sortedCardPlacementKeys,
+  localOccluderRectsForFrame,
   sortedFramePlacementIds,
 } from "../../domain/index.ts";
 import { useDocument } from "../../store/index.ts";
@@ -110,6 +111,12 @@ export function CanvasWorkspace() {
                   const frame = frames[id];
                   const pos = framePlacements[id];
                   if (!frame || !pos) return null;
+                  const hostRect = { x: pos.x, y: pos.y, width: pos.width, height: pos.height };
+                  const occludersWorld = frameIds.slice(index + 1).flatMap((aboveId) => {
+                    const p = framePlacements[aboveId];
+                    return p ? [{ x: p.x, y: p.y, width: p.width, height: p.height }] : [];
+                  });
+                  const occludersLocal = localOccluderRectsForFrame(hostRect, occludersWorld);
                   return (
                     <div
                       key={id}
@@ -118,7 +125,13 @@ export function CanvasWorkspace() {
                       style={{ left: pos.x, top: pos.y, width: pos.width, height: pos.height, zIndex: index + 1 }}
                       onAnimationEnd={() => useDocument.getState().clearReveal()}
                     >
-                      <FrameView frame={frame} width={pos.width} height={pos.height} surface="canvas" />
+                      <FrameView
+                        frame={frame}
+                        width={pos.width}
+                        height={pos.height}
+                        surface="canvas"
+                        occludersLocal={occludersLocal}
+                      />
                     </div>
                   );
                 })}

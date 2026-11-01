@@ -8,6 +8,22 @@ describe("frameSlice", () => {
     useDocument.getState().clearAll();
   });
 
+  it("nests existing frames when drawing a larger frame over them", () => {
+    const inner = useDocument.getState().createFrameWithBoundsOnCanvas({
+      x: 80,
+      y: 80,
+      width: 200,
+      height: 160,
+    });
+    const outerId = useDocument.getState().createFrameWithBoundsOnCanvas({
+      x: 0,
+      y: 0,
+      width: 400,
+      height: 320,
+    });
+    expect(useDocument.getState().framePlacements[inner]!.parentFrameId).toBe(outerId);
+  });
+
   it("creates a frame with explicit bounds", () => {
     const id = useDocument.getState().createFrameWithBoundsOnCanvas({
       x: 40,
