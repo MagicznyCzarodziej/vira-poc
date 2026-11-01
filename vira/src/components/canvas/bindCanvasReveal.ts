@@ -1,3 +1,4 @@
+import { resolveCardCanvasPlacementKey } from "../../domain/index.ts";
 import { useDocument } from "../../store/index.ts";
 import { flyViewportToCard, placedCardBounds, popCanvasPlacedCard, takePendingReveal } from "./flyToCard.ts";
 
@@ -6,11 +7,22 @@ export function bindCanvasReveal(surface: HTMLElement): () => void {
     const detail = (event as CustomEvent<{ id: string; smooth?: boolean }>).detail;
     const id = detail?.id;
     const doc = useDocument.getState();
-    const pos = id ? (doc.canvasPlacements[id] ?? doc.actionPointPlacements[id]) : null;
-    if (!id || !pos) return;
-    const placed = surface.querySelector<HTMLElement>(`[data-canvas-placed="${id}"]`);
+    if (!id) return;
+    const isAction = !!doc.actionPoints[id];
+    const placementKey = isAction ? null : resolveCardCanvasPlacementKey(doc.canvasPlacements, doc.items, id);
+    const pos = isAction
+      ? doc.actionPointPlacements[id]
+      : placementKey
+        ? doc.canvasPlacements[placementKey]
+        : null;
+    if (!pos) return;
+    const placed = surface.querySelector<HTMLElement>(
+      isAction || !placementKey
+        ? `[data-canvas-placed="${id}"]`
+        : `[data-canvas-placed="${placementKey}"]`,
+    );
     const bounds = placedCardBounds(pos, placed);
-    const pop = () => popCanvasPlacedCard(id);
+    const pop = () => popCanvasPlacedCard(placementKey ?? id);
     if (detail.smooth !== false) {
       flyViewportToCard(
         surface,

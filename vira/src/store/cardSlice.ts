@@ -4,6 +4,8 @@ import {
   archiveCard,
   archiveQuestion,
   archiveStepAnswerField,
+  ensureEmptyDecisionForActionPointRefs,
+  hasOpenActionPointRefsForStep,
   createBlankCard as createBlankCardInBag,
   importFigJamStickies,
   normalizeTagName,
@@ -62,6 +64,10 @@ export const createCardSlice: StateCreator<DocumentState, [], [], CardSlice> = (
     const copy = structuredClone(card);
     const next = copy.steps[stepIndex];
     if (!next || !archiveStepAnswerField(next)) return;
+    const actionPoints = get().actionPoints;
+    if (hasOpenActionPointRefsForStep(next, actionPoints)) {
+      ensureEmptyDecisionForActionPointRefs(next);
+    }
     set({ items: { ...get().items, [id]: copy } });
     schedule(get);
   },
@@ -107,6 +113,7 @@ export const createCardSlice: StateCreator<DocumentState, [], [], CardSlice> = (
     set({
       items: bag.items,
       nextId: bag.nextId,
+      nextCanvasPlacementId: bag.nextCanvasPlacementId,
       canvasPlacements: bag.canvasPlacements,
       openComposer: false,
     });
@@ -135,6 +142,7 @@ export const createCardSlice: StateCreator<DocumentState, [], [], CardSlice> = (
       actionPoints: {},
       actionPointPlacements: {},
       nextActionPointId: 1,
+      nextCanvasPlacementId: 1,
       canvasPlacements: {},
       canvasViewport: { scrollLeft: 0, scrollTop: 0, zoom: 1 },
       canvasViewportUserSet: false,

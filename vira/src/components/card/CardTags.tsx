@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { tagStyle, type Card } from "../../domain/index.ts";
-import { useDocument } from "../../store/index.ts";
+import { useDocument, type Surface } from "../../store/index.ts";
 import { editHandoffArmed } from "./AutoTextarea.tsx";
 
 function TagEditor({ initial, onCommit, onCancel }: { initial: string; onCommit: (value: string) => void; onCancel: () => void }) {
@@ -44,12 +44,14 @@ export function CardTags({
   editing,
   editInitial,
   onStart,
+  surface = "list",
 }: {
   item: Card;
   readOnly: boolean;
   editing: boolean;
   editInitial: string;
   onStart: () => void;
+  surface?: Surface | "panel";
 }) {
   if (editing) {
     return (
@@ -68,7 +70,7 @@ export function CardTags({
       data-editable={readOnly ? undefined : "tags"}
       data-id={item.id}
       onClick={() => {
-        if (readOnly) return;
+        if (readOnly || surface === "canvas") return;
         onStart();
       }}
     >

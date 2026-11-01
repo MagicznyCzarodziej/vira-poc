@@ -137,13 +137,29 @@ export {
   sortedPlacementIds,
 } from "./canvas.ts";
 export {
+  addCardInstanceToCanvas,
+  bringCardPlacementToFront,
+  canvasPlacementKeysForItem,
+  cardPlacementItemId,
+  duplicateCardPlacements,
+  ensureAllCardPlacementOrders,
+  itemHasCanvasPlacement,
+  moveCardPlacementAtWorld,
+  recomputeNextCanvasPlacementId,
+  removeCanvasPlacementsForItem,
+  resolveCardCanvasPlacementKey,
+  sortedCardPlacementKeys,
+} from "./cardCanvasPlacements.ts";
+export {
   addStep,
   archiveCard,
   archiveQuestion,
   canvasSpawnPreviewCard,
   createBlankCard,
   createCard,
+  moveCardPlacement,
   placeAtWorld,
+  placeNewCardAtWorld,
   recomputeNextId,
 } from "./cards.ts";
 export { addRandomCards } from "./fixtures.ts";

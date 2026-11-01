@@ -34,7 +34,7 @@ export function stepFullyResolved(step: Step, context?: StepResolutionContext): 
 }
 
 export function stepFlaggedByActionPoints(step: Step, context?: StepResolutionContext): boolean {
-  if (!context?.actionPoints || !stepResolved(step)) return false;
+  if (!context?.actionPoints || stepActionPointRefIds(step).length === 0) return false;
   return hasOpenActionPointRefsForStep(step, context.actionPoints);
 }
 
@@ -63,8 +63,10 @@ export function itemNeedsDecision(item: Card, context?: StepResolutionContext): 
 export function cardStatusClass(item: Card, context?: StepResolutionContext): CardStatusClass {
   const steps = itemActiveSteps(item);
   if (!steps.length) return "card-incomplete";
+  const actionPoints = context?.actionPoints ?? {};
   const resolved = steps.filter((step) => stepFullyResolved(step, context)).length;
-  if (resolved === steps.length) return "card-complete";
+  const openActionRefs = steps.some((step) => hasOpenActionPointRefsForStep(step, actionPoints));
+  if (resolved === steps.length && !openActionRefs) return "card-complete";
   if (resolved === 0 && steps.every((step) => !stepResolved(step))) return "card-incomplete";
   return "card-partial";
 }

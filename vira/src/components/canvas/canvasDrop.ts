@@ -54,7 +54,7 @@ export function bindCanvasDrop(
       const id = useDocument.getState().createBlankCard("canvas", spawnIntentFromPayload(payload));
       if (!id) return;
       const pt = worldPoint(event.clientX, event.clientY);
-      useDocument.getState().placeAtWorld(id, pt.x - CARD_WIDTH / 2, pt.y - DROP_OFFSET_Y);
+      useDocument.getState().placeNewCardAtWorld(id, pt.x - CARD_WIDTH / 2, pt.y - DROP_OFFSET_Y);
       return;
     }
     if (!(event.target as Element).closest("[data-canvas-surface]")) return;

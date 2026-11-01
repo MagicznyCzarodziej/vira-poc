@@ -7,6 +7,12 @@ export function isCanvasCardTypingTarget(target: EventTarget | null): boolean {
   return field instanceof HTMLElement && document.activeElement === field;
 }
 
+/** Click-to-edit surfaces on a placed card — do not arm canvas drag. */
+export function isCanvasCardEditSurface(target: EventTarget | null): boolean {
+  if (!(target instanceof Element)) return false;
+  return !!target.closest("textarea, input, [data-editable], [contenteditable=\"true\"]");
+}
+
 export function shouldStartCanvasCardDrag(
   startX: number,
   startY: number,

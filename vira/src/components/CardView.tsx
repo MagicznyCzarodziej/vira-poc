@@ -7,6 +7,7 @@ import {
 } from "../domain/index.ts";
 import { collectCardHistoryEvents } from "../domain/index.ts";
 import { useDocument, type EditTarget, type Surface } from "../store/index.ts";
+import { sameEditTarget } from "../store/editTarget.ts";
 import { refPickModeActive } from "./text/bindRefPickFromCard.ts";
 import { armEditHandoff } from "./card/AutoTextarea.tsx";
 import { CardStep } from "./card/CardStep.tsx";
@@ -24,30 +25,44 @@ export function CardView({
   surface,
   draggableToCanvas = false,
   historyEventIndex = null,
+  canvasPlacementKey = null,
 }: {
   item: Card;
   surface: Surface | "panel";
   draggableToCanvas?: boolean;
   historyEventIndex?: number | null;
+  /** Canvas host placement id (may differ from item.id when duplicated on canvas). */
+  canvasPlacementKey?: string | null;
 }) {
-  const placements = useDocument((state) => state.canvasPlacements);
   const actionPoints = useDocument((state) => state.actionPoints);
   const resolutionContext = { actionPoints };
   const editing = useDocument((state) => state.editing);
   const editInitial = useDocument((state) => state.editInitial);
   const draft = useDocument((state) => state.followupDrafts[item.id] ?? "");
-  const onCanvas = !!placements[item.id];
   const readOnly = surface === "panel";
   const events = historyEventIndex != null ? collectCardHistoryEvents(item) : null;
   const prefix = surface === "panel" ? "panel-" : surface === "canvas" ? "canvas-" : "";
 
   const editingHere = (field: EditTarget["field"], step = 0) =>
-    !readOnly && editing?.id === item.id && editing.surface === surface && editing.field === field && editing.step === step;
+    !readOnly
+    && editing?.id === item.id
+    && editing.surface === surface
+    && editing.field === field
+    && editing.step === step
+    && (surface !== "canvas" || (editing.canvasPlacementKey ?? null) === (canvasPlacementKey ?? null));
+
+  const canvasEditTarget = (field: EditTarget["field"], step = 0): EditTarget => ({
+    id: item.id,
+    field,
+    step,
+    surface: surface as Surface,
+    ...(surface === "canvas" && canvasPlacementKey ? { canvasPlacementKey } : {}),
+  });
 
   const start = (target: EditTarget) => {
     if (refPickModeActive()) return;
     const current = useDocument.getState().editing;
-    if (current && (current.id !== target.id || current.field !== target.field || current.step !== target.step || current.surface !== target.surface)) {
+    if (current && !sameEditTarget(current, target)) {
       armEditHandoff(true);
       const active = document.activeElement;
       const value = active instanceof HTMLTextAreaElement || active instanceof HTMLInputElement ? active.value : useDocument.getState().editInitial;
@@ -71,11 +86,11 @@ export function CardView({
       events={events}
       editingHere={editingHere}
       start={start}
+      canvasEditTarget={canvasEditTarget}
     />
   ));
 
-  const blocked = draggableToCanvas && onCanvas;
-  const canDragToCanvas = draggableToCanvas && !onCanvas;
+  const canDragToCanvas = draggableToCanvas;
   const step0 = item.steps[0];
   const showFollowup = Boolean(
     step0
@@ -83,7 +98,7 @@ export function CardView({
   );
   return (
     <article
-      className={`card ${cardStatusClass(item, resolutionContext)}${readOnly ? " card-readonly" : ""}${blocked ? " canvas-list-drag-blocked" : ""}`}
+      className={`card ${cardStatusClass(item, resolutionContext)}${readOnly ? " card-readonly" : ""}`}
       data-id={item.id}
       id={`${prefix}card-${item.id}`}
       data-canvas-drag-id={canDragToCanvas ? item.id : undefined}
@@ -116,9 +131,10 @@ export function CardView({
               <CardTags
                 item={item}
                 readOnly={readOnly}
+                surface={surface}
                 editing={editingHere("tags")}
                 editInitial={editInitial}
-                onStart={() => start({ id: item.id, field: "tags", step: 0, surface: surface as Surface })}
+                onStart={() => start(canvasEditTarget("tags"))}
               />
             </div>
             {surface === "canvas" ? (
@@ -129,7 +145,7 @@ export function CardView({
                 aria-label="Remove from canvas"
                 onClick={() => {
                   if (shouldSuppressListCardClick()) return;
-                  useDocument.getState().removeFromCanvas(item.id);
+                  useDocument.getState().removeFromCanvas(canvasPlacementKey ?? item.id);
                 }}
               >
                 <span className="icon-dismiss" aria-hidden="true">×</span>
@@ -153,7 +169,12 @@ export function CardView({
           {!readOnly && showFollowup && (
             <div className="followup-slot">
               <div className="followup-slot-inner">
-                <FollowupField itemId={item.id} surface={surface as Surface} draft={draft} />
+                <FollowupField
+                  itemId={item.id}
+                  surface={surface as Surface}
+                  draft={draft}
+                  canvasPlacementKey={surface === "canvas" ? canvasPlacementKey : null}
+                />
               </div>
             </div>
           )}

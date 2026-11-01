@@ -1,11 +1,25 @@
 import { useDocument, type Surface } from "../../store/index.ts";
 import { armEditHandoff, AutoTextarea } from "./AutoTextarea.tsx";
 
-export function FollowupField({ itemId, surface, draft }: { itemId: string; surface: Surface; draft: string }) {
+export function FollowupField({
+  itemId,
+  surface,
+  draft,
+  canvasPlacementKey = null,
+}: {
+  itemId: string;
+  surface: Surface;
+  draft: string;
+  canvasPlacementKey?: string | null;
+}) {
   const editing = useDocument((state) => state.editing);
   const editInitial = useDocument((state) => state.editInitial);
   const focusNonce = useDocument((state) => state.focusNonce);
-  const active = editing?.id === itemId && editing.field === "followup" && editing.surface === surface;
+  const active =
+    editing?.id === itemId
+    && editing.field === "followup"
+    && editing.surface === surface
+    && (surface !== "canvas" || (editing.canvasPlacementKey ?? null) === (canvasPlacementKey ?? null));
   if (active) {
     return (
       <AutoTextarea
@@ -34,13 +48,25 @@ export function FollowupField({ itemId, surface, draft }: { itemId: string; surf
           armEditHandoff(true);
           const activeEl = document.activeElement;
           const value = activeEl instanceof HTMLTextAreaElement || activeEl instanceof HTMLInputElement ? activeEl.value : "";
-          useDocument.getState().commitEdit(value, { id: itemId, field: "followup", step: 0, surface });
+          useDocument.getState().commitEdit(value, {
+            id: itemId,
+            field: "followup",
+            step: 0,
+            surface,
+            ...(surface === "canvas" && canvasPlacementKey ? { canvasPlacementKey } : {}),
+          });
           armEditHandoff(false);
         }
       }}
       onFocus={() => {
         if (!useDocument.getState().editing || useDocument.getState().editing?.field !== "followup") {
-          useDocument.getState().beginEdit({ id: itemId, field: "followup", step: 0, surface });
+          useDocument.getState().beginEdit({
+            id: itemId,
+            field: "followup",
+            step: 0,
+            surface,
+            ...(surface === "canvas" && canvasPlacementKey ? { canvasPlacementKey } : {}),
+          });
         }
       }}
     />

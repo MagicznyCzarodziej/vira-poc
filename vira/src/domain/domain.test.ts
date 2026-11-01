@@ -16,7 +16,7 @@ describe("tags", () => {
 
 describe("createCard", () => {
   it("creates a decision-only card with no question", () => {
-    const bag = { nextId: 1, items: {}, canvasPlacements: {}, canvasViewport: null };
+    const bag = { nextId: 1, nextCanvasPlacementId: 1, items: {}, canvasPlacements: {}, canvasViewport: null };
     const id = createCard(bag, { problem: "", answer: "Ship REST first" });
     expect(id).toBe("item-1");
     const card = bag.items["item-1"];
@@ -25,13 +25,13 @@ describe("createCard", () => {
   });
 
   it("rejects a card with neither question nor decision", () => {
-    const bag = { nextId: 1, items: {}, canvasPlacements: {}, canvasViewport: null };
+    const bag = { nextId: 1, nextCanvasPlacementId: 1, items: {}, canvasPlacements: {}, canvasViewport: null };
     expect(createCard(bag, { problem: "", answer: "" })).toBeNull();
     expect(bag.nextId).toBe(1);
   });
 
   it("still creates question-first cards with an open decision", () => {
-    const bag = { nextId: 1, items: {}, canvasPlacements: {}, canvasViewport: null };
+    const bag = { nextId: 1, nextCanvasPlacementId: 1, items: {}, canvasPlacements: {}, canvasViewport: null };
     const id = createCard(bag, { problem: "Should we ship?" });
     expect(id).toBe("item-1");
     expect(bag.items["item-1"]?.steps[0]?.problem).toBe("Should we ship?");

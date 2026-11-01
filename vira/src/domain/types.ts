@@ -36,6 +36,11 @@ export type Placement = {
   order?: string;
 };
 
+/** One card on the canvas; `itemId` is the shared decision card (key may differ when duplicated). */
+export type CardCanvasPlacement = Placement & {
+  itemId?: string;
+};
+
 export type Viewport = {
   scrollLeft: number;
   scrollTop: number;
@@ -62,7 +67,8 @@ export type SavedDocument = {
   viewMode: ViewMode;
   showAllDates: boolean;
   listFilterNotOnCanvas: boolean;
-  canvasPlacements: Record<string, Placement>;
+  nextCanvasPlacementId: number;
+  canvasPlacements: Record<string, CardCanvasPlacement>;
   canvasViewport: Viewport;
   canvasViewportUserSet: boolean;
 };
@@ -89,6 +95,7 @@ export type CardStatusClass = "card-incomplete" | "card-partial" | "card-complet
 
 export type DocBag = {
   nextId: number;
+  nextCanvasPlacementId: number;
   items: Record<string, Card>;
-  canvasPlacements: Record<string, Placement>;
+  canvasPlacements: Record<string, CardCanvasPlacement>;
 };

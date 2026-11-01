@@ -36,5 +36,5 @@ export function placeCenteredCard(
   const zoom = useDocument.getState().canvasViewport.zoom;
   const x = (surface.scrollLeft + rect.width / 2) / zoom - CARD_WIDTH / 2;
   const y = (surface.scrollTop + rect.height / 2) / zoom - DROP_OFFSET_Y;
-  useDocument.getState().placeAtWorld(id, x, y);
+  useDocument.getState().placeNewCardAtWorld(id, x, y);
 }

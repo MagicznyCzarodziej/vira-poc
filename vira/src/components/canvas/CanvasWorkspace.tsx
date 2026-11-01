@@ -4,7 +4,7 @@ import {
   WORLD_W,
   isItemArchived,
   sortedActionPointPlacementIds,
-  sortedPlacementIds,
+  sortedCardPlacementKeys,
 } from "../../domain/index.ts";
 import { useDocument } from "../../store/index.ts";
 import { ActionPointView } from "../action/ActionPointView.tsx";
@@ -30,7 +30,7 @@ export function CanvasWorkspace() {
   const revealId = useDocument((state) => state.revealId);
   const canvasSelection = useDocument((state) => state.canvasSelection);
   const selectedSet = new Set(canvasSelection);
-  const ids = sortedPlacementIds(placements, items).filter((id) => items[id] && !isItemArchived(items[id]));
+  const ids = sortedCardPlacementKeys(placements, items);
   const apIds = sortedActionPointPlacementIds(apPlacements, actionPoints).filter((id) => actionPoints[id]);
   const centered = useRef(false);
   const lineRef = useRef<SVGSVGElement>(null);
@@ -101,19 +101,21 @@ export function CanvasWorkspace() {
                     </div>
                   );
                 })}
-                {ids.map((id, index) => {
-                  const item = items[id];
-                  const pos = placements[id];
+                {ids.map((placementKey, index) => {
+                  const pos = placements[placementKey];
+                  const itemId = pos?.itemId ?? placementKey;
+                  const item = items[itemId];
                   if (!item || !pos) return null;
                   return (
                     <div
-                      key={id}
-                      className={`canvas-placed-card${revealId === id ? " is-canvas-reveal-pop" : ""}${selectedSet.has(id) ? " is-canvas-selected" : ""}`}
-                      data-canvas-placed={id}
+                      key={placementKey}
+                      className={`canvas-placed-card${revealId === placementKey ? " is-canvas-reveal-pop" : ""}${selectedSet.has(placementKey) ? " is-canvas-selected" : ""}`}
+                      data-canvas-placed={placementKey}
+                      data-canvas-item-id={itemId}
                       style={{ left: pos.x, top: pos.y, zIndex: index + 1 }}
                       onAnimationEnd={() => useDocument.getState().clearReveal()}
                     >
-                      <CardView item={item} surface="canvas" />
+                      <CardView item={item} surface="canvas" canvasPlacementKey={placementKey} />
                     </div>
                   );
                 })}

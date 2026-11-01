@@ -8,6 +8,8 @@ export type EditTarget = {
   field: EditField;
   step: number;
   surface: Surface;
+  /** Which canvas host is being edited when the same item appears more than once. */
+  canvasPlacementKey?: string;
 };
 
 export type ComposerIntent = "decision" | "question";
@@ -41,9 +43,15 @@ export type DocumentState = SavedDocument & {
   archiveCardById: (id: string) => void;
   removeFromCanvas: (id: string) => void;
   placeAtWorld: (id: string, x: number, y: number) => void;
+  placeNewCardAtWorld: (id: string, x: number, y: number) => void;
   bringToFront: (id: string) => void;
   movePlacement: (id: string, x: number, y: number) => void;
   movePlacements: (moves: { id: string; x: number; y: number }[]) => void;
+  /** Alt-drag: clone card placements at given positions; returns old key → new key. */
+  duplicateCardPlacementsForDrag: (
+    placementKeys: readonly string[],
+    positions: Readonly<Record<string, { x: number; y: number }>>,
+  ) => Record<string, string>;
   setCanvasSelection: (ids: string[]) => void;
   toggleCanvasSelection: (id: string) => void;
   clearCanvasSelection: () => void;

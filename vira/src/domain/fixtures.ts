@@ -1,4 +1,4 @@
-import { createCard, placeAtWorld } from "./cards.ts";
+import { createCard, placeNewCardAtWorld } from "./cards.ts";
 import { WORLD_H, WORLD_W } from "./constants.ts";
 import type { DocBag } from "./types.ts";
 
@@ -116,10 +116,10 @@ export function addRandomCards(bag: DocBag): void {
     }],
   });
 
-  if (apiId) placeAtWorld(bag, apiId, cx - 540, cy - 40);
-  if (syncId) placeAtWorld(bag, syncId, cx + 160, cy - 60);
-  if (rolloutId) placeAtWorld(bag, rolloutId, cx - 220, cy - 340);
-  if (notifId) placeAtWorld(bag, notifId, cx + 200, cy + 220);
-  if (hubId) placeAtWorld(bag, hubId, cx - 240, cy + 300);
-  if (mobileId) placeAtWorld(bag, mobileId, cx + 480, cy + 40);
+  if (apiId) placeNewCardAtWorld(bag, apiId, cx - 540, cy - 40);
+  if (syncId) placeNewCardAtWorld(bag, syncId, cx + 160, cy - 60);
+  if (rolloutId) placeNewCardAtWorld(bag, rolloutId, cx - 220, cy - 340);
+  if (notifId) placeNewCardAtWorld(bag, notifId, cx + 200, cy + 220);
+  if (hubId) placeNewCardAtWorld(bag, hubId, cx - 240, cy + 300);
+  if (mobileId) placeNewCardAtWorld(bag, mobileId, cx + 480, cy + 40);
 }

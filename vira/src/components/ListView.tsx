@@ -1,4 +1,4 @@
-import { compareItemIdsNewestFirst, liveActionPointIds, liveItems } from "../domain/index.ts";
+import { compareItemIdsNewestFirst, itemHasCanvasPlacement, liveActionPointIds, liveItems } from "../domain/index.ts";
 import { useDocument } from "../store/index.ts";
 import { ActionPointView } from "./action/ActionPointView.tsx";
 import { CardView } from "./CardView.tsx";
@@ -15,7 +15,7 @@ export function ListView() {
   const setListFilter = useDocument((state) => state.setListFilter);
   const cards = liveItems(items)
     .sort(compareItemIdsNewestFirst)
-    .filter((item) => !notOnCanvas || !placements[item.id]);
+    .filter((item) => !notOnCanvas || !itemHasCanvasPlacement(placements, items, item.id));
   const actions = liveActionPointIds(actionPoints).filter((id) => !notOnCanvas || !apPlacements[id]);
 
   return (

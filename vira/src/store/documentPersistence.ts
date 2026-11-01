@@ -12,6 +12,7 @@ let saveTimer: ReturnType<typeof setTimeout> | null = null;
 export function bagOf(state: SavedDocument): DocBag {
   return {
     nextId: state.nextId,
+    nextCanvasPlacementId: state.nextCanvasPlacementId,
     items: state.items,
     canvasPlacements: state.canvasPlacements,
   };
@@ -22,6 +23,7 @@ export function persist(state: SavedDocument) {
     version: 1,
     nextId: state.nextId,
     nextActionPointId: state.nextActionPointId,
+    nextCanvasPlacementId: state.nextCanvasPlacementId,
     items: state.items,
     actionPoints: state.actionPoints,
     actionPointPlacements: state.actionPointPlacements,

@@ -1,6 +1,10 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
-import { isCanvasCardTypingTarget, shouldStartCanvasCardDrag } from "./canvasCardDrag.ts";
+import {
+  isCanvasCardEditSurface,
+  isCanvasCardTypingTarget,
+  shouldStartCanvasCardDrag,
+} from "./canvasCardDrag.ts";
 
 describe("isCanvasCardTypingTarget", () => {
   it("is true only when the event target belongs to the focused field", () => {
@@ -14,6 +18,19 @@ describe("isCanvasCardTypingTarget", () => {
     ta.focus();
     expect(isCanvasCardTypingTarget(ta)).toBe(true);
     expect(isCanvasCardTypingTarget(document.querySelector("[data-editable]"))).toBe(false);
+  });
+});
+
+describe("isCanvasCardEditSurface", () => {
+  it("is true for click-to-edit fields on a placed card", () => {
+    document.body.innerHTML = `
+      <div class="canvas-placed-card">
+        <div class="problem editable" data-editable="problem">Question</div>
+        <span class="card-id">42</span>
+      </div>
+    `;
+    expect(isCanvasCardEditSurface(document.querySelector(".problem"))).toBe(true);
+    expect(isCanvasCardEditSurface(document.querySelector(".card-id"))).toBe(false);
   });
 });
 

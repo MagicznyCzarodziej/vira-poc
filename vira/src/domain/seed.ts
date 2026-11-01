@@ -3,7 +3,7 @@ import { wireSeedFixture } from "./seedFixture.ts";
 import type { DocBag, SavedDocument } from "./types.ts";
 
 function emptyBag(): DocBag {
-  return { nextId: 1, items: {}, canvasPlacements: {} };
+  return { nextId: 1, nextCanvasPlacementId: 1, items: {}, canvasPlacements: {} };
 }
 
 export function buildSeedBag(): DocBag {
@@ -157,6 +157,7 @@ export function createDocumentFromSeed(): SavedDocument {
     viewMode: "list",
     showAllDates: false,
     listFilterNotOnCanvas: false,
+    nextCanvasPlacementId: bag.nextCanvasPlacementId,
     canvasPlacements: {},
     canvasViewport: { scrollLeft: 0, scrollTop: 0, zoom: 1 },
     canvasViewportUserSet: false,

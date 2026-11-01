@@ -1,0 +1,30 @@
+---
+description: Require automated tests for every new feature or behavior change
+alwaysApply: true
+---
+
+# Tests for new work
+
+Ship **behavior changes together with tests** in the same task. Do not treat tests as optional follow-up.
+
+## When tests are required
+
+- New user-visible behavior (canvas gestures, editing, drag/drop, keyboard shortcuts)
+- New or changed store actions and domain logic
+- Bug fixes (regression test that fails on old code, passes on the fix)
+
+Skip tests only for pure refactors with no behavior change, or docs/comments-only edits.
+
+## What to add (vira / Vitest)
+
+| Layer | Location | Notes |
+|-------|----------|--------|
+| Domain | `src/domain/*.test.ts` next to module | Pure functions, no jsdom |
+| Store | `src/store/*.test.ts` | `useDocument.getState().clearAll()` in `beforeEach` when needed |
+| Gestures / DOM | `src/components/**/*.test.ts` | `// @vitest-environment jsdom`; follow `bindCanvasGestures*.test.ts` patterns |
+
+Cover at least: **happy path**, one **edge case**, and **“does not happen when feature off”** when relevant (e.g. alt-drag vs normal drag).
+
+## Before finishing
+
+Run `npm test -- --run` and fix failures. New feature work is not done until tests pass.

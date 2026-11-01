@@ -1,4 +1,5 @@
 import { type RefObject } from "react";
+import { resolveCardCanvasPlacementKey } from "../../domain/index.ts";
 import { useDocument } from "../../store/index.ts";
 
 export function bindCanvasRefLinks(
@@ -12,13 +13,22 @@ export function bindCanvasRefLinks(
     const svg = lineRef.current;
     if (ref && svg) {
       const from = target.closest<HTMLElement>("[data-id], [data-canvas-placed]");
-      const fromId = from?.dataset.canvasPlaced || from?.dataset.id;
+      const fromPlacement = from?.dataset.canvasPlaced || null;
       const parsed = ref.dataset.issueRef?.match(/item-(\d+)/i);
-      const targetId = parsed ? `item-${parsed[1]}` : null;
+      const targetItemId = parsed ? `item-${parsed[1]}` : null;
       const state = useDocument.getState();
-      if (fromId && targetId && state.canvasPlacements[fromId] && state.canvasPlacements[targetId] && fromId !== targetId) {
-        const a = surfaceRef.current?.querySelector(`[data-canvas-placed="${fromId}"]`)?.getBoundingClientRect();
-        const b = surfaceRef.current?.querySelector(`[data-canvas-placed="${targetId}"]`)?.getBoundingClientRect();
+      const targetPlacement = targetItemId
+        ? resolveCardCanvasPlacementKey(state.canvasPlacements, state.items, targetItemId)
+        : null;
+      if (
+        fromPlacement
+        && targetPlacement
+        && state.canvasPlacements[fromPlacement]
+        && state.canvasPlacements[targetPlacement]
+        && fromPlacement !== targetPlacement
+      ) {
+        const a = surfaceRef.current?.querySelector(`[data-canvas-placed="${fromPlacement}"]`)?.getBoundingClientRect();
+        const b = surfaceRef.current?.querySelector(`[data-canvas-placed="${targetPlacement}"]`)?.getBoundingClientRect();
         const view = surfaceRef.current?.getBoundingClientRect();
         if (a && b && view) {
           svg.setAttribute("width", String(view.width));
@@ -38,11 +48,14 @@ export function bindCanvasRefLinks(
     root.querySelectorAll(".is-workspace-link-hover").forEach((el) => el.classList.remove("is-workspace-link-hover"));
     const listCard = target.closest<HTMLElement>(".workspace-list .card[data-id]");
     const canvasCard = target.closest<HTMLElement>(".canvas-placed-card[data-canvas-placed]");
-    const id = listCard?.dataset.id || canvasCard?.dataset.canvasPlaced;
-    if (!id || !useDocument.getState().canvasPlacements[id]) return;
+    const itemId = listCard?.dataset.id || canvasCard?.dataset.canvasItemId;
+    const state = useDocument.getState();
+    const placementKey = canvasCard?.dataset.canvasPlaced
+      ?? (itemId ? resolveCardCanvasPlacementKey(state.canvasPlacements, state.items, itemId) : null);
+    if (!itemId || !placementKey) return;
     const peer = listCard
-      ? root.querySelector(`.canvas-placed-card[data-canvas-placed="${id}"]`)
-      : root.querySelector(`.workspace-list .card[data-id="${id}"]`);
+      ? root.querySelector(`.canvas-placed-card[data-canvas-item-id="${itemId}"]`)
+      : root.querySelector(`.workspace-list .card[data-id="${itemId}"]`);
     peer?.classList.add("is-workspace-link-hover");
   };
   root.addEventListener("mouseover", onOver);

@@ -5,6 +5,7 @@ import { issueRefAutocompleteLabel } from "../domain/refResolve.ts";
 import { cardStatusClass, normalizeStep } from "../domain/steps.ts";
 import { stepFullyResolved, stepResolved } from "../domain/stepStatus.ts";
 import { parseIssueRef } from "../domain/refs.ts";
+import { isCanvasPlacementEditing } from "./editTarget.ts";
 import { useDocument } from "./useDocument.ts";
 
 describe("createBlankCard intent", () => {
@@ -190,6 +191,82 @@ describe("action points on decisions", () => {
     expect(cardStatusClass(item, ctx)).toBe("card-partial");
   });
 
+  it("does not remount when beginEdit is called twice for the same target", () => {
+    useDocument.getState().submitComposer("Q?", "question");
+    const itemId = Object.keys(useDocument.getState().items)[0]!;
+    const target = { id: itemId, field: "problem" as const, step: 0, surface: "canvas" as const };
+    useDocument.getState().beginEdit(target);
+    const nonce = useDocument.getState().focusNonce;
+    useDocument.getState().beginEdit(target);
+    expect(useDocument.getState().focusNonce).toBe(nonce);
+  });
+
+  it("commits problem edits on the canvas surface", () => {
+    useDocument.getState().submitComposer("Old question?", "question");
+    const itemId = Object.keys(useDocument.getState().items)[0]!;
+    useDocument.getState().cancelEdit();
+    useDocument.getState().placeNewCardAtWorld(itemId, 10, 10);
+    useDocument.getState().beginEdit({
+      id: itemId,
+      field: "problem",
+      step: 0,
+      surface: "canvas",
+      canvasPlacementKey: itemId,
+    });
+    useDocument.getState().commitEdit("New question?");
+    expect(useDocument.getState().items[itemId]!.steps[0]!.problem).toBe("New question?");
+    expect(useDocument.getState().editing).toBeNull();
+  });
+
+  it("scopes canvas editing to one placement when the same card appears twice", () => {
+    useDocument.getState().submitComposer("Shared card", "question");
+    const itemId = Object.keys(useDocument.getState().items)[0]!;
+    useDocument.getState().cancelEdit();
+    useDocument.getState().placeNewCardAtWorld(itemId, 10, 10);
+    useDocument.getState().placeAtWorld(itemId, 200, 200);
+    const placements = Object.keys(useDocument.getState().canvasPlacements).filter(
+      (key) => useDocument.getState().canvasPlacements[key]?.itemId === itemId
+        || key === itemId,
+    );
+    expect(placements).toHaveLength(2);
+    const [firstKey, secondKey] = placements.sort((a, b) => a.localeCompare(b));
+
+    useDocument.getState().beginEdit({
+      id: itemId,
+      field: "problem",
+      step: 0,
+      surface: "canvas",
+      canvasPlacementKey: secondKey,
+    });
+    const editing = useDocument.getState().editing;
+    expect(editing?.canvasPlacementKey).toBe(secondKey);
+    expect(isCanvasPlacementEditing(editing, itemId, secondKey, "problem", 0)).toBe(true);
+    expect(isCanvasPlacementEditing(editing, itemId, firstKey, "problem", 0)).toBe(false);
+
+    const nonce = useDocument.getState().focusNonce;
+    useDocument.getState().beginEdit({
+      id: itemId,
+      field: "problem",
+      step: 0,
+      surface: "canvas",
+      canvasPlacementKey: secondKey,
+    });
+    expect(useDocument.getState().focusNonce).toBe(nonce);
+
+    useDocument.getState().commitEdit("Updated once");
+    expect(useDocument.getState().items[itemId]!.steps[0]!.problem).toBe("Updated once");
+
+    useDocument.getState().beginEdit({
+      id: itemId,
+      field: "problem",
+      step: 0,
+      surface: "canvas",
+      canvasPlacementKey: firstKey,
+    });
+    expect(useDocument.getState().focusNonce).toBeGreaterThan(nonce);
+    expect(useDocument.getState().editing?.canvasPlacementKey).toBe(firstKey);
+  });
+
   it("allows typing decision prose after empty commit on a refs-only step", () => {
     useDocument.getState().submitComposer("Need answer", "question");
     const itemId = Object.keys(useDocument.getState().items)[0]!;
@@ -213,6 +290,22 @@ describe("action points on decisions", () => {
     const item = useDocument.getState().items[itemId]!;
     const ctx = { actionPoints: useDocument.getState().actionPoints };
     expect(cardStatusClass(item, ctx)).toBe("card-partial");
+  });
+
+  it("stays partial after archiving the answer when a linked action is still open", () => {
+    useDocument.getState().submitComposer("Ship REST", "decision");
+    const itemId = Object.keys(useDocument.getState().items)[0]!;
+    const apId = useDocument.getState().createStandaloneActionPoint("Deploy");
+    useDocument.getState().cancelEdit();
+    useDocument.getState().linkActionPointToDecision(apId, itemId, 0);
+    useDocument.getState().archiveAnswer(itemId, 0);
+    const item = useDocument.getState().items[itemId]!;
+    const step = item.steps[0]!;
+    const ctx = { actionPoints: useDocument.getState().actionPoints };
+    expect(step.actionPointRefs).toEqual([apId]);
+    expect(stepFullyResolved(step, ctx)).toBe(false);
+    expect(cardStatusClass(item, ctx)).toBe("card-partial");
+    expect(cardStatusClass(item, ctx)).not.toBe("card-complete");
   });
 
   it("unlinks an action ref from a decision step", () => {

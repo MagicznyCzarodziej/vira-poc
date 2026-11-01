@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { pickerOpen, useDocument, usePanels } from "../../store/index.ts";
+import { sameEditTarget } from "../../store/editTarget.ts";
 import { bindAutocomplete, isTypingTag, menuIsOpen } from "../text/useAutocomplete.ts";
 
 let handoff = false;
@@ -79,12 +80,7 @@ export function AutoTextarea({
         window.setTimeout(() => {
           if (!snapshot || handoff || menuIsOpen() || pickerOpen(usePanels.getState())) return;
           const current = useDocument.getState().editing;
-          const replaced = current != null && (
-            current.id !== snapshot.id
-            || current.field !== snapshot.field
-            || current.step !== snapshot.step
-            || current.surface !== snapshot.surface
-          );
+          const replaced = current != null && snapshot != null && !sameEditTarget(current, snapshot);
           if (replaced) return;
           onCommit(valueRef.current);
         }, 0);

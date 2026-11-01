@@ -94,8 +94,10 @@ function paintCenter(surface: HTMLElement, worldX: number, worldY: number, zoom:
   return next;
 }
 
-export function popCanvasPlacedCard(itemId: string): void {
-  const placed = document.querySelector<HTMLElement>(`[data-canvas-placed="${itemId}"]`);
+export function popCanvasPlacedCard(placementOrItemId: string): void {
+  const placed =
+    document.querySelector<HTMLElement>(`[data-canvas-placed="${placementOrItemId}"]`)
+    ?? document.querySelector<HTMLElement>(`[data-canvas-item-id="${placementOrItemId}"]`);
   const inner = placed?.querySelector<HTMLElement>(".card, .action-point-card");
   if (!placed || !inner) return;
   placed.classList.remove("is-canvas-reveal-pop");

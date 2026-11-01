@@ -1,4 +1,8 @@
-import { assignOrderAtFront, clampPlacement, ensurePlacementOrder } from "./canvas.ts";
+import {
+  addCardInstanceToCanvas,
+  moveCardPlacementAtWorld,
+  removeCanvasPlacementsForItem,
+} from "./cardCanvasPlacements.ts";
 import { appendFieldArchiveRevision, archiveStepAnswerField, normalizeStep } from "./steps.ts";
 import { normalizeTagsList } from "./tags.ts";
 import type { Card, DocBag, Step } from "./types.ts";
@@ -80,7 +84,7 @@ export function archiveCard(bag: DocBag, id: string, at = new Date().toISOString
       step.answerArchivedAt = at;
     }
   }
-  delete bag.canvasPlacements[id];
+  removeCanvasPlacementsForItem(bag.canvasPlacements, bag.items, id);
 }
 
 export function archiveQuestion(card: Card, stepIndex: number, at = new Date().toISOString()): boolean {
@@ -93,12 +97,18 @@ export function archiveQuestion(card: Card, stepIndex: number, at = new Date().t
   return true;
 }
 
-export function placeAtWorld(bag: DocBag, id: string, x: number, y: number): void {
-  if (!bag.items[id] || bag.items[id]?.archivedAt) return;
-  const pos = clampPlacement(x, y);
-  bag.canvasPlacements[id] = { ...bag.canvasPlacements[id], ...pos };
-  ensurePlacementOrder(bag.canvasPlacements, bag.items, id);
-  assignOrderAtFront(bag.canvasPlacements, bag.items, id);
+/** Place another instance of an existing card on the canvas (same item, new placement). */
+export function placeAtWorld(bag: DocBag, itemId: string, x: number, y: number): string | null {
+  return addCardInstanceToCanvas(bag, itemId, x, y);
+}
+
+/** Place a newly created card using its item id as the first placement key. */
+export function placeNewCardAtWorld(bag: DocBag, itemId: string, x: number, y: number): string | null {
+  return addCardInstanceToCanvas(bag, itemId, x, y, { useItemIdAsKey: true });
+}
+
+export function moveCardPlacement(bag: DocBag, placementKey: string, x: number, y: number): boolean {
+  return moveCardPlacementAtWorld(bag, placementKey, x, y);
 }
 
 export function recomputeNextId(items: Record<string, Card>): number {

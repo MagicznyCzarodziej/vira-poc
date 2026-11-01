@@ -1,10 +1,14 @@
-import { clampAllPlacements, clampZoom, ensureAllPlacementOrders } from "./canvas.ts";
+import {
+  ensureAllCardPlacementOrders,
+  recomputeNextCanvasPlacementId,
+} from "./cardCanvasPlacements.ts";
+import { clampAllPlacements, clampZoom } from "./canvas.ts";
 import { STORAGE_KEY, STORAGE_VERSION } from "./constants.ts";
 import { recomputeNextActionPointId } from "./actionPoints.ts";
 import { recomputeNextId } from "./cards.ts";
 import { normalizeStep } from "./steps.ts";
 import { normalizeTagsList } from "./tags.ts";
-import type { ActionPoint, Card, Placement, SavedDocument, Viewport, ViewMode } from "./types.ts";
+import type { ActionPoint, Card, CardCanvasPlacement, Placement, SavedDocument, Viewport, ViewMode } from "./types.ts";
 
 function isViewMode(value: unknown): value is ViewMode {
   return value === "board" || value === "list";
@@ -47,17 +51,21 @@ export function normalizeDocument(data: SavedDocument): SavedDocument {
       steps: item.steps.map((step) => normalizeStep(step)),
     };
   }
-  const canvasPlacements: Record<string, Placement> = {};
-  for (const [id, placement] of Object.entries(data.canvasPlacements ?? {})) {
-    if (!placement || items[id]?.archivedAt) continue;
-    canvasPlacements[id] = {
-      x: Number(placement.x) || 0,
-      y: Number(placement.y) || 0,
-      order: placement.order,
+  const canvasPlacements: Record<string, CardCanvasPlacement> = {};
+  for (const [key, placement] of Object.entries(data.canvasPlacements ?? {})) {
+    if (!placement || typeof placement !== "object") continue;
+    const raw = placement as CardCanvasPlacement;
+    const itemId = typeof raw.itemId === "string" && items[raw.itemId] ? raw.itemId : items[key] ? key : null;
+    if (!itemId || items[itemId]?.archivedAt) continue;
+    canvasPlacements[key] = {
+      x: Number(raw.x) || 0,
+      y: Number(raw.y) || 0,
+      order: raw.order,
+      itemId,
     };
   }
   clampAllPlacements(canvasPlacements);
-  ensureAllPlacementOrders(canvasPlacements, items);
+  ensureAllCardPlacementOrders(canvasPlacements, items);
   const actionPoints: Record<string, ActionPoint> = {};
   for (const [id, raw] of Object.entries(data.actionPoints ?? {})) {
     if (!raw || typeof raw !== "object") continue;
@@ -80,6 +88,10 @@ export function normalizeDocument(data: SavedDocument): SavedDocument {
     viewMode: isViewMode(data.viewMode) ? data.viewMode : "list",
     showAllDates: data.showAllDates === true,
     listFilterNotOnCanvas: data.listFilterNotOnCanvas === true,
+    nextCanvasPlacementId: Math.max(
+      recomputeNextCanvasPlacementId(canvasPlacements),
+      Number(data.nextCanvasPlacementId) || 1,
+    ),
     canvasPlacements,
     canvasViewport: normalizeViewport(data.canvasViewport),
     canvasViewportUserSet: data.canvasViewportUserSet === true,

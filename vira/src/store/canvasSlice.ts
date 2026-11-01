@@ -1,5 +1,11 @@
 import type { StateCreator } from "zustand";
-import { placeAtWorld } from "../domain/index.ts";
+import {
+  bringCardPlacementToFront,
+  duplicateCardPlacements,
+  moveCardPlacementAtWorld,
+  placeAtWorld,
+  placeNewCardAtWorld as placeFirstCardInstanceAtWorld,
+} from "../domain/index.ts";
 import type { DocumentState } from "./documentTypes.ts";
 import { bagOf, schedule } from "./documentPersistence.ts";
 
@@ -7,9 +13,11 @@ type CanvasSlice = Pick<
   DocumentState,
   | "removeFromCanvas"
   | "placeAtWorld"
+  | "placeNewCardAtWorld"
   | "bringToFront"
   | "movePlacement"
   | "movePlacements"
+  | "duplicateCardPlacementsForDrag"
   | "setCanvasSelection"
   | "toggleCanvasSelection"
   | "clearCanvasSelection"
@@ -30,21 +38,38 @@ export const createCanvasSlice: StateCreator<DocumentState, [], [], CanvasSlice>
   placeAtWorld: (id, x, y) => {
     const bag = bagOf(get());
     bag.canvasPlacements = { ...bag.canvasPlacements };
-    placeAtWorld(bag, id, x, y);
-    set({ canvasPlacements: bag.canvasPlacements, revealId: id });
+    const placementKey = placeAtWorld(bag, id, x, y);
+    if (!placementKey) return;
+    set({
+      canvasPlacements: bag.canvasPlacements,
+      nextCanvasPlacementId: bag.nextCanvasPlacementId,
+      revealId: placementKey,
+    });
+    schedule(get);
+  },
+  placeNewCardAtWorld: (id, x, y) => {
+    const bag = bagOf(get());
+    bag.canvasPlacements = { ...bag.canvasPlacements };
+    const placementKey = placeFirstCardInstanceAtWorld(bag, id, x, y);
+    if (!placementKey) return;
+    set({
+      canvasPlacements: bag.canvasPlacements,
+      nextCanvasPlacementId: bag.nextCanvasPlacementId,
+      revealId: placementKey,
+    });
     schedule(get);
   },
   bringToFront: (id) => {
     const bag = bagOf(get());
     bag.canvasPlacements = structuredClone(bag.canvasPlacements);
-    placeAtWorld(bag, id, bag.canvasPlacements[id]?.x ?? 0, bag.canvasPlacements[id]?.y ?? 0);
+    if (!bringCardPlacementToFront(bag, id)) return;
     set({ canvasPlacements: bag.canvasPlacements });
     schedule(get);
   },
   movePlacement: (id, x, y) => {
     const bag = bagOf(get());
     bag.canvasPlacements = structuredClone(bag.canvasPlacements);
-    placeAtWorld(bag, id, x, y);
+    if (!moveCardPlacementAtWorld(bag, id, x, y)) return;
     set({ canvasPlacements: bag.canvasPlacements });
     schedule(get);
   },
@@ -53,10 +78,24 @@ export const createCanvasSlice: StateCreator<DocumentState, [], [], CanvasSlice>
     const bag = bagOf(get());
     bag.canvasPlacements = structuredClone(bag.canvasPlacements);
     for (const { id, x, y } of moves) {
-      placeAtWorld(bag, id, x, y);
+      moveCardPlacementAtWorld(bag, id, x, y);
     }
     set({ canvasPlacements: bag.canvasPlacements });
     schedule(get);
+  },
+  duplicateCardPlacementsForDrag: (placementKeys, positions) => {
+    if (placementKeys.length === 0) return {};
+    const bag = bagOf(get());
+    bag.canvasPlacements = { ...bag.canvasPlacements };
+    const keyMap = duplicateCardPlacements(bag, placementKeys, (key) => positions[key] ?? null);
+    const newKeys = Object.values(keyMap).filter((k, i, arr) => arr.indexOf(k) === i);
+    set({
+      canvasPlacements: bag.canvasPlacements,
+      nextCanvasPlacementId: bag.nextCanvasPlacementId,
+      revealId: newKeys[newKeys.length - 1] ?? get().revealId,
+    });
+    schedule(get);
+    return keyMap;
   },
   setCanvasSelection: (canvasSelection) => set({ canvasSelection }),
   toggleCanvasSelection: (id) => {

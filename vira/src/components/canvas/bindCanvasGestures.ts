@@ -1,7 +1,12 @@
 import { CARD_WIDTH, DROP_OFFSET_Y, clampPlacement, clampZoom } from "../../domain/index.ts";
 import { useDocument } from "../../store/index.ts";
 import { refPickModeActive, tryConsumeRefPick } from "../text/bindRefPickFromCard.ts";
-import { isCanvasCardTypingTarget, shouldStartCanvasCardDrag } from "./canvasCardDrag.ts";
+import { tryBeginCanvasEditFromPointer } from "./canvasCardEdit.ts";
+import {
+  isCanvasCardEditSurface,
+  isCanvasCardTypingTarget,
+  shouldStartCanvasCardDrag,
+} from "./canvasCardDrag.ts";
 import { movesForCanvasGroupDrag } from "./canvasGroupDrag.ts";
 import {
   isCanvasScrollKey,
@@ -27,6 +32,10 @@ import {
   syncActionPointLinkDropHighlight,
 } from "./actionPointLinkDrag.ts";
 import { syncActionPointLinkDragGhost } from "./actionPointLinkDragGhost.ts";
+import {
+  cardPlacementKeysInDragGroup,
+  remapCanvasDragGroupForAltDuplicate,
+} from "./canvasAltDuplicateDrag.ts";
 import {
   canvasPlacedHostFromTarget,
   canvasPlacedId,
@@ -75,6 +84,9 @@ export function bindCanvasGestures(surface: HTMLElement, spawnGesture: { readonl
     groupIds?: string[];
     groupStart?: Record<string, { x: number; y: number }>;
     anchorStart?: { x: number; y: number };
+    editTap?: boolean;
+    pointerTarget?: EventTarget;
+    altDuplicate?: boolean;
   } | null = null;
   let apLink: {
     id: number;
@@ -134,6 +146,48 @@ export function bindCanvasGestures(surface: HTMLElement, spawnGesture: { readonl
     const { cardMoves, actionPointMoves } = partitionCanvasMoves(store, moves);
     store.movePlacements(cardMoves);
     store.moveActionPointPlacements(actionPointMoves);
+  };
+
+  const maybeBeginAltDuplicateCanvasDrag = (event: PointerEvent) => {
+    if (!drag?.on || drag.altDuplicate || !event.altKey || event.shiftKey) return;
+    const store = useDocument.getState();
+    const groupIds = drag.groupIds ?? [drag.placedId];
+    const cardKeys = cardPlacementKeysInDragGroup(store, groupIds);
+    if (cardKeys.length === 0) return;
+
+    revertCanvasGroupToDragStart(drag);
+    const groupStart = drag.groupStart ?? {};
+    const positions: Record<string, { x: number; y: number }> = {};
+    for (const key of cardKeys) {
+      const start = groupStart[key];
+      if (start) positions[key] = start;
+    }
+    const keyMap = store.duplicateCardPlacementsForDrag(cardKeys, positions);
+    const remapped = remapCanvasDragGroupForAltDuplicate(groupIds, groupStart, keyMap);
+    const oldGroupIds = groupIds;
+    drag.groupIds = remapped.groupIds;
+    drag.groupStart = remapped.groupStart;
+    drag.placedId = keyMap[drag.placedId] ?? drag.placedId;
+    drag.altDuplicate = true;
+
+    setGroupDraggingClass(oldGroupIds, false);
+    for (const gid of remapped.groupIds) {
+      if (!isCanvasActionPointId(store, gid)) store.bringToFront(gid);
+    }
+    setGroupDraggingClass(remapped.groupIds, true);
+    store.setCanvasSelection(remapped.groupIds);
+
+    const newEl = surface.querySelector<HTMLElement>(`[data-canvas-placed="${drag.placedId}"]`);
+    if (newEl) {
+      try {
+        if (drag.captured) drag.placedEl.releasePointerCapture(drag.id);
+        drag.placedEl = newEl;
+        newEl.setPointerCapture(event.pointerId);
+        drag.captured = true;
+      } catch {
+        /* inactive pointer */
+      }
+    }
   };
 
   const beginApLinkFromCanvasDrag = (event: PointerEvent, from: NonNullable<typeof drag>) => {
@@ -236,6 +290,8 @@ export function bindCanvasGestures(surface: HTMLElement, spawnGesture: { readonl
       on: false,
       captured: false,
       shiftToggle: event.shiftKey ? id : undefined,
+      editTap: isCanvasCardEditSurface(target),
+      pointerTarget: target,
     };
   };
   const onPointerMove = (event: PointerEvent) => {
@@ -316,7 +372,9 @@ export function bindCanvasGestures(surface: HTMLElement, spawnGesture: { readonl
       } catch {
         /* inactive pointer */
       }
+      if (event.altKey) maybeBeginAltDuplicateCanvasDrag(event);
     }
+    if (drag.on && event.altKey) maybeBeginAltDuplicateCanvasDrag(event);
     const current = drag;
     const pt = worldPoint(event.clientX, event.clientY);
     const anchorNext = clampPlacement(pt.x - current.ox, pt.y - current.oy);
@@ -357,7 +415,11 @@ export function bindCanvasGestures(surface: HTMLElement, spawnGesture: { readonl
       clearMarquee();
     }
     if (drag && event.pointerId === drag.id) {
-      if (!drag.on && drag.shiftToggle) {
+      if (!drag.on && drag.editTap) {
+        event.preventDefault();
+        event.stopPropagation();
+        tryBeginCanvasEditFromPointer(drag.pointerTarget ?? null);
+      } else if (!drag.on && drag.shiftToggle) {
         useDocument.getState().toggleCanvasSelection(drag.shiftToggle);
       }
       if (drag.on) {
@@ -404,7 +466,7 @@ export function bindCanvasGestures(surface: HTMLElement, spawnGesture: { readonl
       const id = useDocument.getState().createBlankCard("canvas", "decision");
       if (!id) return;
       const pt = worldPoint(hotspot.x, hotspot.y);
-      useDocument.getState().placeAtWorld(id, pt.x - CARD_WIDTH / 2, pt.y - DROP_OFFSET_Y);
+      useDocument.getState().placeNewCardAtWorld(id, pt.x - CARD_WIDTH / 2, pt.y - DROP_OFFSET_Y);
       return;
     }
     if (

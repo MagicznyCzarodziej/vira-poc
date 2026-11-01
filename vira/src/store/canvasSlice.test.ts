@@ -5,8 +5,8 @@ import { useDocument } from "./useDocument.ts";
 describe("removeCanvasSelectionFromCanvas", () => {
   beforeEach(() => {
     const state = useDocument.getState();
-    state.placeAtWorld("item-1", 100, 100);
-    state.placeAtWorld("item-2", 200, 200);
+    state.placeNewCardAtWorld("item-1", 100, 100);
+    state.placeNewCardAtWorld("item-2", 200, 200);
     state.setCanvasSelection(["item-1", "item-2"]);
   });
 
@@ -33,6 +33,14 @@ describe("removeCanvasSelectionFromCanvas", () => {
     expect(next.canvasPlacements["item-1"]).toBeUndefined();
     expect(next.canvasPlacements["item-2"]).toBeDefined();
     expect(next.canvasSelection).toEqual([]);
+  });
+
+  it("allows a second canvas instance of the same card", () => {
+    useDocument.getState().placeAtWorld("item-1", 300, 300);
+    const keys = Object.keys(useDocument.getState().canvasPlacements).filter(
+      (key) => useDocument.getState().canvasPlacements[key]?.itemId === "item-1",
+    );
+    expect(keys.length).toBeGreaterThanOrEqual(2);
   });
 
   it("drops removed ids from selection via removeFromCanvas", () => {

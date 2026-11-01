@@ -38,6 +38,7 @@ export function CardStep({
   events,
   editingHere,
   start,
+  canvasEditTarget,
 }: {
   item: Card;
   step: Step;
@@ -49,6 +50,7 @@ export function CardStep({
   events: HistoryEvent[] | null;
   editingHere: (field: EditTarget["field"], step?: number) => boolean;
   start: (target: EditTarget) => void;
+  canvasEditTarget: (field: "problem" | "answer") => EditTarget;
 }) {
   const editInitial = useDocument((state) => state.editInitial);
   const focusNonce = useDocument((state) => state.focusNonce);
@@ -72,9 +74,11 @@ export function CardStep({
   const hasQuestion = Boolean(problemText.trim());
   const showProblemRow = hasQuestion || editingHere("problem", index);
   const showRemove = !readOnly && !isStepArchived(step) && itemActiveSteps(item).length > 1 && hasQuestion;
+  const canvasEditViaGesture = surface === "canvas";
   const edit = (field: "problem" | "answer") => (event: { target: EventTarget | null }) => {
+    if (canvasEditViaGesture) return;
     if (shouldSuppressListCardClick() || refPickModeActive() || readOnly || ignoresEdit(event)) return;
-    start({ id: item.id, field, step: index, surface: surface as Surface });
+    start(canvasEditTarget(field));
   };
 
   return (
@@ -96,12 +100,7 @@ export function CardStep({
               onTag={(tag) => useDocument.getState().addTag(item.id, tag)}
               onCancel={() => useDocument.getState().cancelEdit()}
               onCommit={(value) => useDocument.getState().commitEdit(value)}
-              onEnterCommit={(value) => useDocument.getState().commitEdit(value, {
-                id: item.id,
-                field: "answer",
-                step: index,
-                surface: surface as Surface,
-              })}
+              onEnterCommit={(value) => useDocument.getState().commitEdit(value, canvasEditTarget("answer"))}
             />
           </div>
         ) : (

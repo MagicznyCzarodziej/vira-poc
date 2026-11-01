@@ -15,6 +15,7 @@ import {
   type Card,
 } from "../domain/index.ts";
 import type { DocumentState, EditTarget } from "./documentTypes.ts";
+import { sameEditTarget } from "./editTarget.ts";
 import { bagOf, schedule } from "./documentPersistence.ts";
 
 function fieldInitial(card: Card, target: EditTarget, drafts: Record<string, string>): string {
@@ -99,6 +100,8 @@ export const createEditSlice: StateCreator<DocumentState, [], [], EditSlice> = (
   },
   setFollowupDraft: (id, value) => set({ followupDrafts: { ...get().followupDrafts, [id]: value } }),
   beginEdit: (target) => {
+    const current = get().editing;
+    if (current && sameEditTarget(current, target)) return;
     if (target.field === "actionPoint") {
       const ap = get().actionPoints[target.id];
       if (!ap) return;
@@ -159,7 +162,13 @@ export const createEditSlice: StateCreator<DocumentState, [], [], EditSlice> = (
         set({
           items: { ...items, [editing.id]: copy },
           followupDrafts: drafts,
-          editing: { id: editing.id, field: "answer", step: stepIndex, surface: editing.surface },
+          editing: {
+            id: editing.id,
+            field: "answer",
+            step: stepIndex,
+            surface: editing.surface,
+            canvasPlacementKey: editing.canvasPlacementKey,
+          },
           editInitial: "",
           focusNonce: get().focusNonce + 1,
         });
