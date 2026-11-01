@@ -7,6 +7,8 @@ export function Header() {
   const setView = useDocument((state) => state.setView);
   const toggleDates = useDocument((state) => state.toggleDates);
   const addRandom = useDocument((state) => state.addRandom);
+  const seedCanvasNotes = useDocument((state) => state.seedCanvasNotes);
+  const seedQuestionDecisionCards = useDocument((state) => state.seedQuestionDecisionCards);
   const clearAll = useDocument((state) => state.clearAll);
 
   return (
@@ -21,6 +23,28 @@ export function Header() {
         <div className="header-proto-actions" aria-label="PoC data">
           <FigJamImportButton />
           <button type="button" className="header-proto-btn" data-action="add-random-cards" onClick={addRandom}>Random cards</button>
+          <button
+            type="button"
+            className="header-proto-btn"
+            data-action="seed-question-decisions"
+            onClick={() => {
+              if (!window.confirm("Add 300 questions with decisions (0–2 follow-ups, mostly none) on a canvas grid?")) return;
+              seedQuestionDecisionCards(300);
+            }}
+          >
+            300 Q+D
+          </button>
+          <button
+            type="button"
+            className="header-proto-btn"
+            data-action="seed-canvas-notes"
+            onClick={() => {
+              if (!window.confirm("Add 500 sticky notes to the canvas (centered grid)?")) return;
+              seedCanvasNotes(500);
+            }}
+          >
+            500 notes
+          </button>
           <button
             type="button"
             className="header-proto-btn header-proto-btn--danger"

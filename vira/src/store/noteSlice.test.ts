@@ -41,6 +41,14 @@ describe("noteSlice", () => {
     expect(Object.keys(useDocument.getState().notes)).toHaveLength(2);
   });
 
+  it("seedCanvasNotes batch-places notes without opening edit", () => {
+    const ids = useDocument.getState().seedCanvasNotes(10);
+    expect(ids).toHaveLength(10);
+    expect(Object.keys(useDocument.getState().notePlacements)).toHaveLength(10);
+    expect(useDocument.getState().notes[ids[0]!]?.body).toBe("Note 1");
+    expect(useDocument.getState().editing).toBeNull();
+  });
+
   it("removes note from canvas", () => {
     const id = useDocument.getState().createNoteOnCanvas(0, 0);
     useDocument.getState().removeNoteFromCanvas(id);

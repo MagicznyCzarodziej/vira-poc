@@ -10,6 +10,9 @@ import {
   shouldStartCanvasCardDrag,
 } from "./canvasCardDrag.ts";
 import { movesForCanvasGroupDrag } from "./canvasGroupDrag.ts";
+import { applyCanvasDragTransform, clearCanvasDragTransform } from "./canvasDragPreview.ts";
+import { commitCanvasGroupMoves } from "./canvasPlaced.ts";
+import { flush } from "../../store/documentPersistence.ts";
 import {
   isCanvasScrollKey,
   isSpaceKey,
@@ -62,7 +65,6 @@ import {
   isCanvasCardPlacementId,
   isCanvasFrameId,
   isCanvasNoteId,
-  partitionCanvasMoves,
 } from "./canvasPlaced.ts";
 import type { FrameRect, FrameResizeHandle } from "../../domain/index.ts";
 import { parseFrameResizeHandle } from "../frame/frameResizeHandles.ts";
@@ -160,6 +162,19 @@ export function bindCanvasGestures(surface: HTMLElement, spawnGesture: { readonl
   let space = false;
   let hotspot = { x: 0, y: 0, over: false };
   let suppressUntil = 0;
+  let marqueeSelectionRaf = 0;
+  let marqueeSelectionBox: ReturnType<typeof normalizeClientRect> | null = null;
+
+  const scheduleMarqueeSelection = (box: ReturnType<typeof normalizeClientRect>) => {
+    marqueeSelectionBox = box;
+    if (marqueeSelectionRaf) return;
+    marqueeSelectionRaf = requestAnimationFrame(() => {
+      marqueeSelectionRaf = 0;
+      if (!marquee || !marqueeSelectionBox) return;
+      const hit = placedIdsInMarquee(surface, marqueeSelectionBox);
+      useDocument.getState().setCanvasSelection(mergeMarqueeSelection(marquee.baseIds, hit));
+    });
+  };
 
   const worldPoint = (clientX: number, clientY: number) => {
     const rect = surface.getBoundingClientRect();
@@ -203,6 +218,7 @@ export function bindCanvasGestures(surface: HTMLElement, spawnGesture: { readonl
   const revertCanvasGroupToDragStart = (current: NonNullable<typeof drag>) => {
     const store = useDocument.getState();
     const groupIds = current.groupIds ?? [current.placedId];
+    clearCanvasDragTransform(surface, groupIds);
     const groupStart = current.groupStart ?? {};
     const moves: { id: string; x: number; y: number }[] = [];
     for (const gid of groupIds) {
@@ -210,11 +226,7 @@ export function bindCanvasGestures(surface: HTMLElement, spawnGesture: { readonl
       if (start) moves.push({ id: gid, x: start.x, y: start.y });
     }
     if (moves.length === 0) return;
-    const { cardMoves, actionPointMoves, frameMoves, noteMoves } = partitionCanvasMoves(store, moves);
-    store.movePlacements(cardMoves);
-    store.moveActionPointPlacements(actionPointMoves);
-    store.moveFramePlacements(frameMoves);
-    store.moveNotePlacements(noteMoves);
+    commitCanvasGroupMoves(store, moves);
   };
 
   const maybeCancelAltDuplicateCanvasDrag = (event: Pick<PointerEvent, "pointerId">) => {
@@ -251,11 +263,7 @@ export function bindCanvasGestures(surface: HTMLElement, spawnGesture: { readonl
       }
     }
     if (revertMoves.length > 0) {
-      const { cardMoves, actionPointMoves, frameMoves, noteMoves } = partitionCanvasMoves(store, revertMoves);
-      store.movePlacements(cardMoves);
-      store.moveActionPointPlacements(actionPointMoves);
-      store.moveFramePlacements(frameMoves);
-      store.moveNotePlacements(noteMoves);
+      commitCanvasGroupMoves(store, revertMoves);
     }
 
     setGroupDraggingClass(copyGroupIds, false);
@@ -681,11 +689,6 @@ export function bindCanvasGestures(surface: HTMLElement, spawnGesture: { readonl
     if (pan && event.pointerId === pan.id) {
       surface.scrollLeft = pan.left - (event.clientX - pan.x);
       surface.scrollTop = pan.top - (event.clientY - pan.y);
-      useDocument.getState().setViewport({
-        ...useDocument.getState().canvasViewport,
-        scrollLeft: surface.scrollLeft,
-        scrollTop: surface.scrollTop,
-      });
       return;
     }
     if (frameDraw && event.pointerId === frameDraw.id) {
@@ -711,8 +714,7 @@ export function bindCanvasGestures(surface: HTMLElement, spawnGesture: { readonl
       }
       const box = normalizeClientRect(marquee.sx, marquee.sy, event.clientX, event.clientY);
       positionMarqueeElement(marqueeEl, box);
-      const hit = placedIdsInMarquee(surface, box);
-      useDocument.getState().setCanvasSelection(mergeMarqueeSelection(marquee.baseIds, hit));
+      scheduleMarqueeSelection(box);
       event.preventDefault();
       return;
     }
@@ -776,18 +778,13 @@ export function bindCanvasGestures(surface: HTMLElement, spawnGesture: { readonl
     const anchorNext = clampPlacement(pt.x - current.ox, pt.y - current.oy);
     const groupIds = current.groupIds ?? [current.placedId];
     const anchorStart = current.anchorStart ?? anchorNext;
-    const moves = movesForCanvasGroupDrag(
+    applyCanvasDragTransform(
+      surface,
       groupIds,
       current.groupStart ?? {},
       anchorStart,
       anchorNext,
     );
-    const store = useDocument.getState();
-    const { cardMoves, actionPointMoves, frameMoves, noteMoves } = partitionCanvasMoves(store, moves);
-    store.movePlacements(cardMoves);
-    store.moveActionPointPlacements(actionPointMoves);
-    store.moveFramePlacements(frameMoves);
-    store.moveNotePlacements(noteMoves);
     event.preventDefault();
   };
   const onPointerUp = (event: PointerEvent) => {
@@ -828,6 +825,12 @@ export function bindCanvasGestures(surface: HTMLElement, spawnGesture: { readonl
       apLink = null;
     }
     if (pan && event.pointerId === pan.id) {
+      const currentViewport = useDocument.getState().canvasViewport;
+      useDocument.getState().setViewport({
+        ...currentViewport,
+        scrollLeft: surface.scrollLeft,
+        scrollTop: surface.scrollTop,
+      });
       pan = null;
       surface.classList.remove("is-panning");
     }
@@ -867,6 +870,19 @@ export function bindCanvasGestures(surface: HTMLElement, spawnGesture: { readonl
         }
       }
       if (drag.on) {
+        const groupIds = drag.groupIds ?? [drag.placedId];
+        const pt = worldPoint(event.clientX, event.clientY);
+        const anchorNext = clampPlacement(pt.x - drag.ox, pt.y - drag.oy);
+        const anchorStart = drag.anchorStart ?? anchorNext;
+        const moves = movesForCanvasGroupDrag(
+          groupIds,
+          drag.groupStart ?? {},
+          anchorStart,
+          anchorNext,
+        );
+        commitCanvasGroupMoves(useDocument.getState(), moves);
+        clearCanvasDragTransform(surface, groupIds);
+        flush(useDocument.getState);
         suppressUntil = Date.now() + 350;
         noteListCardDragEnded();
       }

@@ -69,3 +69,16 @@ export function partitionCanvasMoves(
   }
   return { cardMoves, actionPointMoves, frameMoves, noteMoves };
 }
+
+type CanvasMoveStore = Pick<
+  DocumentState,
+  "actionPoints" | "frames" | "notes" | "movePlacements" | "moveActionPointPlacements" | "moveFramePlacements" | "moveNotePlacements"
+>;
+
+export function commitCanvasGroupMoves(store: CanvasMoveStore, moves: readonly { id: string; x: number; y: number }[]): void {
+  const { cardMoves, actionPointMoves, frameMoves, noteMoves } = partitionCanvasMoves(store, moves);
+  if (cardMoves.length) store.movePlacements(cardMoves);
+  if (actionPointMoves.length) store.moveActionPointPlacements(actionPointMoves);
+  if (frameMoves.length) store.moveFramePlacements(frameMoves);
+  if (noteMoves.length) store.moveNotePlacements(noteMoves);
+}

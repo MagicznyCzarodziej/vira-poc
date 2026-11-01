@@ -56,8 +56,22 @@ export function CardStep({
   start: (target: EditTarget) => void;
   canvasEditTarget: (field: "problem" | "answer") => EditTarget;
 }) {
-  const editInitial = useDocument((state) => state.editInitial);
-  const focusNonce = useDocument((state) => state.focusNonce);
+  const editInitial = useDocument((state) => {
+    const e = state.editing;
+    if (!e || e.id !== item.id || e.surface !== surface) return "";
+    if (surface === "canvas" && (e.canvasPlacementKey ?? null) !== (canvasEditTarget("problem").canvasPlacementKey ?? null)) {
+      return "";
+    }
+    return state.editInitial;
+  });
+  const focusNonce = useDocument((state) => {
+    const e = state.editing;
+    if (!e || e.id !== item.id || e.surface !== surface) return 0;
+    if (surface === "canvas" && (e.canvasPlacementKey ?? null) !== (canvasEditTarget("problem").canvasPlacementKey ?? null)) {
+      return 0;
+    }
+    return state.focusNonce;
+  });
   const actionPoints = useDocument((state) => state.actionPoints);
   const resolutionContext: StepResolutionContext = { actionPoints };
   if (!readOnly && isStepArchived(step)) return null;

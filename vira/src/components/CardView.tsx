@@ -1,3 +1,4 @@
+import { memo } from "react";
 import {
   cardNumber,
   cardStatusClass,
@@ -20,7 +21,7 @@ function openCardHistory(itemId: string) {
   window.dispatchEvent(new CustomEvent("vira:open-drawer", { detail: { refId: itemId } }));
 }
 
-export function CardView({
+export const CardView = memo(function CardView({
   item,
   surface,
   draggableToCanvas = false,
@@ -36,8 +37,18 @@ export function CardView({
 }) {
   const actionPoints = useDocument((state) => state.actionPoints);
   const resolutionContext = { actionPoints };
-  const editing = useDocument((state) => state.editing);
-  const editInitial = useDocument((state) => state.editInitial);
+  const editing = useDocument((state) => {
+    const e = state.editing;
+    if (!e || e.id !== item.id || e.surface !== surface) return null;
+    if (surface === "canvas" && (e.canvasPlacementKey ?? null) !== (canvasPlacementKey ?? null)) return null;
+    return e;
+  });
+  const editInitial = useDocument((state) => {
+    const e = state.editing;
+    if (!e || e.id !== item.id || e.surface !== surface) return "";
+    if (surface === "canvas" && (e.canvasPlacementKey ?? null) !== (canvasPlacementKey ?? null)) return "";
+    return state.editInitial;
+  });
   const draft = useDocument((state) => state.followupDrafts[item.id] ?? "");
   const readOnly = surface === "panel";
   const events = historyEventIndex != null ? collectCardHistoryEvents(item) : null;
@@ -182,4 +193,4 @@ export function CardView({
       </div>
     </article>
   );
-}
+});

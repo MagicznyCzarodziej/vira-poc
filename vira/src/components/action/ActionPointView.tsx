@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { actionPointDisplayNum } from "../../domain/index.ts";
 import type { ActionPoint } from "../../domain/types.ts";
 import { useDocument, type EditTarget, type Surface } from "../../store/index.ts";
@@ -6,7 +7,7 @@ import { AutoTextarea } from "../card/AutoTextarea.tsx";
 import { IconCircleCheck, IconDismiss, IconUndo } from "../Icons.tsx";
 import { RichText } from "../text/RichText.tsx";
 
-export function ActionPointView({
+export const ActionPointView = memo(function ActionPointView({
   actionPoint,
   surface,
   draggableToCanvas = false,
@@ -17,8 +18,16 @@ export function ActionPointView({
 }) {
   const placements = useDocument((state) => state.actionPointPlacements);
   const editing = useDocument((state) => state.editing);
-  const editInitial = useDocument((state) => state.editInitial);
-  const focusNonce = useDocument((state) => state.focusNonce);
+  const editInitial = useDocument((state) => {
+    const e = state.editing;
+    if (!e || e.id !== actionPoint.id || e.field !== "actionPoint" || e.surface !== surface) return "";
+    return state.editInitial;
+  });
+  const focusNonce = useDocument((state) => {
+    const e = state.editing;
+    if (!e || e.id !== actionPoint.id || e.field !== "actionPoint" || e.surface !== surface) return 0;
+    return state.focusNonce;
+  });
   const onCanvas = !!placements[actionPoint.id];
   const readOnly = surface === "panel";
   const canDragToCanvas = draggableToCanvas && !onCanvas;
@@ -130,4 +139,4 @@ export function ActionPointView({
       ) : null}
     </article>
   );
-}
+});

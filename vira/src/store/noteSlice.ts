@@ -6,6 +6,7 @@ import {
   placeNoteAtWorld,
   removeNoteFromCanvasPlacements,
   resizeNoteRectFromDrag,
+  seedCanvasNotes,
   setNoteBoundsAtWorld,
   type FrameResizeHandle,
   type NoteColor,
@@ -23,6 +24,7 @@ type NoteSlice = Pick<
   | "bringNoteToFront"
   | "removeNoteFromCanvas"
   | "duplicateNotesForDrag"
+  | "seedCanvasNotes"
 >;
 
 export const createNoteSlice: StateCreator<DocumentState, [], [], NoteSlice> = (set, get) => ({
@@ -99,6 +101,24 @@ export const createNoteSlice: StateCreator<DocumentState, [], [], NoteSlice> = (
     });
     schedule(get);
     return keyMap;
+  },
+  seedCanvasNotes: (count = 500) => {
+    const n = Math.max(0, Math.min(Math.floor(count), 2000));
+    if (n === 0) return [];
+    const notes = structuredClone(get().notes);
+    const notePlacements = structuredClone(get().notePlacements);
+    const bag = { nextNoteId: get().nextNoteId, notes, notePlacements };
+    const ids = seedCanvasNotes(bag, n);
+    set({
+      notes: bag.notes,
+      notePlacements: bag.notePlacements,
+      nextNoteId: bag.nextNoteId,
+      canvasSelection: [],
+      editing: null,
+      revealId: null,
+    });
+    schedule(get);
+    return ids;
   },
   removeNoteFromCanvas: (id) => {
     const notePlacements = { ...get().notePlacements };

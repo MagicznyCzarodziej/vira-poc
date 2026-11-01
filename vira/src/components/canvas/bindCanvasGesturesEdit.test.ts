@@ -98,11 +98,12 @@ describe("bindCanvasGestures canvas card editing", () => {
     window.dispatchEvent(
       new PointerEvent("pointermove", { bubbles: true, clientX: 80, clientY: 20, pointerId: 3, button: 0 }),
     );
-    const after = useDocument.getState().canvasPlacements[placementKey]!;
-    expect(after.x).not.toBe(before.x);
+    expect(useDocument.getState().canvasPlacements[placementKey]!.x).toBe(before.x);
+    expect(document.querySelector<HTMLElement>(`[data-canvas-placed="${placementKey}"]`)!.style.transform).toContain("translate");
     window.dispatchEvent(
       new PointerEvent("pointerup", { bubbles: true, clientX: 80, clientY: 20, pointerId: 3, button: 0 }),
     );
+    expect(useDocument.getState().canvasPlacements[placementKey]!.x).not.toBe(before.x);
     unbind();
   });
 

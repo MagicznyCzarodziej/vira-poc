@@ -1,11 +1,11 @@
-import { useCallback, useState, type MouseEvent } from "react";
+import { memo, useCallback, useState, type MouseEvent } from "react";
 import { noteColorHex, noteColorIsDark, type Note } from "../../domain/index.ts";
 import { useDocument, type Surface } from "../../store/index.ts";
 import { FRAME_RESIZE_HANDLES } from "../frame/frameResizeHandles.ts";
 import { NoteBodyTextarea } from "./NoteBodyTextarea.tsx";
 import { NoteColorMenu } from "./NoteColorMenu.tsx";
 
-export function NoteView({
+export const NoteView = memo(function NoteView({
   note,
   width,
   height,
@@ -58,4 +58,4 @@ export function NoteView({
       ) : null}
     </article>
   );
-}
+});

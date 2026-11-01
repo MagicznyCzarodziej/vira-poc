@@ -100,7 +100,7 @@ describe("bindCanvasGestures action point link drag", () => {
 
     title.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, clientX: 10, clientY: 10, pointerId: 8, button: 0 }));
     window.dispatchEvent(new PointerEvent("pointermove", { bubbles: true, clientX: 50, clientY: 50, pointerId: 8, button: 0 }));
-    expect(useDocument.getState().actionPointPlacements[apId]!.x).not.toBe(placementBefore.x);
+    expect(document.querySelector<HTMLElement>(`[data-canvas-placed="${apId}"]`)!.style.transform).toContain("translate");
 
     window.dispatchEvent(new PointerEvent("pointermove", { bubbles: true, clientX: 60, clientY: 55, pointerId: 8, button: 0, shiftKey: true }));
     expect(useDocument.getState().actionPointPlacements[apId]).toEqual(placementBefore);

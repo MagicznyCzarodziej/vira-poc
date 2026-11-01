@@ -66,11 +66,11 @@ describe("bindCanvasGestures alt-drag duplicate", () => {
     expect(keys).toHaveLength(2);
     expect(useDocument.getState().canvasPlacements[placementKey]).toMatchObject({ x: origin.x, y: origin.y });
     const copyKey = keys.find((k) => k !== placementKey)!;
-    expect(useDocument.getState().canvasPlacements[copyKey]!.x).not.toBe(origin.x);
 
     window.dispatchEvent(
       new PointerEvent("pointerup", { bubbles: true, clientX: 60, clientY: 60, pointerId: 11, button: 0 }),
     );
+    expect(useDocument.getState().canvasPlacements[copyKey]!.x).not.toBe(origin.x);
     unbind();
   });
 
@@ -98,11 +98,12 @@ describe("bindCanvasGestures alt-drag duplicate", () => {
       useDocument.getState().items,
       itemId,
     )).toHaveLength(1);
-    expect(useDocument.getState().canvasPlacements[placementKey]!.x).not.toBe(origin.x);
+    expect(document.querySelector<HTMLElement>(`[data-canvas-placed="${placementKey}"]`)!.style.transform).toContain("translate");
 
     window.dispatchEvent(
       new PointerEvent("pointerup", { bubbles: true, clientX: 60, clientY: 60, pointerId: 12, button: 0 }),
     );
+    expect(useDocument.getState().canvasPlacements[placementKey]!.x).not.toBe(origin.x);
     unbind();
   });
 
@@ -124,7 +125,7 @@ describe("bindCanvasGestures alt-drag duplicate", () => {
     window.dispatchEvent(
       new PointerEvent("pointermove", { bubbles: true, clientX: 50, clientY: 50, pointerId: 13, button: 0 }),
     );
-    expect(useDocument.getState().canvasPlacements[placementKey]!.x).not.toBe(origin.x);
+    expect(document.querySelector<HTMLElement>(`[data-canvas-placed="${placementKey}"]`)!.style.transform).toContain("translate");
 
     window.dispatchEvent(
       new PointerEvent("pointermove", {
@@ -210,11 +211,12 @@ describe("bindCanvasGestures alt-drag duplicate", () => {
         altKey: false,
       }),
     );
-    expect(useDocument.getState().canvasPlacements[placementKey]!.x).not.toBe(origin.x);
+    expect(document.querySelector<HTMLElement>(`[data-canvas-placed="${placementKey}"]`)!.style.transform).toContain("translate");
 
     window.dispatchEvent(
       new PointerEvent("pointerup", { bubbles: true, clientX: 90, clientY: 90, pointerId: 16, button: 0 }),
     );
+    expect(useDocument.getState().canvasPlacements[placementKey]!.x).not.toBe(origin.x);
     unbind();
   });
 

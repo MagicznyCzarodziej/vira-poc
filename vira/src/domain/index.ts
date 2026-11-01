@@ -248,6 +248,12 @@ export {
 } from "./cards.ts";
 export { addRandomCards } from "./fixtures.ts";
 export {
+  seedCanvasCardPlacements,
+  seedCanvasNotes,
+  seedFollowupCountForCard,
+  seedQuestionDecisionCards,
+} from "./canvasPerfSeed.ts";
+export {
   importFigJamStickies,
   isFigJamStickyTagLine,
   parseCsvRows,

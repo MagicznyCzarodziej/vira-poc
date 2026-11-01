@@ -12,6 +12,7 @@ import {
   parseFigJamStickyCsv,
   recomputeNextActionPointId,
   recomputeNextId,
+  seedQuestionDecisionCards,
   setStepFieldHeadText,
   toggleAnswerTentative,
   type FieldName,
@@ -29,6 +30,7 @@ type CardSlice = Pick<
   | "archiveCardById"
   | "createBlankCard"
   | "addRandom"
+  | "seedQuestionDecisionCards"
   | "importFigJamStickiesFromCsv"
   | "clearAll"
   | "setFieldHeadText"
@@ -123,6 +125,26 @@ export const createCardSlice: StateCreator<DocumentState, [], [], CardSlice> = (
       openComposer: false,
     });
     schedule(get);
+  },
+  seedQuestionDecisionCards: (count = 300) => {
+    const n = Math.max(0, Math.min(Math.floor(count), 2000));
+    if (n === 0) return [];
+    const bag = bagOf(get());
+    bag.items = structuredClone(bag.items);
+    bag.canvasPlacements = structuredClone(bag.canvasPlacements);
+    const ids = seedQuestionDecisionCards(bag, n, { placeOnCanvas: true });
+    set({
+      items: bag.items,
+      nextId: bag.nextId,
+      nextCanvasPlacementId: bag.nextCanvasPlacementId,
+      canvasPlacements: bag.canvasPlacements,
+      openComposer: false,
+      editing: null,
+      canvasSelection: [],
+      revealId: null,
+    });
+    schedule(get);
+    return ids;
   },
   importFigJamStickiesFromCsv: (csvText) => {
     const stickies = parseFigJamStickyCsv(csvText);

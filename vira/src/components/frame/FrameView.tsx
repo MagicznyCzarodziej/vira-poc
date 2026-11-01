@@ -1,3 +1,4 @@
+import { memo } from "react";
 import type { FrameRect } from "../../domain/index.ts";
 import type { Frame } from "../../domain/types.ts";
 import { useDocument, type Surface } from "../../store/index.ts";
@@ -7,7 +8,7 @@ import { IconSquareDashedXCorner } from "../Icons.tsx";
 import { CanvasFrameBorder } from "./CanvasFrameBorder.tsx";
 import { FRAME_RESIZE_HANDLES } from "./frameResizeHandles.ts";
 
-export function FrameView({
+export const FrameView = memo(function FrameView({
   frame,
   width,
   height,
@@ -22,8 +23,16 @@ export function FrameView({
   const zoom = useDocument((state) => state.canvasViewport.zoom);
   const borderEmphasis = useDocument((state) => state.canvasSelection.includes(frame.id));
   const editing = useDocument((state) => state.editing);
-  const editInitial = useDocument((state) => state.editInitial);
-  const focusNonce = useDocument((state) => state.focusNonce);
+  const editInitial = useDocument((state) => {
+    const e = state.editing;
+    if (!e || e.id !== frame.id || e.field !== "frameTitle" || e.surface !== "canvas") return "";
+    return state.editInitial;
+  });
+  const focusNonce = useDocument((state) => {
+    const e = state.editing;
+    if (!e || e.id !== frame.id || e.field !== "frameTitle" || e.surface !== "canvas") return 0;
+    return state.focusNonce;
+  });
   const editingTitle =
     editing?.id === frame.id
     && editing.field === "frameTitle"
@@ -98,4 +107,4 @@ export function FrameView({
       ))}
     </div>
   );
-}
+});
