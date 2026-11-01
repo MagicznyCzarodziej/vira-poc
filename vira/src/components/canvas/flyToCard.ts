@@ -1,4 +1,5 @@
-import { CARD_WIDTH, WORLD_H, WORLD_W, ZOOM_MIN, clampZoom, type Viewport } from "../../domain/index.ts";
+import { CARD_WIDTH, WORLD_H, WORLD_W, clampZoom, type Viewport } from "../../domain/index.ts";
+import { applyCanvasWorldScale } from "./canvasWorldZoom.ts";
 
 const CARD_EST_H = 360;
 
@@ -17,13 +18,40 @@ function ease(t: number): number {
   return t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
 }
 
+/** Below this world distance, fly is pan-only (no zoom arc). */
+export const FLY_PAN_ONLY_DISTANCE = 520;
+
+/** At this world distance, fly zoom-out reaches the fit-to-both-points level. */
+export const FLY_FULL_ZOOM_OUT_DISTANCE = 4200;
+
+export function flyFitZoomForSpan(
+  spanW: number,
+  spanH: number,
+  viewW: number,
+  viewH: number,
+  maxZoom: number,
+): number {
+  const fit = Math.min(viewW / Math.max(1, spanW), viewH / Math.max(1, spanH));
+  return clampZoom(Math.min(fit * 0.9, maxZoom));
+}
+
 function flyZoom(a: { x: number; y: number }, b: { x: number; y: number }, surface: HTMLElement, maxZoom: number): number {
   const padX = CARD_WIDTH + 140;
   const padY = 320;
-  const spanW = Math.max(1, Math.abs(b.x - a.x) + padX);
-  const spanH = Math.max(1, Math.abs(b.y - a.y) + padY);
-  const fit = Math.min(surface.clientWidth / spanW, surface.clientHeight / spanH);
-  return clampZoom(Math.min(fit * 0.9, maxZoom));
+  const spanW = Math.abs(b.x - a.x) + padX;
+  const spanH = Math.abs(b.y - a.y) + padY;
+  return flyFitZoomForSpan(spanW, spanH, surface.clientWidth, surface.clientHeight, maxZoom);
+}
+
+/** Zoom at the peak of the fly arc; scales with distance and never exceeds current zoom. */
+export function flyMidZoomForDistance(distance: number, desiredZoom: number, fitZoom: number): number {
+  const targetMid = clampZoom(Math.min(fitZoom, desiredZoom));
+  if (distance <= FLY_PAN_ONLY_DISTANCE || targetMid >= desiredZoom - 0.025) {
+    return desiredZoom;
+  }
+  const span = FLY_FULL_ZOOM_OUT_DISTANCE - FLY_PAN_ONLY_DISTANCE;
+  const t = span <= 0 ? 1 : Math.min(1, (distance - FLY_PAN_ONLY_DISTANCE) / span);
+  return clampZoom(desiredZoom + (targetMid - desiredZoom) * t);
 }
 
 let flyToken = 0;
@@ -79,13 +107,13 @@ function paintCenter(surface: HTMLElement, worldX: number, worldY: number, zoom:
   const maxTop = Math.max(0, Math.ceil(WORLD_H * nextZoom) - surface.clientHeight);
   const next = {
     zoom: nextZoom,
-    scrollLeft: Math.min(maxLeft, Math.max(0, worldX * nextZoom - surface.clientWidth / 2)),
-    scrollTop: Math.min(maxTop, Math.max(0, worldY * nextZoom - surface.clientHeight / 2)),
+    scrollLeft: Math.min(maxLeft, Math.max(0, Math.round(worldX * nextZoom - surface.clientWidth / 2))),
+    scrollTop: Math.min(maxTop, Math.max(0, Math.round(worldY * nextZoom - surface.clientHeight / 2))),
   };
   const world = surface.querySelector<HTMLElement>(".canvas-world");
   const content = surface.querySelector<HTMLElement>("[data-canvas-scroll-content]");
   if (world && content) {
-    world.style.transform = `scale(${next.zoom})`;
+    applyCanvasWorldScale(world, next.zoom);
     content.style.width = `${Math.ceil(WORLD_W * next.zoom)}px`;
     content.style.height = `${Math.ceil(WORLD_H * next.zoom)}px`;
   }
@@ -130,28 +158,18 @@ export function flyViewportToCard(
     y: (bounds.minY + bounds.maxY) / 2,
   };
   const distance = Math.hypot(cardCenter.x - viewCenter.x, cardCenter.y - viewCenter.y);
+  const fitZoom = flyZoom(viewCenter, cardCenter, surface, desiredZoom);
+  const midZoom = flyMidZoomForDistance(distance, desiredZoom, fitZoom);
+  const panOnly = Math.abs(midZoom - desiredZoom) < 0.025;
   const finish = () => {
     if (token !== flyToken) return;
     applyCenter(surface, cardCenter.x, cardCenter.y, desiredZoom, setViewport);
     onComplete?.();
   };
-  if (distance <= 520) {
-    void step(token, 480, (t) => {
-      applyCenter(
-        surface,
-        viewCenter.x + (cardCenter.x - viewCenter.x) * t,
-        viewCenter.y + (cardCenter.y - viewCenter.y) * t,
-        desiredZoom,
-        setViewport,
-      );
-    }).then(finish);
-    return;
-  }
-  let midZoom = clampZoom(Math.min(flyZoom(viewCenter, cardCenter, surface, desiredZoom), desiredZoom * 0.42));
-  if (midZoom >= desiredZoom - 0.025) midZoom = clampZoom(Math.max(ZOOM_MIN, desiredZoom * 0.35));
-  void step(token, 960, (linear) => {
-    const move = ease(linear);
-    const zoomArc = Math.sin(linear * Math.PI);
+  const durationMs = panOnly ? 480 : 960;
+  void step(token, durationMs, (linear) => {
+    const move = panOnly ? linear : ease(linear);
+    const zoomArc = panOnly ? 0 : Math.sin(linear * Math.PI);
     applyCenter(
       surface,
       viewCenter.x + (cardCenter.x - viewCenter.x) * move,

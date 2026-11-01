@@ -60,9 +60,11 @@ function itemButtons(
   issue: RegExpMatchArray,
   items: Record<string, Card>,
   onPick: (refToken: string) => void,
+  hostItemId?: string,
 ): HTMLButtonElement[] {
   const query = issue[1] ?? "";
   const hits = liveItems(items)
+    .filter((item) => item.id !== hostItemId)
     .filter((item) => {
       const num = item.id.replace(/^item-/i, "");
       const problem = item.steps[0]?.problem || "";
@@ -104,6 +106,6 @@ export function issueRefButtons(
     return stepButtons(issueStep, items, onPick);
   }
   const issue = before.match(/!(\d*)$/);
-  if (issue) return itemButtons(issue, items, onPick);
+  if (issue) return itemButtons(issue, items, onPick, context?.hostItemId);
   return null;
 }

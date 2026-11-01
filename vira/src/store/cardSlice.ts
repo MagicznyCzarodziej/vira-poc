@@ -97,7 +97,13 @@ export const createCardSlice: StateCreator<DocumentState, [], [], CardSlice> = (
     set({
       items: { ...bag.items },
       nextId: bag.nextId,
-      editing: { id, field, step: 0, surface: where },
+      editing: {
+        id,
+        field,
+        step: 0,
+        surface: where,
+        ...(where === "canvas" ? { canvasPlacementKey: id } : {}),
+      },
       editInitial: "",
       focusNonce: get().focusNonce + 1,
       revealId: where === "canvas" ? id : null,
@@ -142,6 +148,9 @@ export const createCardSlice: StateCreator<DocumentState, [], [], CardSlice> = (
       actionPoints: {},
       actionPointPlacements: {},
       nextActionPointId: 1,
+      frames: {},
+      framePlacements: {},
+      nextFrameId: 1,
       nextCanvasPlacementId: 1,
       canvasPlacements: {},
       canvasViewport: { scrollLeft: 0, scrollTop: 0, zoom: 1 },
@@ -151,6 +160,7 @@ export const createCardSlice: StateCreator<DocumentState, [], [], CardSlice> = (
       composerTags: [],
       editing: null,
       editInitial: "",
+      canvasTool: "default",
     });
     schedule(get);
   },

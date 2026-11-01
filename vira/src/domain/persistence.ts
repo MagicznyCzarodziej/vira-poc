@@ -8,7 +8,19 @@ import { recomputeNextActionPointId } from "./actionPoints.ts";
 import { recomputeNextId } from "./cards.ts";
 import { normalizeStep } from "./steps.ts";
 import { normalizeTagsList } from "./tags.ts";
-import type { ActionPoint, Card, CardCanvasPlacement, Placement, SavedDocument, Viewport, ViewMode } from "./types.ts";
+import { clampFramePlacement } from "./frameCanvas.ts";
+import { recomputeNextFrameId } from "./frames.ts";
+import type {
+  ActionPoint,
+  Card,
+  CardCanvasPlacement,
+  Frame,
+  FramePlacement,
+  Placement,
+  SavedDocument,
+  Viewport,
+  ViewMode,
+} from "./types.ts";
 
 function isViewMode(value: unknown): value is ViewMode {
   return value === "board" || value === "list";
@@ -28,6 +40,24 @@ function normalizeEntityPlacements(
     };
   }
   clampAllPlacements(out);
+  return out;
+}
+
+function normalizeFramePlacements(
+  raw: Record<string, FramePlacement>,
+  frames: Record<string, Frame>,
+): Record<string, FramePlacement> {
+  const out: Record<string, FramePlacement> = {};
+  for (const [id, placement] of Object.entries(raw)) {
+    if (!placement || !frames[id]) continue;
+    const clamped = clampFramePlacement(
+      Number(placement.x) || 0,
+      Number(placement.y) || 0,
+      Number(placement.width) || 520,
+      Number(placement.height) || 360,
+    );
+    out[id] = { ...clamped, order: placement.order };
+  }
   return out;
 }
 
@@ -78,6 +108,16 @@ export function normalizeDocument(data: SavedDocument): SavedDocument {
       createdAt: typeof raw.createdAt === "string" ? raw.createdAt : new Date(0).toISOString(),
     };
   }
+  const frames: Record<string, Frame> = {};
+  for (const [id, raw] of Object.entries(data.frames ?? {})) {
+    if (!raw || typeof raw !== "object") continue;
+    frames[id] = {
+      id: raw.id || id,
+      title: typeof raw.title === "string" ? raw.title : "Frame",
+      createdAt: typeof raw.createdAt === "string" ? raw.createdAt : new Date(0).toISOString(),
+    };
+  }
+  const framePlacements = normalizeFramePlacements(data.framePlacements ?? {}, frames);
   return {
     version: 1,
     nextId: recomputeNextId(items),
@@ -85,6 +125,9 @@ export function normalizeDocument(data: SavedDocument): SavedDocument {
     items,
     actionPoints,
     actionPointPlacements: normalizeEntityPlacements(data.actionPointPlacements ?? {}, actionPoints),
+    nextFrameId: Math.max(recomputeNextFrameId(frames), Number(data.nextFrameId) || 1),
+    frames,
+    framePlacements,
     viewMode: isViewMode(data.viewMode) ? data.viewMode : "list",
     showAllDates: data.showAllDates === true,
     listFilterNotOnCanvas: data.listFilterNotOnCanvas === true,

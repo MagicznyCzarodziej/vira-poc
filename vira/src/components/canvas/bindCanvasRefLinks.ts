@@ -41,7 +41,10 @@ export function bindCanvasRefLinks(
           line.setAttribute("y2", String(b.top + b.height / 2 - view.top));
           svg.append(line);
         }
+      } else {
+        svg.replaceChildren();
       }
+      root.querySelectorAll(".is-workspace-link-hover").forEach((el) => el.classList.remove("is-workspace-link-hover"));
       return;
     }
     svg?.replaceChildren();

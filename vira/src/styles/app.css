@@ -13,6 +13,7 @@
 @import "./canvas.css";
 @import "./canvas-scrollbars.css";
 @import "./canvas-world.css";
+@import "./canvas-frame.css";
 @import "./mentions.css";
 @import "./issue-ref.css";
 @import "./ref-picker.css";

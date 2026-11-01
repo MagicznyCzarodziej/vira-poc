@@ -1,6 +1,7 @@
 import type { DocumentState } from "../../store/documentTypes.ts";
 
-export const CANVAS_PLACED_HOST_SELECTOR = ".canvas-placed-card, .canvas-placed-action-point";
+export const CANVAS_PLACED_HOST_SELECTOR =
+  ".canvas-placed-card, .canvas-placed-action-point, .canvas-placed-frame";
 
 export function canvasPlacedHostFromTarget(target: EventTarget | null): HTMLElement | null {
   if (!(target instanceof Element)) return null;
@@ -15,25 +16,34 @@ export function isCanvasActionPointId(state: Pick<DocumentState, "actionPoints">
   return !!state.actionPoints[id];
 }
 
+export function isCanvasFrameId(state: Pick<DocumentState, "frames">, id: string): boolean {
+  return !!state.frames?.[id];
+}
+
 export function canvasWorldPlacement(
-  state: Pick<DocumentState, "canvasPlacements" | "actionPointPlacements">,
+  state: Pick<DocumentState, "canvasPlacements" | "actionPointPlacements" | "framePlacements">,
   id: string,
 ): { x: number; y: number } | null {
+  const frame = state.framePlacements[id];
+  if (frame) return { x: frame.x, y: frame.y };
   return state.canvasPlacements[id] ?? state.actionPointPlacements[id] ?? null;
 }
 
 export function partitionCanvasMoves(
-  state: Pick<DocumentState, "actionPoints">,
+  state: Pick<DocumentState, "actionPoints" | "frames">,
   moves: readonly { id: string; x: number; y: number }[],
 ): {
   cardMoves: { id: string; x: number; y: number }[];
   actionPointMoves: { id: string; x: number; y: number }[];
+  frameMoves: { id: string; x: number; y: number }[];
 } {
   const cardMoves: { id: string; x: number; y: number }[] = [];
   const actionPointMoves: { id: string; x: number; y: number }[] = [];
+  const frameMoves: { id: string; x: number; y: number }[] = [];
   for (const move of moves) {
     if (isCanvasActionPointId(state, move.id)) actionPointMoves.push(move);
+    else if (isCanvasFrameId(state, move.id)) frameMoves.push(move);
     else cardMoves.push(move);
   }
-  return { cardMoves, actionPointMoves };
+  return { cardMoves, actionPointMoves, frameMoves };
 }

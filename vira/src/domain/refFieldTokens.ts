@@ -1,6 +1,10 @@
 import { parseIssueRef } from "./refSyntax.ts";
 
-export type IssueRefSuggestContext = { field?: "problem" | "answer" };
+export type IssueRefSuggestContext = {
+  field?: "problem" | "answer";
+  /** Card being edited — omitted from ! autocomplete item list. */
+  hostItemId?: string;
+};
 
 /** When editing an answer, !12/2 means the decision on step 2 (same as !12/a2). */
 export function normalizeRefTokenForField(refToken: string, context?: IssueRefSuggestContext): string {

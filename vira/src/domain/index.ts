@@ -16,6 +16,8 @@ export type {
   CardStatusClass,
   DocBag,
   FieldName,
+  Frame,
+  FramePlacement,
   IssueRef,
   Placement,
   SavedDocument,
@@ -32,6 +34,23 @@ export {
   removeActionPointFromCanvasPlacements,
   sortedActionPointPlacementIds,
 } from "./actionPointCanvas.ts";
+export {
+  FRAME_DEFAULT_HEIGHT,
+  FRAME_DEFAULT_WIDTH,
+  FRAME_MIN_HEIGHT,
+  FRAME_MIN_WIDTH,
+  clampFramePlacement,
+  moveFrameAtWorld,
+  placeFrameAtWorld,
+  removeFrameFromCanvasPlacements,
+  resizeFrameAtWorld,
+  resizeFrameRectFromDrag,
+  setFrameBoundsAtWorld,
+  sortedFramePlacementIds,
+  type FrameRect,
+  type FrameResizeHandle,
+} from "./frameCanvas.ts";
+export { createFrame, recomputeNextFrameId } from "./frames.ts";
 export {
   createActionPoint,
   hasOpenActionPointRefs,

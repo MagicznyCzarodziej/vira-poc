@@ -1,0 +1,159 @@
+    .canvas-placed-frame {
+      position: absolute;
+      touch-action: none;
+      pointer-events: none;
+    }
+    .canvas-placed-frame.is-dragging {
+      opacity: 0.92;
+      cursor: grabbing;
+      z-index: 40 !important;
+    }
+    .canvas-placed-frame.is-canvas-selected .canvas-frame-inner {
+      border-color: var(--canvas-drag-border, rgba(59, 130, 246, 0.85));
+    }
+    .canvas-frame-inner {
+      position: relative;
+      box-sizing: border-box;
+      height: 100%;
+      border: calc(2px / var(--canvas-zoom, 1)) solid var(--muted);
+      border-radius: calc(6px / var(--canvas-zoom, 1));
+      background: transparent;
+      overflow: visible;
+      pointer-events: none;
+    }
+    .canvas-frame-label {
+      position: absolute;
+      top: 0;
+      left: 0;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      max-width: 100%;
+      z-index: 2;
+      pointer-events: auto;
+      padding: 0.15rem 0.4rem 0.25rem 0.25rem;
+      border-radius: 0.25rem 0 0.25rem 0;
+      background: var(--tone-1);
+      font-size: 1rem;
+      font-weight: 600;
+      line-height: 1.25;
+      letter-spacing: 0.01em;
+    }
+    .canvas-frame-title {
+      min-width: 0;
+      border: none;
+      background: transparent;
+      text-align: left;
+      font: inherit;
+      color: var(--text);
+      padding: 0;
+      border-radius: 2px;
+      cursor: text;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .canvas-frame-title:hover {
+      color: var(--text);
+    }
+    .canvas-frame-title-input {
+      min-width: 8rem;
+      max-width: 100%;
+      font: inherit;
+      padding: 0;
+      background: transparent;
+    }
+    .canvas-placed-frame:hover .canvas-frame-dismiss,
+    .canvas-placed-frame.is-canvas-selected .canvas-frame-dismiss,
+    .canvas-placed-frame:focus-within .canvas-frame-dismiss {
+      opacity: 1;
+    }
+    .canvas-frame-dismiss {
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      line-height: 0;
+      padding: 0;
+      border-radius: 2px;
+      opacity: 0;
+    }
+    .canvas-frame-dismiss .icon-square-dashed-x-corner svg {
+      display: block;
+      width: 0.85rem;
+      height: 0.85rem;
+    }
+    .canvas-frame-dismiss:hover {
+      color: var(--text);
+    }
+    .canvas-frame-resize {
+      position: absolute;
+      z-index: 3;
+      touch-action: none;
+    }
+    .canvas-placed-frame:not(:hover):not(.is-canvas-selected) .canvas-frame-resize {
+      pointer-events: none;
+    }
+    .canvas-placed-frame:hover .canvas-frame-resize,
+    .canvas-placed-frame.is-canvas-selected .canvas-frame-resize {
+      pointer-events: auto;
+    }
+    .canvas-frame-resize--n,
+    .canvas-frame-resize--s {
+      left: calc(12px / var(--canvas-zoom, 1));
+      right: calc(12px / var(--canvas-zoom, 1));
+      height: calc(10px / var(--canvas-zoom, 1));
+    }
+    .canvas-frame-resize--n {
+      top: calc(-5px / var(--canvas-zoom, 1));
+      cursor: n-resize;
+    }
+    .canvas-frame-resize--s {
+      bottom: calc(-5px / var(--canvas-zoom, 1));
+      cursor: s-resize;
+    }
+    .canvas-frame-resize--e,
+    .canvas-frame-resize--w {
+      top: calc(12px / var(--canvas-zoom, 1));
+      bottom: calc(12px / var(--canvas-zoom, 1));
+      width: calc(10px / var(--canvas-zoom, 1));
+    }
+    .canvas-frame-resize--e {
+      right: calc(-5px / var(--canvas-zoom, 1));
+      cursor: e-resize;
+    }
+    .canvas-frame-resize--w {
+      left: calc(-5px / var(--canvas-zoom, 1));
+      cursor: w-resize;
+    }
+    .canvas-frame-resize--ne,
+    .canvas-frame-resize--nw,
+    .canvas-frame-resize--se,
+    .canvas-frame-resize--sw {
+      width: calc(14px / var(--canvas-zoom, 1));
+      height: calc(14px / var(--canvas-zoom, 1));
+    }
+    .canvas-frame-resize--ne {
+      top: calc(-5px / var(--canvas-zoom, 1));
+      right: calc(-5px / var(--canvas-zoom, 1));
+      cursor: ne-resize;
+    }
+    .canvas-frame-resize--nw {
+      top: calc(-5px / var(--canvas-zoom, 1));
+      left: calc(-5px / var(--canvas-zoom, 1));
+      cursor: nw-resize;
+    }
+    .canvas-frame-resize--se {
+      bottom: calc(-5px / var(--canvas-zoom, 1));
+      right: calc(-5px / var(--canvas-zoom, 1));
+      cursor: se-resize;
+    }
+    .canvas-frame-resize--sw {
+      bottom: calc(-5px / var(--canvas-zoom, 1));
+      left: calc(-5px / var(--canvas-zoom, 1));
+      cursor: sw-resize;
+    }

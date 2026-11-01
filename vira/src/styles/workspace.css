@@ -175,6 +175,19 @@
     .canvas-surface-shell .canvas-marquee.is-visible {
       display: block;
     }
+    .canvas-surface-shell .canvas-frame-draw {
+      position: fixed;
+      z-index: 50;
+      display: none;
+      pointer-events: none;
+      border: 2px dashed var(--tone-3);
+      background: rgba(148, 163, 184, 0.12);
+      border-radius: 6px;
+      box-sizing: border-box;
+    }
+    .canvas-surface-shell .canvas-frame-draw.is-visible {
+      display: block;
+    }
     .canvas-surface-shell .canvas-ref-links {
       position: absolute;
       inset: 0;

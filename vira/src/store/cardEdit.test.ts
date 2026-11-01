@@ -21,6 +21,7 @@ describe("createBlankCard intent", () => {
       field: "answer",
       step: 0,
       surface: "canvas",
+      canvasPlacementKey: id,
     });
   });
 
@@ -32,6 +33,7 @@ describe("createBlankCard intent", () => {
       field: "problem",
       step: 0,
       surface: "canvas",
+      canvasPlacementKey: id,
     });
   });
 });

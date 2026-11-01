@@ -1,4 +1,5 @@
 import { CARD_WIDTH, DROP_OFFSET_Y, clampPlacement, clampZoom } from "../../domain/index.ts";
+import { scrollForZoomAtPoint } from "./canvasWorldZoom.ts";
 import { useDocument } from "../../store/index.ts";
 import { refPickModeActive, tryConsumeRefPick } from "../text/bindRefPickFromCard.ts";
 import { tryBeginCanvasEditFromPointer } from "./canvasCardEdit.ts";
@@ -37,12 +38,25 @@ import {
   remapCanvasDragGroupForAltDuplicate,
 } from "./canvasAltDuplicateDrag.ts";
 import {
+  expandCanvasDragGroupWithFrameContents,
+  pickFrameIdAtWorldPoint,
+} from "./canvasFrameContainment.ts";
+import {
   canvasPlacedHostFromTarget,
   canvasPlacedId,
   canvasWorldPlacement,
   isCanvasActionPointId,
+  isCanvasFrameId,
   partitionCanvasMoves,
 } from "./canvasPlaced.ts";
+import type { FrameRect, FrameResizeHandle } from "../../domain/index.ts";
+import { parseFrameResizeHandle } from "../frame/frameResizeHandles.ts";
+import {
+  clampFrameDrawRect,
+  frameDrawMeetsMinimum,
+  frameRectFromClientDrag,
+  shouldStartFrameDraw,
+} from "./canvasFrameDraw.ts";
 
 function commitEditOutsideCard(target: Element) {
   const active = document.activeElement;
@@ -60,8 +74,13 @@ export function bindCanvasGestures(surface: HTMLElement, spawnGesture: { readonl
   marqueeEl.className = "canvas-marquee";
   marqueeEl.setAttribute("aria-hidden", "true");
   marqueeHost.appendChild(marqueeEl);
+  const frameDrawEl = document.createElement("div");
+  frameDrawEl.className = "canvas-frame-draw";
+  frameDrawEl.setAttribute("aria-hidden", "true");
+  marqueeHost.appendChild(frameDrawEl);
 
   let pan: { id: number; x: number; y: number; left: number; top: number } | null = null;
+  let frameDraw: { id: number; sx: number; sy: number; active: boolean } | null = null;
   let marquee: {
     id: number;
     sx: number;
@@ -87,6 +106,22 @@ export function bindCanvasGestures(surface: HTMLElement, spawnGesture: { readonl
     editTap?: boolean;
     pointerTarget?: EventTarget;
     altDuplicate?: boolean;
+    altDupKeyMap?: Record<string, string>;
+    altDupOrigGroupIds?: string[];
+    altDupOrigGroupStart?: Record<string, { x: number; y: number }>;
+    altDupOrigPlacedId?: string;
+    /** Skip one group move after leaving alt-duplicate so the original stays put. */
+    suppressGroupMoveOnce?: boolean;
+  } | null = null;
+  let frameResize: {
+    id: number;
+    frameId: string;
+    handle: FrameResizeHandle;
+    start: FrameRect;
+    sx: number;
+    sy: number;
+    captured: boolean;
+    el: HTMLElement;
   } | null = null;
   let apLink: {
     id: number;
@@ -127,6 +162,13 @@ export function bindCanvasGestures(surface: HTMLElement, spawnGesture: { readonl
     marquee = null;
   };
 
+  const clearFrameDraw = () => {
+    frameDrawEl.classList.remove("is-visible");
+    frameDrawEl.setAttribute("aria-hidden", "true");
+    surface.classList.remove("is-frame-draw-active");
+    frameDraw = null;
+  };
+
   const setGroupDraggingClass = (ids: string[], on: boolean) => {
     for (const id of ids) {
       surface.querySelector(`[data-canvas-placed="${id}"]`)?.classList.toggle("is-dragging", on);
@@ -143,9 +185,79 @@ export function bindCanvasGestures(surface: HTMLElement, spawnGesture: { readonl
       if (start) moves.push({ id: gid, x: start.x, y: start.y });
     }
     if (moves.length === 0) return;
-    const { cardMoves, actionPointMoves } = partitionCanvasMoves(store, moves);
+    const { cardMoves, actionPointMoves, frameMoves } = partitionCanvasMoves(store, moves);
     store.movePlacements(cardMoves);
     store.moveActionPointPlacements(actionPointMoves);
+    store.moveFramePlacements(frameMoves);
+  };
+
+  const maybeCancelAltDuplicateCanvasDrag = (event: Pick<PointerEvent, "pointerId">) => {
+    if (
+      !drag?.on
+      || !drag.altDuplicate
+      || !drag.altDupKeyMap
+      || !drag.altDupOrigGroupIds
+      || !drag.altDupOrigGroupStart
+      || !drag.altDupOrigPlacedId
+    ) {
+      return;
+    }
+    const keyMap = drag.altDupKeyMap;
+    const origGroupIds = drag.altDupOrigGroupIds;
+    const origGroupStart = drag.altDupOrigGroupStart;
+    const copyGroupIds = drag.groupIds ?? [];
+    const copyKeys = new Set(Object.values(keyMap));
+    const store = useDocument.getState();
+
+    for (const copyId of copyGroupIds) {
+      if (copyKeys.has(copyId) && store.canvasPlacements[copyId]) store.removeFromCanvas(copyId);
+    }
+
+    const revertMoves: { id: string; x: number; y: number }[] = [];
+    for (const gid of origGroupIds) {
+      const start = origGroupStart[gid];
+      if (!start) continue;
+      const current = canvasWorldPlacement(store, gid);
+      if (!current || current.x !== start.x || current.y !== start.y) {
+        revertMoves.push({ id: gid, x: start.x, y: start.y });
+      }
+    }
+    if (revertMoves.length > 0) {
+      const { cardMoves, actionPointMoves, frameMoves } = partitionCanvasMoves(store, revertMoves);
+      store.movePlacements(cardMoves);
+      store.moveActionPointPlacements(actionPointMoves);
+      store.moveFramePlacements(frameMoves);
+    }
+
+    setGroupDraggingClass(copyGroupIds, false);
+
+    const origAnchor = origGroupStart[drag.altDupOrigPlacedId];
+
+    drag.groupIds = [...origGroupIds];
+    drag.groupStart = { ...origGroupStart };
+    drag.placedId = drag.altDupOrigPlacedId;
+    drag.anchorStart = origAnchor ? { ...origAnchor } : drag.anchorStart;
+    drag.altDuplicate = false;
+    drag.suppressGroupMoveOnce = true;
+    delete drag.altDupKeyMap;
+    delete drag.altDupOrigGroupIds;
+    delete drag.altDupOrigGroupStart;
+    delete drag.altDupOrigPlacedId;
+
+    store.setCanvasSelection([...origGroupIds]);
+    setGroupDraggingClass(origGroupIds, true);
+
+    const origEl = surface.querySelector<HTMLElement>(`[data-canvas-placed="${drag.placedId}"]`);
+    if (origEl) {
+      try {
+        if (drag.captured) drag.placedEl.releasePointerCapture(event.pointerId);
+        drag.placedEl = origEl;
+        origEl.setPointerCapture(event.pointerId);
+        drag.captured = true;
+      } catch {
+        /* inactive pointer */
+      }
+    }
   };
 
   const maybeBeginAltDuplicateCanvasDrag = (event: PointerEvent) => {
@@ -165,10 +277,15 @@ export function bindCanvasGestures(surface: HTMLElement, spawnGesture: { readonl
     const keyMap = store.duplicateCardPlacementsForDrag(cardKeys, positions);
     const remapped = remapCanvasDragGroupForAltDuplicate(groupIds, groupStart, keyMap);
     const oldGroupIds = groupIds;
+    const origPlacedId = drag.placedId;
     drag.groupIds = remapped.groupIds;
     drag.groupStart = remapped.groupStart;
     drag.placedId = keyMap[drag.placedId] ?? drag.placedId;
     drag.altDuplicate = true;
+    drag.altDupKeyMap = keyMap;
+    drag.altDupOrigGroupIds = [...oldGroupIds];
+    drag.altDupOrigGroupStart = { ...groupStart };
+    drag.altDupOrigPlacedId = origPlacedId;
 
     setGroupDraggingClass(oldGroupIds, false);
     for (const gid of remapped.groupIds) {
@@ -244,6 +361,49 @@ export function bindCanvasGestures(surface: HTMLElement, spawnGesture: { readonl
       return;
     }
     if (background && event.button === 0) {
+      if (useDocument.getState().canvasTool === "frame") {
+        frameDraw = {
+          id: event.pointerId,
+          sx: event.clientX,
+          sy: event.clientY,
+          active: false,
+        };
+        event.preventDefault();
+        return;
+      }
+      if (!event.shiftKey) {
+        const docForFramePick = useDocument.getState();
+        const pt = worldPoint(event.clientX, event.clientY);
+        const frameId = pickFrameIdAtWorldPoint(
+          docForFramePick.framePlacements,
+          docForFramePick.frames,
+          pt.x,
+          pt.y,
+        );
+        if (frameId) {
+          const frameHost = surface.querySelector<HTMLElement>(`[data-canvas-placed="${frameId}"]`);
+          const placement = docForFramePick.framePlacements[frameId];
+          if (frameHost && placement) {
+            if (!docForFramePick.canvasSelection.includes(frameId)) {
+              docForFramePick.setCanvasSelection([frameId]);
+            }
+            drag = {
+              id: event.pointerId,
+              placedId: frameId,
+              placedEl: frameHost,
+              ox: pt.x - placement.x,
+              oy: pt.y - placement.y,
+              sx: event.clientX,
+              sy: event.clientY,
+              on: false,
+              captured: false,
+              pointerTarget: target,
+            };
+            event.preventDefault();
+            return;
+          }
+        }
+      }
       const selection = useDocument.getState().canvasSelection;
       marquee = {
         id: event.pointerId,
@@ -260,6 +420,36 @@ export function bindCanvasGestures(surface: HTMLElement, spawnGesture: { readonl
     const doc = useDocument.getState();
     const pos = id ? canvasWorldPlacement(doc, id) : null;
     if (!id || !pos) return;
+    const resizeEl = target.closest<HTMLElement>("[data-frame-resize]");
+    const handle = parseFrameResizeHandle(resizeEl?.dataset.frameResize);
+    if (resizeEl && handle && placedHost.classList.contains("canvas-placed-frame")) {
+      const placement = doc.framePlacements[id];
+      if (placement) {
+        frameResize = {
+          id: event.pointerId,
+          frameId: id,
+          handle,
+          start: {
+            x: placement.x,
+            y: placement.y,
+            width: placement.width,
+            height: placement.height,
+          },
+          sx: event.clientX,
+          sy: event.clientY,
+          captured: false,
+          el: placedHost,
+        };
+        try {
+          placedHost.setPointerCapture(event.pointerId);
+          frameResize.captured = true;
+        } catch {
+          /* inactive pointer */
+        }
+        event.preventDefault();
+        return;
+      }
+    }
     if (event.shiftKey && isCanvasActionPointId(doc, id)) {
       apLink = {
         id: event.pointerId,
@@ -290,11 +480,25 @@ export function bindCanvasGestures(surface: HTMLElement, spawnGesture: { readonl
       on: false,
       captured: false,
       shiftToggle: event.shiftKey ? id : undefined,
-      editTap: isCanvasCardEditSurface(target),
+      editTap: !event.shiftKey && isCanvasCardEditSurface(target),
       pointerTarget: target,
     };
   };
   const onPointerMove = (event: PointerEvent) => {
+    if (frameResize && event.pointerId === frameResize.id) {
+      const zoom = useDocument.getState().canvasViewport.zoom;
+      const dw = (event.clientX - frameResize.sx) / zoom;
+      const dh = (event.clientY - frameResize.sy) / zoom;
+      useDocument.getState().resizeFrameFromHandle(
+        frameResize.frameId,
+        frameResize.handle,
+        frameResize.start,
+        dw,
+        dh,
+      );
+      event.preventDefault();
+      return;
+    }
     if (apLink && event.pointerId === apLink.id) {
       if (!apLink.active && !shouldStartCanvasCardDrag(apLink.sx, apLink.sy, event.clientX, event.clientY)) return;
       if (!apLink.active) {
@@ -321,6 +525,19 @@ export function bindCanvasGestures(surface: HTMLElement, spawnGesture: { readonl
         scrollLeft: surface.scrollLeft,
         scrollTop: surface.scrollTop,
       });
+      return;
+    }
+    if (frameDraw && event.pointerId === frameDraw.id) {
+      if (!frameDraw.active && !shouldStartFrameDraw(frameDraw.sx, frameDraw.sy, event.clientX, event.clientY)) return;
+      if (!frameDraw.active) {
+        frameDraw.active = true;
+        frameDrawEl.classList.add("is-visible");
+        frameDrawEl.setAttribute("aria-hidden", "false");
+        surface.classList.add("is-frame-draw-active");
+      }
+      const box = normalizeClientRect(frameDraw.sx, frameDraw.sy, event.clientX, event.clientY);
+      positionMarqueeElement(frameDrawEl, box);
+      event.preventDefault();
       return;
     }
     if (marquee && event.pointerId === marquee.id) {
@@ -352,19 +569,20 @@ export function bindCanvasGestures(surface: HTMLElement, spawnGesture: { readonl
         document.activeElement.blur();
       }
       const state = useDocument.getState();
-      const groupIds = resolveCanvasDragGroup(state.canvasSelection, drag.placedId);
-      drag.groupIds = groupIds;
+      const seedGroup = resolveCanvasDragGroup(state.canvasSelection, drag.placedId);
       drag.groupStart = {};
-      for (const gid of groupIds) {
+      for (const gid of seedGroup) {
         const p = canvasWorldPlacement(state, gid);
         if (p) drag.groupStart[gid] = { x: p.x, y: p.y };
       }
+      drag.groupIds = expandCanvasDragGroupWithFrameContents(state, seedGroup, drag.groupStart);
       drag.anchorStart = { ...canvasWorldPlacement(state, drag.placedId)! };
-      for (const gid of groupIds) {
+      for (const gid of drag.groupIds) {
         if (isCanvasActionPointId(state, gid)) state.bringActionPointToFront(gid);
+        else if (isCanvasFrameId(state, gid)) state.bringFrameToFront(gid);
         else state.bringToFront(gid);
       }
-      setGroupDraggingClass(groupIds, true);
+      setGroupDraggingClass(drag.groupIds, true);
       document.body.classList.add("canvas-card-drag-active");
       try {
         drag.placedEl.setPointerCapture(event.pointerId);
@@ -375,7 +593,13 @@ export function bindCanvasGestures(surface: HTMLElement, spawnGesture: { readonl
       if (event.altKey) maybeBeginAltDuplicateCanvasDrag(event);
     }
     if (drag.on && event.altKey) maybeBeginAltDuplicateCanvasDrag(event);
+    else if (drag.on && drag.altDuplicate && !event.shiftKey) maybeCancelAltDuplicateCanvasDrag(event);
     const current = drag;
+    if (current.suppressGroupMoveOnce) {
+      current.suppressGroupMoveOnce = false;
+      event.preventDefault();
+      return;
+    }
     const pt = worldPoint(event.clientX, event.clientY);
     const anchorNext = clampPlacement(pt.x - current.ox, pt.y - current.oy);
     const groupIds = current.groupIds ?? [current.placedId];
@@ -387,12 +611,23 @@ export function bindCanvasGestures(surface: HTMLElement, spawnGesture: { readonl
       anchorNext,
     );
     const store = useDocument.getState();
-    const { cardMoves, actionPointMoves } = partitionCanvasMoves(store, moves);
+    const { cardMoves, actionPointMoves, frameMoves } = partitionCanvasMoves(store, moves);
     store.movePlacements(cardMoves);
     store.moveActionPointPlacements(actionPointMoves);
+    store.moveFramePlacements(frameMoves);
     event.preventDefault();
   };
   const onPointerUp = (event: PointerEvent) => {
+    if (frameResize && event.pointerId === frameResize.id) {
+      if (frameResize.captured) {
+        try {
+          frameResize.el.releasePointerCapture(frameResize.id);
+        } catch {
+          /* pointer already released */
+        }
+      }
+      frameResize = null;
+    }
     if (apLink && event.pointerId === apLink.id) {
       if (apLink.active) finishActionPointLinkDrop(apLink.apId, event.clientX, event.clientY);
       if (apLink.captured) {
@@ -410,17 +645,40 @@ export function bindCanvasGestures(surface: HTMLElement, spawnGesture: { readonl
       pan = null;
       surface.classList.remove("is-panning");
     }
+    if (frameDraw && event.pointerId === frameDraw.id) {
+      if (frameDraw.active) {
+        const zoom = useDocument.getState().canvasViewport.zoom;
+        const rect = frameRectFromClientDrag(
+          surface,
+          frameDraw.sx,
+          frameDraw.sy,
+          event.clientX,
+          event.clientY,
+          zoom,
+        );
+        if (frameDrawMeetsMinimum(rect)) {
+          useDocument.getState().createFrameWithBoundsOnCanvas(clampFrameDrawRect(rect));
+          useDocument.getState().setCanvasTool("default");
+        }
+      }
+      clearFrameDraw();
+    }
     if (marquee && event.pointerId === marquee.id) {
       if (!marquee.active && !marquee.additive) useDocument.getState().clearCanvasSelection();
       clearMarquee();
     }
     if (drag && event.pointerId === drag.id) {
-      if (!drag.on && drag.editTap) {
+      if (!drag.on && drag.shiftToggle) {
+        useDocument.getState().toggleCanvasSelection(drag.shiftToggle);
+      } else if (!drag.on && drag.editTap) {
         event.preventDefault();
         event.stopPropagation();
-        tryBeginCanvasEditFromPointer(drag.pointerTarget ?? null);
-      } else if (!drag.on && drag.shiftToggle) {
-        useDocument.getState().toggleCanvasSelection(drag.shiftToggle);
+        const doc = useDocument.getState();
+        if (isCanvasFrameId(doc, drag.placedId)) {
+          doc.beginEdit({ id: drag.placedId, field: "frameTitle", step: 0, surface: "canvas" });
+        } else {
+          tryBeginCanvasEditFromPointer(drag.pointerTarget ?? null);
+        }
       }
       if (drag.on) {
         suppressUntil = Date.now() + 350;
@@ -442,10 +700,11 @@ export function bindCanvasGestures(surface: HTMLElement, spawnGesture: { readonl
     const worldX = (surface.scrollLeft + mx) / current.zoom;
     const worldY = (surface.scrollTop + my) / current.zoom;
     const zoom = clampZoom(current.zoom * Math.exp(-event.deltaY * 0.002));
+    const scroll = scrollForZoomAtPoint(worldX, worldY, mx, my, zoom);
     useDocument.getState().setViewport({
       zoom,
-      scrollLeft: Math.max(0, worldX * zoom - mx),
-      scrollTop: Math.max(0, worldY * zoom - my),
+      scrollLeft: Math.max(0, scroll.scrollLeft),
+      scrollTop: Math.max(0, scroll.scrollTop),
     });
   };
   const onScroll = () => {
@@ -469,6 +728,12 @@ export function bindCanvasGestures(surface: HTMLElement, spawnGesture: { readonl
       useDocument.getState().placeNewCardAtWorld(id, pt.x - CARD_WIDTH / 2, pt.y - DROP_OFFSET_Y);
       return;
     }
+    if ((event.key === "f" || event.key === "F") && !event.repeat && !event.metaKey && !event.ctrlKey && !event.altKey) {
+      if (typing || !hotspot.over || useDocument.getState().viewMode !== "list") return;
+      event.preventDefault();
+      useDocument.getState().toggleFrameTool();
+      return;
+    }
     if (
       isCanvasScrollKey(event)
       && shouldBlockCanvasScrollNavigation({
@@ -486,6 +751,16 @@ export function bindCanvasGestures(surface: HTMLElement, spawnGesture: { readonl
       return;
     }
     if (event.key === "Escape" && !typing) {
+      if (frameDraw) {
+        clearFrameDraw();
+        event.preventDefault();
+        return;
+      }
+      if (useDocument.getState().canvasTool === "frame") {
+        useDocument.getState().setCanvasTool("default");
+        event.preventDefault();
+        return;
+      }
       useDocument.getState().clearCanvasSelection();
       return;
     }
@@ -508,8 +783,13 @@ export function bindCanvasGestures(surface: HTMLElement, spawnGesture: { readonl
   };
 
   const onKeyUp = (event: KeyboardEvent) => {
-    if (!isSpaceKey(event)) return;
-    clearSpacePan();
+    if (isSpaceKey(event)) {
+      clearSpacePan();
+      return;
+    }
+    if (event.key === "Alt" && drag?.on && drag.altDuplicate && !event.shiftKey) {
+      maybeCancelAltDuplicateCanvasDrag({ pointerId: drag.id });
+    }
   };
   const onMove = (event: PointerEvent) => {
     const rect = surface.getBoundingClientRect();
@@ -526,7 +806,7 @@ export function bindCanvasGestures(surface: HTMLElement, spawnGesture: { readonl
     }
   };
   const onSelectStart = (event: Event) => {
-    if (marquee) event.preventDefault();
+    if (marquee || frameDraw) event.preventDefault();
   };
   surface.addEventListener("pointerdown", onPointerDown);
   surface.addEventListener("selectstart", onSelectStart);
@@ -560,7 +840,9 @@ export function bindCanvasGestures(surface: HTMLElement, spawnGesture: { readonl
     unbindDrop();
     unbindReveal();
     clearMarquee();
+    clearFrameDraw();
     marqueeEl.remove();
+    frameDrawEl.remove();
     document.body.classList.remove("canvas-space-pan");
   };
 }

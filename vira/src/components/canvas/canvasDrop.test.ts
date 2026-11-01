@@ -2,9 +2,13 @@ import { describe, expect, it } from "vitest";
 import {
   SPAWN,
   SPAWN_DECISION,
+  SPAWN_FRAME,
   SPAWN_QUESTION,
+  isCanvasCardSpawnPayload,
+  isCanvasFrameSpawnPayload,
   isCanvasSpawnPayload,
   spawnIntentFromPayload,
+  spawnPayloadForFrame,
   spawnPayloadForIntent,
 } from "./canvasSpawnPayload.ts";
 
@@ -24,6 +28,15 @@ describe("canvas spawn payloads", () => {
   it("recognizes spawn payloads vs card ids", () => {
     expect(isCanvasSpawnPayload(SPAWN_DECISION)).toBe(true);
     expect(isCanvasSpawnPayload(SPAWN_QUESTION)).toBe(true);
+    expect(isCanvasSpawnPayload(SPAWN_FRAME)).toBe(true);
+    expect(isCanvasCardSpawnPayload(SPAWN_DECISION)).toBe(true);
+    expect(isCanvasCardSpawnPayload(SPAWN_FRAME)).toBe(false);
+    expect(isCanvasFrameSpawnPayload(SPAWN_FRAME)).toBe(true);
+    expect(isCanvasFrameSpawnPayload(SPAWN_QUESTION)).toBe(false);
     expect(isCanvasSpawnPayload("item-3")).toBe(false);
+  });
+
+  it("maps frame spawn to drag payload", () => {
+    expect(spawnPayloadForFrame()).toBe(SPAWN_FRAME);
   });
 });

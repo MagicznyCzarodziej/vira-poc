@@ -5,14 +5,18 @@ import {
   isItemArchived,
   sortedActionPointPlacementIds,
   sortedCardPlacementKeys,
+  sortedFramePlacementIds,
 } from "../../domain/index.ts";
 import { useDocument } from "../../store/index.ts";
 import { ActionPointView } from "../action/ActionPointView.tsx";
 import { CardView } from "../CardView.tsx";
+import { FrameView } from "../frame/FrameView.tsx";
 import { IconCard, IconLightbulb } from "../Icons.tsx";
+import { applyCanvasWorldScale } from "./canvasWorldZoom.ts";
 import { bindCanvasGestures } from "./bindCanvasGestures.ts";
 import { bindCanvasRefLinks } from "./bindCanvasRefLinks.ts";
 import { zoomCanvas } from "./canvasCommands.ts";
+import { CanvasFrameToolButton } from "./CanvasFrameToolButton.tsx";
 import { CanvasSpawnButton } from "./canvasSpawnButton.tsx";
 import type { SpawnGesture } from "./canvasDrop.ts";
 import { FakeScrollbars } from "./FakeScrollbars.tsx";
@@ -25,13 +29,19 @@ export function CanvasWorkspace() {
   const actionPoints = useDocument((state) => state.actionPoints);
   const placements = useDocument((state) => state.canvasPlacements);
   const apPlacements = useDocument((state) => state.actionPointPlacements);
+  const frames = useDocument((state) => state.frames);
+  const framePlacements = useDocument((state) => state.framePlacements);
   const viewport = useDocument((state) => state.canvasViewport);
   const userSet = useDocument((state) => state.canvasViewportUserSet);
   const revealId = useDocument((state) => state.revealId);
   const canvasSelection = useDocument((state) => state.canvasSelection);
+  const canvasTool = useDocument((state) => state.canvasTool);
   const selectedSet = new Set(canvasSelection);
   const ids = sortedCardPlacementKeys(placements, items);
   const apIds = sortedActionPointPlacementIds(apPlacements, actionPoints).filter((id) => actionPoints[id]);
+  const frameIds = sortedFramePlacementIds(framePlacements, frames).filter((id) => frames[id]);
+  const cardZBase = frameIds.length + 1;
+  const apZBase = cardZBase + ids.length;
   const centered = useRef(false);
   const lineRef = useRef<SVGSVGElement>(null);
 
@@ -43,7 +53,7 @@ export function CanvasWorkspace() {
     if (!world || !content) return;
     world.style.width = `${WORLD_W}px`;
     world.style.height = `${WORLD_H}px`;
-    world.style.transform = `scale(${viewport.zoom})`;
+    applyCanvasWorldScale(world, viewport.zoom);
     world.style.transformOrigin = "0 0";
     content.style.width = `${Math.ceil(WORLD_W * viewport.zoom)}px`;
     content.style.height = `${Math.ceil(WORLD_H * viewport.zoom)}px`;
@@ -57,15 +67,26 @@ export function CanvasWorkspace() {
       centered.current = true;
       useDocument.getState().setViewport({ ...viewport, scrollLeft: left, scrollTop: top }, false);
     }
-    surface.scrollLeft = Math.min(Math.max(0, left), maxLeft);
-    surface.scrollTop = Math.min(Math.max(0, top), maxTop);
-  }, [viewport, userSet, ids.length, apIds.length]);
+    surface.scrollLeft = Math.min(Math.max(0, Math.round(left)), maxLeft);
+    surface.scrollTop = Math.min(Math.max(0, Math.round(top)), maxTop);
+  }, [viewport, userSet, ids.length, apIds.length, frameIds.length]);
 
   useEffect(() => {
     const surface = surfaceRef.current;
     if (!surface) return;
     return bindCanvasGestures(surface, spawnGesture);
   }, []);
+
+  useEffect(() => {
+    const surface = surfaceRef.current;
+    const on = canvasTool === "frame";
+    surface?.classList.toggle("is-frame-tool", on);
+    document.body.classList.toggle("canvas-frame-tool-active", on);
+    return () => {
+      surface?.classList.remove("is-frame-tool");
+      document.body.classList.remove("canvas-frame-tool-active");
+    };
+  }, [canvasTool]);
 
   useEffect(() => {
     const root = document.getElementById("app");
@@ -82,9 +103,25 @@ export function CanvasWorkspace() {
           <div className="spatial-canvas" data-canvas-surface role="region" aria-label="Decision canvas" ref={surfaceRef}>
             <div className="canvas-scroll-content" data-canvas-scroll-content>
               <div className="canvas-world">
-                {ids.length === 0 && apIds.length === 0 && (
-                  <p className="canvas-hint">Drag decisions or actions from the list · drag empty canvas to select · Space+drag to pan · ⌘/Ctrl+scroll to zoom</p>
+                {ids.length === 0 && apIds.length === 0 && frameIds.length === 0 && (
+                  <p className="canvas-hint">Drag decisions or actions from the list · F frame tool · drag to select · Shift+click to add · Space+drag to pan · ⌘/Ctrl+scroll to zoom</p>
                 )}
+                {frameIds.map((id, index) => {
+                  const frame = frames[id];
+                  const pos = framePlacements[id];
+                  if (!frame || !pos) return null;
+                  return (
+                    <div
+                      key={id}
+                      className={`canvas-placed-frame${revealId === id ? " is-canvas-reveal-pop" : ""}${selectedSet.has(id) ? " is-canvas-selected" : ""}`}
+                      data-canvas-placed={id}
+                      style={{ left: pos.x, top: pos.y, width: pos.width, height: pos.height, zIndex: index + 1 }}
+                      onAnimationEnd={() => useDocument.getState().clearReveal()}
+                    >
+                      <FrameView frame={frame} width={pos.width} height={pos.height} surface="canvas" />
+                    </div>
+                  );
+                })}
                 {apIds.map((id, index) => {
                   const ap = actionPoints[id];
                   const pos = apPlacements[id];
@@ -94,7 +131,7 @@ export function CanvasWorkspace() {
                       key={id}
                       className={`canvas-placed-action-point${revealId === id ? " is-canvas-reveal-pop" : ""}${selectedSet.has(id) ? " is-canvas-selected" : ""}`}
                       data-canvas-placed={id}
-                      style={{ left: pos.x, top: pos.y, zIndex: ids.length + index + 1 }}
+                      style={{ left: pos.x, top: pos.y, zIndex: apZBase + index }}
                       onAnimationEnd={() => useDocument.getState().clearReveal()}
                     >
                       <ActionPointView actionPoint={ap} surface="canvas" />
@@ -112,7 +149,7 @@ export function CanvasWorkspace() {
                       className={`canvas-placed-card${revealId === placementKey ? " is-canvas-reveal-pop" : ""}${selectedSet.has(placementKey) ? " is-canvas-selected" : ""}`}
                       data-canvas-placed={placementKey}
                       data-canvas-item-id={itemId}
-                      style={{ left: pos.x, top: pos.y, zIndex: index + 1 }}
+                      style={{ left: pos.x, top: pos.y, zIndex: cardZBase + index }}
                       onAnimationEnd={() => useDocument.getState().clearReveal()}
                     >
                       <CardView item={item} surface="canvas" canvasPlacementKey={placementKey} />
@@ -126,7 +163,10 @@ export function CanvasWorkspace() {
           <FakeScrollbars surfaceRef={surfaceRef} />
         </div>
       </div>
-      <div className="canvas-spawn-group" aria-label="Add card to canvas">
+      <div className="canvas-tool-bar" aria-label="Canvas tools">
+        <CanvasFrameToolButton />
+      </div>
+      <div className="canvas-spawn-group" aria-label="Add to canvas">
         <CanvasSpawnButton
           intent="question"
           spawnGesture={spawnGesture}

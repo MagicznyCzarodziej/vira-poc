@@ -6,7 +6,7 @@ import {
   placeAtWorld,
   placeNewCardAtWorld as placeFirstCardInstanceAtWorld,
 } from "../domain/index.ts";
-import type { DocumentState } from "./documentTypes.ts";
+import type { CanvasTool, DocumentState } from "./documentTypes.ts";
 import { bagOf, schedule } from "./documentPersistence.ts";
 
 type CanvasSlice = Pick<
@@ -23,7 +23,12 @@ type CanvasSlice = Pick<
   | "clearCanvasSelection"
   | "removeCanvasSelectionFromCanvas"
   | "setViewport"
+  | "canvasTool"
+  | "setCanvasTool"
+  | "toggleFrameTool"
 >;
+
+export const defaultCanvasTool = (): CanvasTool => "default";
 
 export const createCanvasSlice: StateCreator<DocumentState, [], [], CanvasSlice> = (set, get) => ({
   removeFromCanvas: (id) => {
@@ -112,12 +117,22 @@ export const createCanvasSlice: StateCreator<DocumentState, [], [], CanvasSlice>
     if (ids.length === 0) return;
     const canvasPlacements = { ...get().canvasPlacements };
     const actionPointPlacements = { ...get().actionPointPlacements };
+    const framePlacements = { ...get().framePlacements };
+    const frames = { ...get().frames };
     for (const id of ids) {
       if (get().actionPoints[id]) delete actionPointPlacements[id];
-      else delete canvasPlacements[id];
+      else if (get().frames[id]) {
+        delete framePlacements[id];
+        delete frames[id];
+      } else delete canvasPlacements[id];
     }
-    set({ canvasPlacements, actionPointPlacements, canvasSelection: [] });
+    set({ canvasPlacements, actionPointPlacements, framePlacements, frames, canvasSelection: [] });
     schedule(get);
+  },
+  canvasTool: defaultCanvasTool(),
+  setCanvasTool: (canvasTool) => set({ canvasTool }),
+  toggleFrameTool: () => {
+    set({ canvasTool: get().canvasTool === "frame" ? "default" : "frame" });
   },
   setViewport: (canvasViewport, userSet = true) => {
     set({

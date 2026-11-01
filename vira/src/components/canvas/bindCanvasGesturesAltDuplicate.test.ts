@@ -150,6 +150,74 @@ describe("bindCanvasGestures alt-drag duplicate", () => {
     unbind();
   });
 
+  it("drops clones and keeps the original in place when alt is released mid-drag", () => {
+    useDocument.getState().submitComposer("Ship it", "decision");
+    const itemId = Object.keys(useDocument.getState().items)[0]!;
+    useDocument.getState().cancelEdit();
+    useDocument.getState().placeNewCardAtWorld(itemId, 80, 80);
+    const placementKey = Object.keys(useDocument.getState().canvasPlacements)[0]!;
+    const origin = { ...useDocument.getState().canvasPlacements[placementKey]! };
+
+    const surface = mountCanvasCardDragFixture(placementKey, itemId);
+    const unbind = bindCanvasGestures(surface, { current: null });
+    const handle = document.querySelector(".card-drag-handle")!;
+
+    handle.dispatchEvent(
+      new PointerEvent("pointerdown", { bubbles: true, clientX: 20, clientY: 20, pointerId: 16, button: 0 }),
+    );
+    window.dispatchEvent(
+      new PointerEvent("pointermove", {
+        bubbles: true,
+        clientX: 60,
+        clientY: 60,
+        pointerId: 16,
+        button: 0,
+        altKey: true,
+      }),
+    );
+    expect(canvasPlacementKeysForItem(
+      useDocument.getState().canvasPlacements,
+      useDocument.getState().items,
+      itemId,
+    )).toHaveLength(2);
+
+    window.dispatchEvent(
+      new PointerEvent("pointermove", {
+        bubbles: true,
+        clientX: 70,
+        clientY: 70,
+        pointerId: 16,
+        button: 0,
+        altKey: false,
+      }),
+    );
+
+    expect(canvasPlacementKeysForItem(
+      useDocument.getState().canvasPlacements,
+      useDocument.getState().items,
+      itemId,
+    )).toHaveLength(1);
+    expect(useDocument.getState().canvasPlacements[placementKey]).toMatchObject({ x: origin.x, y: origin.y });
+    expect(useDocument.getState().canvasSelection).toEqual([placementKey]);
+
+    window.dispatchEvent(
+      new PointerEvent("pointermove", {
+        bubbles: true,
+        clientX: 90,
+        clientY: 90,
+        pointerId: 16,
+        button: 0,
+        altKey: false,
+      }),
+    );
+    expect(useDocument.getState().canvasPlacements[placementKey]!.x).not.toBe(origin.x);
+
+    window.dispatchEvent(
+      new PointerEvent("pointerup", { bubbles: true, clientX: 90, clientY: 90, pointerId: 16, button: 0 }),
+    );
+    unbind();
+  });
+
   it("does not duplicate again while alt remains held", () => {
     useDocument.getState().submitComposer("Ship it", "decision");
     const itemId = Object.keys(useDocument.getState().items)[0]!;

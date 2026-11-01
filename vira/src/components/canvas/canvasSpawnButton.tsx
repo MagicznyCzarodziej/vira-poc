@@ -78,7 +78,7 @@ export function CanvasSpawnButton({
         if (spawnGesture.current) spawnGesture.current.drag = true;
         event.dataTransfer.setData("text/plain", spawnPayloadForIntent(intent));
         event.dataTransfer.effectAllowed = "copy";
-        setCanvasSpawnDragImage(event.nativeEvent);
+        setCanvasSpawnDragImage(event.nativeEvent, "card");
       }}
       onDragEnd={() => {
         const gesture = spawnGesture.current;

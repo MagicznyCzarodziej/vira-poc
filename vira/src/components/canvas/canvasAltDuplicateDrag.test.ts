@@ -8,6 +8,7 @@ describe("cardPlacementKeysInDragGroup", () => {
   it("keeps card placement keys and drops action points", () => {
     const state = {
       items: { "item-1": { id: "item-1" } },
+      frames: {},
       actionPoints: { "ap-1": { id: "ap-1", title: "T", done: false } },
       canvasPlacements: {
         "canvas-1": { x: 0, y: 0, itemId: "item-1" },

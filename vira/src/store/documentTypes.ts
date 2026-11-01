@@ -1,7 +1,7 @@
-import type { FieldName, IssueRef, SavedDocument } from "../domain/index.ts";
+import type { FieldName, FrameRect, FrameResizeHandle, IssueRef, SavedDocument } from "../domain/index.ts";
 
 export type Surface = "list" | "canvas";
-export type EditField = "problem" | "answer" | "tags" | "followup" | "actionPoint";
+export type EditField = "problem" | "answer" | "tags" | "followup" | "actionPoint" | "frameTitle";
 
 export type EditTarget = {
   id: string;
@@ -14,6 +14,8 @@ export type EditTarget = {
 
 export type ComposerIntent = "decision" | "question";
 
+export type CanvasTool = "default" | "frame";
+
 export type DocumentState = SavedDocument & {
   openComposer: boolean;
   composerIntent: ComposerIntent;
@@ -24,6 +26,9 @@ export type DocumentState = SavedDocument & {
   focusNonce: number;
   revealId: string | null;
   canvasSelection: string[];
+  canvasTool: CanvasTool;
+  setCanvasTool: (tool: CanvasTool) => void;
+  toggleFrameTool: () => void;
   setView: (mode: SavedDocument["viewMode"]) => void;
   toggleDates: () => void;
   setListFilter: (notOnCanvas: boolean) => void;
@@ -74,5 +79,19 @@ export type DocumentState = SavedDocument & {
   moveActionPointPlacements: (moves: { id: string; x: number; y: number }[]) => void;
   bringActionPointToFront: (id: string) => void;
   removeActionPointFromCanvas: (id: string) => void;
+  createFrameOnCanvas: (x: number, y: number, title?: string) => string;
+  createFrameWithBoundsOnCanvas: (bounds: FrameRect, title?: string) => string;
+  setFrameTitle: (frameId: string, title: string) => void;
+  moveFramePlacements: (moves: { id: string; x: number; y: number }[]) => void;
+  resizeFrame: (id: string, width: number, height: number) => void;
+  resizeFrameFromHandle: (
+    id: string,
+    handle: FrameResizeHandle,
+    start: FrameRect,
+    dx: number,
+    dy: number,
+  ) => void;
+  bringFrameToFront: (id: string) => void;
+  removeFrameFromCanvas: (id: string) => void;
   clearReveal: () => void;
 };

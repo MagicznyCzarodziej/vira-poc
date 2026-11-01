@@ -147,8 +147,8 @@
       cursor: pointer;
       transition: background-color 0.12s ease;
     }
-    body.ref-pick-active .card:not(.card-readonly) [data-ref-pick="problem"]:hover,
-    body.ref-pick-active .card:not(.card-readonly) [data-ref-pick="answer"]:hover {
+    body.ref-pick-active .card:not(.card-readonly) [data-ref-pick="problem"]:hover:not(:has([data-action="goto-issue"]:hover)),
+    body.ref-pick-active .card:not(.card-readonly) [data-ref-pick="answer"]:hover:not(:has([data-action="goto-issue"]:hover)) {
       background-color: var(--ref-pick-hover) !important;
       color: var(--text);
     }

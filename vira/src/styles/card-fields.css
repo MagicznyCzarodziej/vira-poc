@@ -30,21 +30,21 @@
       margin: 0;
     }
     .editable:hover { background: var(--hover-fill); }
-    .problem.editable:hover {
+    .problem.editable.is-problem-field-hover {
       background: var(--question-bg);
     }
-    .timeline-step.answered .problem.editable:hover,
-    .card.card-complete .problem.editable:hover {
+    .timeline-step.answered .problem.editable.is-problem-field-hover,
+    .card.card-complete .problem.editable.is-problem-field-hover {
       background: var(--answer-bg);
     }
     .answer-block:not(.empty).editable:hover,
     .answer-block:not(.empty) .answer-text.editable:hover {
       background: transparent;
     }
-    .answer-block:not(.empty):has(.answer-text.editable:hover) {
+    .answer-block:not(.empty).is-answer-field-hover {
       background: var(--answer-bg);
     }
-    .answer-block.answer-marked:not(.empty):has(.answer-text.editable:hover),
+    .answer-block.answer-marked:not(.empty).is-answer-field-hover,
     .answer-block.answer-marked:not(.empty).editable:hover {
       background: var(--answer-tentative-bg);
     }

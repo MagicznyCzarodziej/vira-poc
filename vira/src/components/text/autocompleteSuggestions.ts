@@ -8,6 +8,7 @@ import { useDocument } from "../../store/index.ts";
 import { normalizeRefTokenForField, type IssueRefSuggestContext } from "../../domain/index.ts";
 import { issueRefButtons } from "./issueRefSuggestions.ts";
 import { closeMenu } from "./mentionMenu.ts";
+import { suppressRefPickAfterInsert } from "./refPickSession.ts";
 import type { AutocompleteOptions } from "./useAutocomplete.ts";
 
 function writeRange(
@@ -22,6 +23,7 @@ function writeRange(
   const cursor = start + insert.length;
   if (opts?.onValue) {
     opts.onValue(next, cursor);
+    ta.dispatchEvent(new Event("input", { bubbles: true }));
     return;
   }
   ta.value = next;
@@ -50,12 +52,21 @@ function insertMention(ta: HTMLTextAreaElement, name: string, opts?: Autocomplet
 
 function refSuggestContext(ta: HTMLTextAreaElement): IssueRefSuggestContext | undefined {
   const field = ta.dataset.refField;
-  return field === "answer" || field === "problem" ? { field } : undefined;
+  const hostItemId = ta.dataset.refItemId || ta.dataset.id;
+  const ctx: IssueRefSuggestContext = {};
+  if (field === "answer" || field === "problem") ctx.field = field;
+  if (hostItemId) ctx.hostItemId = hostItemId;
+  return Object.keys(ctx).length ? ctx : undefined;
 }
 
 export function isTypingIssueRef(ta: HTMLTextAreaElement): boolean {
   const pos = ta.selectionStart ?? ta.value.length;
-  return /!\d*(?:\/(?:a?\d*))?(?:@v?\d*)?$/.test(ta.value.slice(0, pos));
+  const before = ta.value.slice(0, pos);
+  const match = before.match(/!\d*(?:\/(?:a?\d*))?(?:@v?\d*)?$/);
+  if (!match) return false;
+  const bangIndex = before.length - match[0].length;
+  if (bangIndex > 0 && before[bangIndex - 1] === "(") return false;
+  return true;
 }
 
 export function completeIssueRefAtCursor(ta: HTMLTextAreaElement, refToken: string, opts?: AutocompleteOptions): boolean {
@@ -70,6 +81,7 @@ export function completeIssueRefAtCursor(ta: HTMLTextAreaElement, refToken: stri
   if (!insert) return false;
   writeRange(ta, range.start, range.end, `${insert} `, opts);
   closeMenu();
+  suppressRefPickAfterInsert();
   return true;
 }
 

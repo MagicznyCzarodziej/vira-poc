@@ -2,16 +2,21 @@ import { CARD_WIDTH, DROP_OFFSET_Y } from "../../domain/index.ts";
 import type { ComposerIntent } from "../../store/documentTypes.ts";
 import { useDocument } from "../../store/index.ts";
 import {
+  isCanvasCardSpawnPayload,
   isCanvasSpawnPayload,
   spawnIntentFromPayload,
 } from "./canvasSpawnPayload.ts";
 
 export {
   isCanvasSpawnPayload,
+  isCanvasCardSpawnPayload,
+  isCanvasFrameSpawnPayload,
   SPAWN,
   SPAWN_DECISION,
+  SPAWN_FRAME,
   SPAWN_QUESTION,
   spawnIntentFromPayload,
+  spawnPayloadForFrame,
   spawnPayloadForIntent,
 } from "./canvasSpawnPayload.ts";
 
@@ -41,15 +46,15 @@ export function bindCanvasDrop(
     const payload = event.dataTransfer?.getData("text/plain");
     if (!payload) return;
     if (!surface.contains(event.target as Node) && !isCanvasSpawnPayload(payload)) return;
-    if (isCanvasSpawnPayload(payload) && (event.target as Element).closest(".workspace-list")) {
+    if (isCanvasCardSpawnPayload(payload) && (event.target as Element).closest(".workspace-list")) {
       event.preventDefault();
       if (spawnGesture.current) spawnGesture.current.dropped = true;
       useDocument.getState().createBlankCard("list", spawnIntentFromPayload(payload));
       return;
     }
-    if (isCanvasSpawnPayload(payload) && !(event.target as Element).closest("[data-canvas-surface]")) return;
+    if (isCanvasCardSpawnPayload(payload) && !(event.target as Element).closest("[data-canvas-surface]")) return;
     event.preventDefault();
-    if (isCanvasSpawnPayload(payload)) {
+    if (isCanvasCardSpawnPayload(payload)) {
       if (spawnGesture.current) spawnGesture.current.dropped = true;
       const id = useDocument.getState().createBlankCard("canvas", spawnIntentFromPayload(payload));
       if (!id) return;

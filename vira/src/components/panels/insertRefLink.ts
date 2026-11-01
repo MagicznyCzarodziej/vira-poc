@@ -1,5 +1,6 @@
-import { buildIssueRefMarkdown, type FieldName } from "../../domain/index.ts";
-import { normalizeRefTokenForField } from "../../domain/index.ts";
+import { buildIssueRefMarkdown, type FieldName, normalizeRefTokenForField } from "../../domain/index.ts";
+import { expandRefPickEnd } from "../../domain/refPickInsert.ts";
+import { endRefPickSession } from "../text/bindRefPickFromCard.ts";
 import { armEditHandoff } from "../card/AutoTextarea.tsx";
 import { useDocument } from "../../store/index.ts";
 import { usePanels, type PickerSession } from "../../store/index.ts";
@@ -127,8 +128,10 @@ export function insertRefToken(token: string): void {
     boundTextarea = null;
     return;
   }
-  const next = `${pick.textSnapshot.slice(0, pick.start)}${markdown}${pick.textSnapshot.slice(pick.end)}`;
+  const end = expandRefPickEnd(pick.textSnapshot, pick.start, pick.end);
+  const next = `${pick.textSnapshot.slice(0, pick.start)}${markdown}${pick.textSnapshot.slice(end)}`;
   usePanels.getState().closePicker();
   boundTextarea = null;
   applyPickedText(pick, next, markdown.length);
+  endRefPickSession();
 }

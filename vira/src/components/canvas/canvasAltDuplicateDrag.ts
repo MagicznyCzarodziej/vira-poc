@@ -1,12 +1,15 @@
 import type { DocumentState } from "../../store/documentTypes.ts";
-import { isCanvasActionPointId } from "./canvasPlaced.ts";
+import { isCanvasActionPointId, isCanvasFrameId } from "./canvasPlaced.ts";
 
 export function cardPlacementKeysInDragGroup(
-  state: Pick<DocumentState, "canvasPlacements" | "items" | "actionPoints">,
+  state: Pick<DocumentState, "canvasPlacements" | "items" | "actionPoints" | "frames">,
   groupIds: readonly string[],
 ): string[] {
   return groupIds.filter(
-    (id) => !isCanvasActionPointId(state, id) && state.canvasPlacements[id] != null,
+    (id) =>
+      !isCanvasActionPointId(state, id)
+      && !isCanvasFrameId(state, id)
+      && state.canvasPlacements[id] != null,
   );
 }
 

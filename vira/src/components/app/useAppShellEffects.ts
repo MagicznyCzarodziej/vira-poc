@@ -7,7 +7,7 @@ import {
   createListCardPointerDragDeps,
 } from "../canvas/listCardPointerDrag.ts";
 import { bindActionPointClicks } from "../text/bindActionPointClicks.ts";
-import { bindRefPickFromCard, refPickModeActive } from "../text/bindRefPickFromCard.ts";
+import { bindRefPickFromCard, clearRefPickCompose, refPickModeActive } from "../text/bindRefPickFromCard.ts";
 import { useDocument, usePanels } from "../../store/index.ts";
 
 /** Document-level body classes and ref-pick listeners for the app shell. */
@@ -45,6 +45,7 @@ export function useAppShellEffects() {
   }, []);
 
   useEffect(() => {
+    if (!picker) clearRefPickCompose();
     const sync = () => document.body.classList.toggle("ref-pick-active", refPickModeActive());
     sync();
     document.addEventListener("focusin", sync);

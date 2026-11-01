@@ -4,11 +4,27 @@ import { useDocument } from "../../store/index.ts";
 import { pickerOpen, usePanels } from "../../store/index.ts";
 import { insertRefToken } from "../panels/insertRefLink.ts";
 import { completeIssueRefAtCursor, isTypingIssueRef } from "./autocompleteSuggestions.ts";
-import { menuIsOpen } from "./mentionMenu.ts";
+import {
+  clearRefPickSuppressOnInput,
+  isRefPickSuppressed,
+  suppressRefPickAfterInsert,
+  syncRefPickBodyClass,
+} from "./refPickSession.ts";
 
 let composeTa: HTMLTextAreaElement | null = null;
 let lastPickKey = "";
 let lastPickAt = 0;
+
+export function syncRefPickActiveClass(): void {
+  syncRefPickBodyClass(refPickModeActive());
+}
+
+/** Leave ref-pick mode after a reference was inserted or pick flow finished. */
+export function endRefPickSession(): void {
+  clearRefPickCompose();
+  suppressRefPickAfterInsert();
+  syncRefPickActiveClass();
+}
 
 function syncComposeTa() {
   if (pickerOpen(usePanels.getState())) return;
@@ -17,7 +33,7 @@ function syncComposeTa() {
     composeTa = active;
     return;
   }
-  if (!menuIsOpen()) composeTa = null;
+  composeTa = null;
 }
 
 function refTokenFromPickTarget(target: HTMLElement, items: Record<string, Card>): string | null {
@@ -49,10 +65,15 @@ function composeSource(): HTMLTextAreaElement | null {
   return null;
 }
 
+export function clearRefPickCompose(): void {
+  composeTa = null;
+}
+
 export function refPickModeActive(): boolean {
+  if (isRefPickSuppressed()) return false;
   if (pickerOpen(usePanels.getState())) return true;
-  if (composeSource()) return true;
-  if (menuIsOpen() && composeTa?.isConnected) return true;
+  const active = document.activeElement;
+  if (active instanceof HTMLTextAreaElement && isTypingIssueRef(active)) return true;
   return false;
 }
 
@@ -86,12 +107,16 @@ export function tryConsumeRefPick(event: Event): boolean {
   armEditHandoff(true);
   const ok = completeIssueRefAtCursor(source, token);
   armEditHandoff(false);
-  if (ok) composeTa = source;
+  if (ok) endRefPickSession();
   return ok;
 }
 
 export function bindRefPickFromCard(): () => void {
-  const onCompose = () => syncComposeTa();
+  const onCompose = () => {
+    clearRefPickSuppressOnInput();
+    syncRefPickActiveClass();
+    syncComposeTa();
+  };
   const onPick = (event: Event) => {
     tryConsumeRefPick(event);
   };

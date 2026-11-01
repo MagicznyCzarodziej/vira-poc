@@ -14,6 +14,7 @@ import {
   stripActionPointRefsFromText,
   type Card,
 } from "../domain/index.ts";
+import { suppressRefPickAfterInsert } from "../components/text/refPickSession.ts";
 import type { DocumentState, EditTarget } from "./documentTypes.ts";
 import { sameEditTarget } from "./editTarget.ts";
 import { bagOf, schedule } from "./documentPersistence.ts";
@@ -112,6 +113,16 @@ export const createEditSlice: StateCreator<DocumentState, [], [], EditSlice> = (
       });
       return;
     }
+    if (target.field === "frameTitle") {
+      const frame = get().frames[target.id];
+      if (!frame) return;
+      set({
+        editing: target,
+        editInitial: frame.title,
+        focusNonce: get().focusNonce + 1,
+      });
+      return;
+    }
     const card = get().items[target.id];
     if (!card) return;
     set({
@@ -132,6 +143,18 @@ export const createEditSlice: StateCreator<DocumentState, [], [], EditSlice> = (
       if (next) {
         get().beginEdit(next);
       } else {
+        suppressRefPickAfterInsert();
+        set({ editing: null, focusNonce: get().focusNonce + 1 });
+      }
+      schedule(get);
+      return;
+    }
+    if (editing.field === "frameTitle") {
+      get().setFrameTitle(editing.id, peeled.text.trim() || "Frame");
+      if (next) {
+        get().beginEdit(next);
+      } else {
+        suppressRefPickAfterInsert();
         set({ editing: null, focusNonce: get().focusNonce + 1 });
       }
       schedule(get);
@@ -186,9 +209,13 @@ export const createEditSlice: StateCreator<DocumentState, [], [], EditSlice> = (
         focusNonce: get().focusNonce + 1,
       });
     } else {
+      suppressRefPickAfterInsert();
       set({ editing: null, editInitial: "", ...(card ? { items } : {}) });
     }
     schedule(get);
   },
-  cancelEdit: () => set({ editing: null, editInitial: "" }),
+  cancelEdit: () => {
+    suppressRefPickAfterInsert();
+    set({ editing: null, editInitial: "" });
+  },
 });

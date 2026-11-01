@@ -36,6 +36,27 @@ export function IconDismiss() {
   );
 }
 
+/** Lucide `square-dashed-x-corner` (ISC) — remove frame from canvas. */
+export function IconSquareDashedXCorner() {
+  return (
+    <span className="icon-square-dashed-x-corner" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 3h1" />
+        <path d="m16 16 5 5" />
+        <path d="M19 3a2 2 0 0 1 2 2" />
+        <path d="m21 16-5 5" />
+        <path d="M21 9v1" />
+        <path d="M3 14v1" />
+        <path d="M3 9v1" />
+        <path d="M5 21a2 2 0 0 1-2-2" />
+        <path d="M5 3a2 2 0 0 0-2 2" />
+        <path d="M9 21h1" />
+        <path d="M9 3h1" />
+      </svg>
+    </span>
+  );
+}
+
 function IconCardFrame({ children }: { children?: ReactNode }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -94,6 +115,17 @@ export function IconActionPoint() {
         <path d="M10 14 2.3 6.3" />
         <path d="m14 6 7.7 7.7" />
         <path d="m8 6 8 8" />
+      </svg>
+    </span>
+  );
+}
+
+/** Canvas frame — rectangle. */
+export function IconFrame() {
+  return (
+    <span className="icon-frame" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="5" width="18" height="14" rx="1" />
       </svg>
     </span>
   );

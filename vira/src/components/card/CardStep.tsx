@@ -19,6 +19,10 @@ import { useDocument, type EditTarget, type Surface } from "../../store/index.ts
 import { IconActionPoint, IconTrash } from "../Icons.tsx";
 import { ActionPointRefStack } from "../text/ActionPointRefStack.tsx";
 import { RichText } from "../text/RichText.tsx";
+import {
+  shouldHighlightAnswerBlockOnHover,
+  shouldHighlightProblemOnHover,
+} from "./cardFieldHover.ts";
 import { refPickModeActive } from "../text/bindRefPickFromCard.ts";
 import { shouldSuppressListCardClick } from "../canvas/listCardDrag.ts";
 import { AutoTextarea } from "./AutoTextarea.tsx";
@@ -75,6 +79,18 @@ export function CardStep({
   const showProblemRow = hasQuestion || editingHere("problem", index);
   const showRemove = !readOnly && !isStepArchived(step) && itemActiveSteps(item).length > 1 && hasQuestion;
   const canvasEditViaGesture = surface === "canvas";
+  const syncProblemHover = (el: HTMLElement, target: EventTarget | null) => {
+    el.classList.toggle(
+      "is-problem-field-hover",
+      shouldHighlightProblemOnHover(target instanceof Element ? target : null),
+    );
+  };
+  const syncAnswerHover = (el: HTMLElement, target: EventTarget | null) => {
+    el.classList.toggle(
+      "is-answer-field-hover",
+      shouldHighlightAnswerBlockOnHover(target instanceof Element ? target : null),
+    );
+  };
   const edit = (field: "problem" | "answer") => (event: { target: EventTarget | null }) => {
     if (canvasEditViaGesture) return;
     if (shouldSuppressListCardClick() || refPickModeActive() || readOnly || ignoresEdit(event)) return;
@@ -111,6 +127,8 @@ export function CardStep({
             data-id={item.id}
             data-step={index}
             onClick={edit("problem")}
+            onMouseOver={(event) => syncProblemHover(event.currentTarget, event.target)}
+            onMouseLeave={(event) => event.currentTarget.classList.remove("is-problem-field-hover")}
           >
             <RichText text={problemText} />
           </div>
@@ -152,6 +170,8 @@ export function CardStep({
           data-id={item.id}
           data-step={index}
           onClick={readOnly || !refOnlyDecision ? undefined : edit("answer")}
+          onMouseOver={(event) => syncAnswerHover(event.currentTarget, event.target)}
+          onMouseLeave={(event) => event.currentTarget.classList.remove("is-answer-field-hover")}
         >
           <div className="answer-inner">
             {editingHere("answer", index) ? (

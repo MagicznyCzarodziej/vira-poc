@@ -57,6 +57,17 @@ export type ActionPoint = {
   createdAt: string;
 };
 
+export type Frame = {
+  id: string;
+  title: string;
+  createdAt: string;
+};
+
+export type FramePlacement = Placement & {
+  width: number;
+  height: number;
+};
+
 export type SavedDocument = {
   version: 1;
   nextId: number;
@@ -64,6 +75,9 @@ export type SavedDocument = {
   items: Record<string, Card>;
   actionPoints: Record<string, ActionPoint>;
   actionPointPlacements: Record<string, Placement>;
+  nextFrameId: number;
+  frames: Record<string, Frame>;
+  framePlacements: Record<string, FramePlacement>;
   viewMode: ViewMode;
   showAllDates: boolean;
   listFilterNotOnCanvas: boolean;
