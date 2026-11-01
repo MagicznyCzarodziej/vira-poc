@@ -6,7 +6,7 @@ import {
   sortedActionPointPlacementIds,
   sortedCardPlacementKeys,
   localOccluderRectsForFrame,
-  sortedFramePlacementIds,
+  sortedFramePlacementIdsForPaint,
 } from "../../domain/index.ts";
 import { useDocument } from "../../store/index.ts";
 import { ActionPointView } from "../action/ActionPointView.tsx";
@@ -18,6 +18,7 @@ import { bindCanvasGestures } from "./bindCanvasGestures.ts";
 import { bindCanvasRefLinks } from "./bindCanvasRefLinks.ts";
 import { zoomCanvas } from "./canvasCommands.ts";
 import { CanvasFrameToolButton } from "./CanvasFrameToolButton.tsx";
+import { CanvasTagFrameControl } from "./CanvasTagFrameControl.tsx";
 import { CanvasSpawnButton } from "./canvasSpawnButton.tsx";
 import type { SpawnGesture } from "./canvasDrop.ts";
 import { FakeScrollbars } from "./FakeScrollbars.tsx";
@@ -37,10 +38,11 @@ export function CanvasWorkspace() {
   const revealId = useDocument((state) => state.revealId);
   const canvasSelection = useDocument((state) => state.canvasSelection);
   const canvasTool = useDocument((state) => state.canvasTool);
+  const tagFramePlacementTag = useDocument((state) => state.tagFramePlacementTag);
   const selectedSet = new Set(canvasSelection);
   const ids = sortedCardPlacementKeys(placements, items);
   const apIds = sortedActionPointPlacementIds(apPlacements, actionPoints).filter((id) => actionPoints[id]);
-  const frameIds = sortedFramePlacementIds(framePlacements, frames).filter((id) => frames[id]);
+  const frameIds = sortedFramePlacementIdsForPaint(framePlacements, frames).filter((id) => frames[id]);
   const cardZBase = frameIds.length + 1;
   const apZBase = cardZBase + ids.length;
   const centered = useRef(false);
@@ -90,6 +92,13 @@ export function CanvasWorkspace() {
   }, [canvasTool]);
 
   useEffect(() => {
+    const surface = surfaceRef.current;
+    const on = !!tagFramePlacementTag;
+    surface?.classList.toggle("is-tag-frame-placement", on);
+    return () => surface?.classList.remove("is-tag-frame-placement");
+  }, [tagFramePlacementTag]);
+
+  useEffect(() => {
     const root = document.getElementById("app");
     if (!root) return;
     return bindCanvasRefLinks(root, surfaceRef, lineRef);
@@ -105,7 +114,7 @@ export function CanvasWorkspace() {
             <div className="canvas-scroll-content" data-canvas-scroll-content>
               <div className="canvas-world">
                 {ids.length === 0 && apIds.length === 0 && frameIds.length === 0 && (
-                  <p className="canvas-hint">Drag decisions or actions from the list · F frame tool · drag to select · Shift+click to add · Space+drag to pan · ⌘/Ctrl+scroll to zoom</p>
+                  <p className="canvas-hint">Drag from the list · Q question · D decision · F frame · drag to select · Shift+click to add · Space+pan · ⌘/Ctrl+scroll zoom</p>
                 )}
                 {frameIds.map((id, index) => {
                   const frame = frames[id];
@@ -185,8 +194,8 @@ export function CanvasWorkspace() {
           spawnGesture={spawnGesture}
           spawnAt={spawnAt}
           surfaceRef={surfaceRef}
-          aria-label="New question — click or drag onto canvas"
-          title="New question (click or drag)"
+          aria-label="New question — Q, click, or drag onto canvas"
+          title="New question (Q, click, or drag)"
         >
           <IconCard />
         </CanvasSpawnButton>
@@ -195,11 +204,12 @@ export function CanvasWorkspace() {
           spawnGesture={spawnGesture}
           spawnAt={spawnAt}
           surfaceRef={surfaceRef}
-          aria-label="New decision — click or drag onto canvas"
-          title="New decision (click or drag)"
+          aria-label="New decision — D, click, or drag onto canvas"
+          title="New decision (D, click, or drag)"
         >
           <IconLightbulb />
         </CanvasSpawnButton>
+        <CanvasTagFrameControl />
       </div>
       <div className="canvas-zoom-controls" aria-label="Canvas zoom">
         <button type="button" className="canvas-zoom-btn" data-action="canvas-zoom-out" aria-label="Zoom out" onClick={() => zoomBy(1 / 1.15)}>−</button>

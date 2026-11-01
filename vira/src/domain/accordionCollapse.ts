@@ -1,8 +1,12 @@
+export type ListSidebarSection = "actions" | "decisions";
+
 export type AccordionCollapseTarget =
   | { kind: "card"; itemId: string; canvasPlacementKey?: string | null }
-  | { kind: "actionPoint"; actionPointId: string };
+  | { kind: "actionPoint"; actionPointId: string }
+  | { kind: "listSection"; section: ListSidebarSection };
 
 export function accordionCollapseKey(target: AccordionCollapseTarget): string {
+  if (target.kind === "listSection") return `list-section@${target.section}`;
   if (target.kind === "card") {
     return target.canvasPlacementKey
       ? `card@${target.canvasPlacementKey}`

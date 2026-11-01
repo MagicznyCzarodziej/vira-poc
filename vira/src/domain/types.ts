@@ -83,6 +83,11 @@ export type SavedDocument = {
   viewMode: ViewMode;
   showAllDates: boolean;
   listFilterNotOnCanvas: boolean;
+  /** When set, decisions list shows only cards with this tag (normalized). */
+  listFilterTag: string | null;
+  sidebarHidden: boolean;
+  /** Collapsed accordion keys (`list-section@…`, etc.). */
+  accordionCollapsed: string[];
   nextCanvasPlacementId: number;
   canvasPlacements: Record<string, CardCanvasPlacement>;
   canvasViewport: Viewport;

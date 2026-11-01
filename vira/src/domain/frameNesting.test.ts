@@ -4,6 +4,7 @@ import {
   childFrameIds,
   inferFrameParentId,
   reinferAllFrameParents,
+  sortedFramePlacementIdsForPaint,
 } from "./frameNesting.ts";
 import type { FramePlacement } from "./types.ts";
 
@@ -54,5 +55,10 @@ describe("frameNesting", () => {
     expect(framePlacements["frame-a"]!.parentFrameId).toBe("frame-new");
     expect(framePlacements["frame-b"]!.parentFrameId).toBe("frame-new");
     expect(framePlacements["frame-new"]!.parentFrameId).toBeNull();
+    expect(sortedFramePlacementIdsForPaint(framePlacements, frames)).toEqual([
+      "frame-new",
+      "frame-a",
+      "frame-b",
+    ]);
   });
 });

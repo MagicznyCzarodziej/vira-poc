@@ -50,6 +50,21 @@ describe("frameSlice", () => {
     expect(useDocument.getState().canvasSelection).toEqual([id]);
   });
 
+  it("creates a frame with fresh placements for tagged decisions", () => {
+    const id = useDocument.getState().createBlankCard("list", "decision");
+    expect(id).toBeTruthy();
+    useDocument.getState().addTag(id!, "release");
+    useDocument.getState().placeNewCardAtWorld(id!, 50, 50);
+    expect(Object.keys(useDocument.getState().canvasPlacements)).toHaveLength(1);
+    const frameId = useDocument.getState().createFrameForTagOnCanvas("release", { x: 320, y: 240 });
+    expect(frameId).toMatch(/^frame-/);
+    expect(useDocument.getState().frames[frameId!]?.title).toBe("release");
+    expect(Object.keys(useDocument.getState().canvasPlacements)).toHaveLength(2);
+    expect(useDocument.getState().canvasPlacements[id!]).toMatchObject({ x: 50, y: 50 });
+    expect(useDocument.getState().framePlacements[frameId!]).toBeDefined();
+    expect(useDocument.getState().canvasSelection).toEqual([frameId]);
+  });
+
   it("removes selected frames from canvas and document", () => {
     const id = useDocument.getState().createFrameOnCanvas(10, 10);
     useDocument.getState().setCanvasSelection([id]);

@@ -12,16 +12,11 @@
       left: 50%;
       bottom: 0.75rem;
       z-index: 5;
-      display: flex;
-      flex-direction: row;
-      align-items: center;
-      gap: 0.35rem;
-      padding: 0.35rem;
       transform: translateX(-50%);
-      border: 1px solid var(--tone-2);
-      border-radius: 12px;
-      background: var(--bg);
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+      padding: 0;
+      border: none;
+      background: transparent;
+      box-shadow: none;
     }
     .canvas-spawn-group {
       position: absolute;
@@ -30,7 +25,10 @@
       z-index: 5;
       display: flex;
       flex-direction: row;
+      flex-wrap: wrap;
+      align-items: flex-end;
       gap: 0.4rem;
+      max-width: min(560px, calc(100% - 1.5rem));
     }
     .canvas-spawn-btn,
     .canvas-tool-btn {
@@ -47,9 +45,6 @@
       box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
       cursor: pointer;
       touch-action: none;
-    }
-    .canvas-tool-bar .canvas-tool-btn {
-      box-shadow: none;
     }
     .canvas-spawn-btn:hover,
     .canvas-tool-btn:hover {
@@ -68,19 +63,76 @@
       color: var(--link);
       box-shadow: 0 0 0 1px var(--link);
     }
-    .canvas-tool-bar .canvas-tool-btn.is-active {
-      box-shadow: 0 0 0 1px var(--link);
-    }
-    .spatial-canvas.is-frame-tool {
+    .spatial-canvas.is-frame-tool,
+    .spatial-canvas.is-tag-frame-placement {
       cursor: crosshair;
+    }
+    .canvas-tag-frame-control {
+      position: relative;
+    }
+    .canvas-tag-frame-menu {
+      position: absolute;
+      left: 0;
+      bottom: calc(100% + 0.45rem);
+      z-index: 30;
+      min-width: 10.5rem;
+      max-width: min(16rem, 70vw);
+      max-height: min(16rem, 50vh);
+      overflow: auto;
+      padding: 0.45rem;
+      border-radius: 10px;
+      border: 1px solid var(--tone-2);
+      background: var(--bg);
+      box-shadow: 0 8px 28px rgba(0, 0, 0, 0.14);
+    }
+    .canvas-tag-frame-menu-hint {
+      margin: 0 0 0.4rem;
+      padding: 0 0.35rem;
+      font-size: 0.6875rem;
+      line-height: 1.35;
+      color: var(--muted);
+    }
+    .canvas-tag-frame-menu-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+    .canvas-tag-frame-menu-item {
+      display: block;
+      width: 100%;
+      text-align: left;
+      font: inherit;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.4rem 0.55rem;
+      border: none;
+      border-radius: 7px;
+      cursor: pointer;
+      box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
+    }
+    .canvas-tag-frame-menu-item:hover {
+      filter: brightness(0.97);
+    }
+    .canvas-tag-frame-menu-item:focus-visible {
+      outline: 2px solid var(--link);
+      outline-offset: 1px;
     }
     .canvas-spawn-btn .icon-card svg,
     .canvas-spawn-btn .icon-frame svg,
+    .canvas-spawn-btn .icon-frame-with-tag svg,
+    .canvas-spawn-btn .icon-tag svg,
     .canvas-spawn-btn .icon-lightbulb svg,
     .canvas-tool-btn .icon-frame svg {
       display: block;
       width: 1.55rem;
       height: 1.55rem;
+    }
+    .canvas-tag-frame-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
     }
     .canvas-spawn-drag-ghost {
       position: fixed;

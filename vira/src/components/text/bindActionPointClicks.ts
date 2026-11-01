@@ -3,6 +3,17 @@ import { revealActionPointInList } from "../panels/history/revealCardInList.ts";
 import { useDocument } from "../../store/index.ts";
 import { decisionActionPointRefContext } from "./actionPointRefContext.ts";
 
+export function shouldNavigateToActionPointRef(event: Pick<MouseEvent, "ctrlKey" | "metaKey">): boolean {
+  return event.ctrlKey || event.metaKey;
+}
+
+export function focusActionPointInList(id: string): void {
+  const doc = useDocument.getState();
+  if (!doc.actionPoints[id]) return;
+  revealActionPointInList(id);
+  doc.beginEdit({ id, field: "actionPoint", step: 0, surface: "list" });
+}
+
 export function navigateToActionPoint(id: string): void {
   const doc = useDocument.getState();
   if (doc.viewMode !== "list") doc.setView("list");
@@ -32,7 +43,9 @@ export function bindActionPointClicks(root: HTMLElement): () => void {
     event.preventDefault();
     event.stopPropagation();
     const id = button.dataset.actionPointId;
-    if (id) navigateToActionPoint(id);
+    if (!id) return;
+    if (shouldNavigateToActionPointRef(event)) navigateToActionPoint(id);
+    else focusActionPointInList(id);
   };
   root.addEventListener("click", onClick);
   return () => root.removeEventListener("click", onClick);

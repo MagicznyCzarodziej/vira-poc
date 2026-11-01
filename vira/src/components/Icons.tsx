@@ -120,12 +120,95 @@ export function IconActionPoint() {
   );
 }
 
-/** Canvas frame — rectangle. */
+/** Lucide `square-dashed` (https://lucide.dev/icons/square-dashed). */
+function IconSquareDashedPaths() {
+  return (
+    <>
+      <path d="M5 3a2 2 0 0 0-2 2" />
+      <path d="M19 3a2 2 0 0 1 2 2" />
+      <path d="M21 19a2 2 0 0 1-2 2" />
+      <path d="M5 21a2 2 0 0 1-2-2" />
+      <path d="M9 3h1" />
+      <path d="M9 21h1" />
+      <path d="M14 3h1" />
+      <path d="M14 21h1" />
+      <path d="M3 9v1" />
+      <path d="M21 9v1" />
+      <path d="M3 14v1" />
+      <path d="M21 14v1" />
+    </>
+  );
+}
+
+/** Canvas frame — dashed square. */
 export function IconFrame() {
   return (
     <span className="icon-frame" aria-hidden="true">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="3" y="5" width="18" height="14" rx="1" />
+        <IconSquareDashedPaths />
+      </svg>
+    </span>
+  );
+}
+
+/** Lucide `tag` (https://lucide.dev/icons/tag). */
+export function IconTag() {
+  return (
+    <span className="icon-tag" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z" />
+        <circle cx="7.5" cy="7.5" r=".5" fill="currentColor" stroke="none" />
+      </svg>
+    </span>
+  );
+}
+
+/** Lucide square-dashed with Lucide tag centered inside. */
+export function IconFrameWithTag() {
+  return (
+    <span className="icon-frame-with-tag" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <IconSquareDashedPaths />
+        <g transform="translate(12 12) scale(0.36) translate(-12 -12)" strokeWidth={2 / 0.36}>
+          <path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z" />
+          <circle cx="7.5" cy="7.5" r=".5" fill="currentColor" stroke="none" />
+        </g>
+      </svg>
+    </span>
+  );
+}
+
+export function IconChevronDown() {
+  return (
+    <span className="icon-chevron-down" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round">
+        <path d="m6 9 6 6 6-6" />
+      </svg>
+    </span>
+  );
+}
+
+/** Lucide `panel-left-close` — hide sidebar. */
+export function IconPanelLeftClose() {
+  return (
+    <span className="icon-panel-left-close" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect width="18" height="18" x="3" y="3" rx="2" />
+        <path d="M9 3v18" />
+        <path d="m16 15-3-3 3-3" />
+      </svg>
+    </span>
+  );
+}
+
+/** Lucide `panel-left-open` — show sidebar. */
+export function IconPanelLeftOpen() {
+  return (
+    <span className="icon-panel-left-open" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect width="18" height="18" x="3" y="3" rx="2" />
+        <path d="M9 3v18" />
+        <path d="m14 9 3 3-3 3" />
       </svg>
     </span>
   );

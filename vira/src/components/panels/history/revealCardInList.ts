@@ -1,3 +1,16 @@
+import { accordionCollapseKey, isAccordionCollapsed } from "../../../domain/index.ts";
+import { useDocument } from "../../../store/index.ts";
+
+function ensureActionsListVisible(): void {
+  const doc = useDocument.getState();
+  if (doc.viewMode !== "list") doc.setView("list");
+  if (doc.sidebarHidden) doc.setSidebarHidden(false);
+  const actionsKey = accordionCollapseKey({ kind: "listSection", section: "actions" });
+  if (isAccordionCollapsed(doc.accordionCollapsed, actionsKey)) {
+    doc.toggleAccordionCollapsed(actionsKey);
+  }
+}
+
 function revealListElement(card: HTMLElement, scroller: Element | null): void {
   card.scrollIntoView({ block: "center", behavior: "smooth" });
   const pop = () => {
@@ -68,6 +81,7 @@ export function revealCardInList(id: string): void {
 }
 
 export function revealActionPointInList(id: string): void {
+  ensureActionsListVisible();
   revealInList(
     () => document.querySelector<HTMLElement>(
       `.workspace-list .list-action-points .action-point-card[data-id="${CSS.escape(id)}"]`,

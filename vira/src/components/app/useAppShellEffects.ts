@@ -6,6 +6,7 @@ import {
   bindListCardPointerDrag,
   createListCardPointerDragDeps,
 } from "../canvas/listCardPointerDrag.ts";
+import { bindListSidebarShortcut } from "../list/bindListSidebarShortcut.ts";
 import { bindActionPointClicks } from "../text/bindActionPointClicks.ts";
 import { bindRefPickFromCard, clearRefPickCompose, refPickModeActive } from "../text/bindRefPickFromCard.ts";
 import { useDocument, usePanels } from "../../store/index.ts";
@@ -22,6 +23,8 @@ export function useAppShellEffects() {
   }, [showAllDates, panelOpen]);
 
   useEffect(() => bindRefPickFromCard(), []);
+
+  useEffect(() => bindListSidebarShortcut(), []);
 
   useEffect(() => {
     const root = document.getElementById("app");

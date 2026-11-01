@@ -29,8 +29,8 @@ function ActionPointRefRow({
         className={chipClass}
         data-action="goto-action-point"
         data-action-point-id={id}
-        aria-label={`Go to action ${num}`}
-        title={fullTitle}
+        aria-label={`Edit action ${num} in Actions list`}
+        title={`${fullTitle} — click to edit in Actions · Ctrl+click to open on canvas`}
       >
         {display}
       </button>
@@ -44,8 +44,8 @@ function ActionPointRefRow({
         className="action-point-ref-label"
         data-action="goto-action-point"
         data-action-point-id={id}
-        aria-label={`Go to action ${num}`}
-        title={fullTitle}
+        aria-label={`Edit action ${num} in Actions list`}
+        title={`${fullTitle} — click to edit in Actions · Ctrl+click to open on canvas`}
       >
         {display}
       </button>

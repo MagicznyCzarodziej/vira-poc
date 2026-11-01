@@ -1,5 +1,6 @@
 import type { StateCreator } from "zustand";
 import {
+  addCardInstanceToCanvas,
   applyInferredFrameParent,
   applyInferredFrameParents,
   clearFrameParentReferences,
@@ -8,6 +9,7 @@ import {
   createFrame,
   moveFrameAtWorld,
   placeFrameAtWorld,
+  planTagFrameOnCanvas,
   removeFrameFromCanvasPlacements,
   resizeFrameRectFromDrag,
   setFrameBoundsAtWorld,
@@ -15,7 +17,7 @@ import {
   type FrameResizeHandle,
 } from "../domain/index.ts";
 import type { DocumentState } from "./documentTypes.ts";
-import { schedule } from "./documentPersistence.ts";
+import { bagOf, schedule } from "./documentPersistence.ts";
 
 type FrameSlice = Pick<
   DocumentState,
@@ -27,6 +29,7 @@ type FrameSlice = Pick<
   | "resizeFrameFromHandle"
   | "bringFrameToFront"
   | "removeFrameFromCanvas"
+  | "createFrameForTagOnCanvas"
 >;
 
 export const createFrameSlice: StateCreator<DocumentState, [], [], FrameSlice> = (set, get) => ({
@@ -124,6 +127,39 @@ export const createFrameSlice: StateCreator<DocumentState, [], [], FrameSlice> =
     });
     set({ framePlacements });
     schedule(get);
+  },
+  createFrameForTagOnCanvas: (tag, anchor) => {
+    const plan = planTagFrameOnCanvas(get().items, anchor, tag);
+    if (!plan) return null;
+
+    const bag = bagOf(get());
+    bag.canvasPlacements = structuredClone(bag.canvasPlacements);
+    for (const add of plan.placementAdds) {
+      addCardInstanceToCanvas(bag, add.itemId, add.x, add.y);
+    }
+
+    const frames = { ...get().frames };
+    const framePlacements = structuredClone(get().framePlacements);
+    const frameBag = { nextFrameId: get().nextFrameId, frames };
+    const frame = createFrame(frameBag, plan.frameTitle);
+    const bounds = plan.frameBounds;
+    placeFrameAtWorld(framePlacements, frameBag.frames, frame.id, bounds.x, bounds.y, {
+      width: bounds.width,
+      height: bounds.height,
+    });
+    reinferAllFrameParents(framePlacements, frameBag.frames);
+
+    set({
+      canvasPlacements: bag.canvasPlacements,
+      nextCanvasPlacementId: bag.nextCanvasPlacementId,
+      frames: frameBag.frames,
+      framePlacements,
+      nextFrameId: frameBag.nextFrameId,
+      revealId: frame.id,
+      canvasSelection: [frame.id],
+    });
+    schedule(get);
+    return frame.id;
   },
   removeFrameFromCanvas: (id) => {
     const framePlacements = { ...get().framePlacements };

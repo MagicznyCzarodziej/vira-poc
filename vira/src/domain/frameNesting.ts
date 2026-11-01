@@ -1,5 +1,5 @@
 import type { FramePlacement } from "./types.ts";
-import type { FrameRect } from "./frameCanvas.ts";
+import { sortedFramePlacementIds, type FrameRect } from "./frameCanvas.ts";
 
 function pointInsideFrame(px: number, py: number, frame: FrameRect): boolean {
   return (
@@ -108,6 +108,44 @@ export function reinferAllFrameParents(
     frames,
     Object.keys(frames).filter((id) => framePlacements[id]),
   );
+}
+
+export function frameNestingDepth(
+  frameId: string,
+  framePlacements: Record<string, FramePlacement>,
+): number {
+  let depth = 0;
+  let parentId = framePlacements[frameId]?.parentFrameId;
+  const seen = new Set<string>();
+  while (parentId && framePlacements[parentId] && !seen.has(parentId)) {
+    seen.add(parentId);
+    depth += 1;
+    parentId = framePlacements[parentId]?.parentFrameId;
+  }
+  return depth;
+}
+
+export function compareFramePaintOrder(
+  a: string,
+  b: string,
+  framePlacements: Record<string, FramePlacement>,
+): number {
+  const depthDiff = frameNestingDepth(a, framePlacements) - frameNestingDepth(b, framePlacements);
+  if (depthDiff !== 0) return depthDiff;
+  const oa = framePlacements[a]?.order ?? "";
+  const ob = framePlacements[b]?.order ?? "";
+  if (oa < ob) return -1;
+  if (oa > ob) return 1;
+  return a.localeCompare(b);
+}
+
+/** Paint ancestors below descendants so nested frame borders occlude correctly. */
+export function sortedFramePlacementIdsForPaint(
+  framePlacements: Record<string, FramePlacement>,
+  frames: Record<string, { id: string }>,
+): string[] {
+  const ids = sortedFramePlacementIds(framePlacements, frames as never);
+  return [...ids].sort((a, b) => compareFramePaintOrder(a, b, framePlacements));
 }
 
 export function clearFrameParentReferences(

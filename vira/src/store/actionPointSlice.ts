@@ -11,6 +11,7 @@ import {
   stepResolved,
   toggleActionPointDone as toggleActionPointDoneInBag,
 } from "../domain/index.ts";
+import { revealActionPointInList } from "../components/panels/history/revealCardInList.ts";
 import type { DocumentState, Surface } from "./documentTypes.ts";
 import { schedule } from "./documentPersistence.ts";
 
@@ -69,27 +70,16 @@ export const createActionPointSlice: StateCreator<DocumentState, [], [], ActionP
     if (!stepResolved(nextStep)) ensureEmptyDecisionForActionPointRefs(nextStep);
     addActionPointRefToStep(nextStep, ap.id);
 
-    const editing = get().editing;
-    const editingSameAnswer =
-      editing?.id === itemId && editing.field === "answer" && editing.step === stepIndex;
-
-    const base = {
+    set({
       items: { ...get().items, [itemId]: copy },
       actionPoints: bag.actionPoints,
       nextActionPointId: bag.nextActionPointId,
-    };
-
-    if (editingSameAnswer) {
-      set(base);
-    } else {
-      set({
-        ...base,
-        editing: { id: ap.id, field: "actionPoint", step: 0, surface },
-        editInitial: ap.title,
-        focusNonce: get().focusNonce + 1,
-      });
-    }
+      editing: { id: ap.id, field: "actionPoint", step: 0, surface: "list" },
+      editInitial: ap.title,
+      focusNonce: get().focusNonce + 1,
+    });
     schedule(get);
+    revealActionPointInList(ap.id);
     return ap.id;
   },
   linkActionPointToDecision: (actionPointId, itemId, stepIndex) => {

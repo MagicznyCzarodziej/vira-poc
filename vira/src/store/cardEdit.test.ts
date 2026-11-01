@@ -141,6 +141,21 @@ describe("action points on decisions", () => {
     expect(state.items[id]!.steps[0]!.answer ?? "").not.toMatch(/!ap\d+/);
     expect(state.editing?.field).toBe("actionPoint");
     expect(state.editing?.id).toBe(ap.id);
+    expect(state.editing?.surface).toBe("list");
+  });
+
+  it("opens the new action for editing even while the decision answer is being edited", () => {
+    useDocument.getState().submitComposer("Ship REST", "decision");
+    const id = Object.keys(useDocument.getState().items)[0]!;
+    useDocument.getState().beginEdit({ id, field: "answer", step: 0, surface: "canvas" });
+    const apId = useDocument.getState().addActionPointToDecision(id, 0, "canvas");
+    expect(apId).toBeTruthy();
+    expect(useDocument.getState().editing).toEqual({
+      id: apId,
+      field: "actionPoint",
+      step: 0,
+      surface: "list",
+    });
   });
 
   it("links an existing actionpoint when dropped on a decision answer", () => {

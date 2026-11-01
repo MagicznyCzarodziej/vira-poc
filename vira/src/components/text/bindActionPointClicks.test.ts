@@ -1,7 +1,13 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useDocument } from "../../store/useDocument.ts";
-import { navigateToActionPoint, unlinkActionPointRefFromDecision } from "./bindActionPointClicks.ts";
+import {
+  bindActionPointClicks,
+  focusActionPointInList,
+  navigateToActionPoint,
+  shouldNavigateToActionPointRef,
+  unlinkActionPointRefFromDecision,
+} from "./bindActionPointClicks.ts";
 
 vi.mock("../canvas/flyToCard.ts", () => ({
   requestCanvasReveal: vi.fn(),
@@ -41,6 +47,67 @@ describe("unlinkActionPointRefFromDecision", () => {
 
     expect(unlinkActionPointRefFromDecision(unlink)).toBe(true);
     expect(useDocument.getState().items[itemId]!.steps[0]!.actionPointRefs ?? []).toEqual([]);
+  });
+});
+
+describe("shouldNavigateToActionPointRef", () => {
+  it("requires ctrl or meta", () => {
+    expect(shouldNavigateToActionPointRef({ ctrlKey: false, metaKey: false })).toBe(false);
+    expect(shouldNavigateToActionPointRef({ ctrlKey: true, metaKey: false })).toBe(true);
+    expect(shouldNavigateToActionPointRef({ ctrlKey: false, metaKey: true })).toBe(true);
+  });
+});
+
+describe("bindActionPointClicks", () => {
+  beforeEach(() => {
+    useDocument.getState().clearAll();
+    document.body.innerHTML = "";
+    vi.mocked(requestCanvasReveal).mockClear();
+    vi.mocked(revealActionPointInList).mockClear();
+  });
+
+  it("focuses the action in the list on plain click", () => {
+    const apId = useDocument.getState().createStandaloneActionPoint("Ship");
+    document.body.innerHTML = `
+      <button type="button" data-action="goto-action-point" data-action-point-id="${apId}">Ship</button>
+    `;
+    const unbind = bindActionPointClicks(document.body);
+    document.querySelector("button")!.click();
+    unbind();
+    expect(revealActionPointInList).toHaveBeenCalledWith(apId);
+    expect(useDocument.getState().editing).toEqual({
+      id: apId,
+      field: "actionPoint",
+      step: 0,
+      surface: "list",
+    });
+  });
+
+  it("navigates on ctrl+click", () => {
+    const apId = useDocument.getState().createStandaloneActionPoint("Ship");
+    document.body.innerHTML = `
+      <button type="button" data-action="goto-action-point" data-action-point-id="${apId}">Ship</button>
+    `;
+    const unbind = bindActionPointClicks(document.body);
+    document.querySelector("button")!.dispatchEvent(
+      new MouseEvent("click", { bubbles: true, ctrlKey: true }),
+    );
+    unbind();
+    expect(revealActionPointInList).toHaveBeenCalledWith(apId);
+  });
+});
+
+describe("focusActionPointInList", () => {
+  beforeEach(() => {
+    useDocument.getState().clearAll();
+    vi.mocked(revealActionPointInList).mockClear();
+  });
+
+  it("reveals in the list and begins edit", () => {
+    const apId = useDocument.getState().createStandaloneActionPoint("Review");
+    focusActionPointInList(apId);
+    expect(revealActionPointInList).toHaveBeenCalledWith(apId);
+    expect(useDocument.getState().editing?.field).toBe("actionPoint");
   });
 });
 

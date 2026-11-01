@@ -8,6 +8,7 @@ import { recomputeNextActionPointId } from "./actionPoints.ts";
 import { recomputeNextId } from "./cards.ts";
 import { normalizeStep } from "./steps.ts";
 import { normalizeTagsList } from "./tags.ts";
+import { normalizeAccordionCollapsed } from "./accordionCollapse.ts";
 import { clampFramePlacement } from "./frameCanvas.ts";
 import { applyInferredFrameParent } from "./frameNesting.ts";
 import { recomputeNextFrameId } from "./frames.ts";
@@ -139,6 +140,11 @@ export function normalizeDocument(data: SavedDocument): SavedDocument {
     viewMode: isViewMode(data.viewMode) ? data.viewMode : "list",
     showAllDates: data.showAllDates === true,
     listFilterNotOnCanvas: data.listFilterNotOnCanvas === true,
+    listFilterTag: typeof data.listFilterTag === "string" && data.listFilterTag.trim()
+      ? data.listFilterTag.trim().toLowerCase()
+      : null,
+    sidebarHidden: data.sidebarHidden === true,
+    accordionCollapsed: normalizeAccordionCollapsed(data.accordionCollapsed),
     nextCanvasPlacementId: Math.max(
       recomputeNextCanvasPlacementId(canvasPlacements),
       Number(data.nextCanvasPlacementId) || 1,

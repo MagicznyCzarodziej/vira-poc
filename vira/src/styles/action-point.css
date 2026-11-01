@@ -1,7 +1,5 @@
     .list-view--actions {
-      margin-bottom: 0.75rem;
-      padding-bottom: 0.75rem;
-      border-bottom: 1px solid var(--tone-2);
+      padding-bottom: 0;
     }
     .list-empty-hint {
       color: var(--muted);

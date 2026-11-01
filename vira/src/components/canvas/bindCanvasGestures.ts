@@ -1,5 +1,6 @@
 import { CARD_WIDTH, DROP_OFFSET_Y, clampPlacement, clampZoom } from "../../domain/index.ts";
 import { scrollForZoomAtPoint } from "./canvasWorldZoom.ts";
+import type { ComposerIntent } from "../../store/documentTypes.ts";
 import { useDocument } from "../../store/index.ts";
 import { refPickModeActive, tryConsumeRefPick } from "../text/bindRefPickFromCard.ts";
 import { tryBeginCanvasEditFromPointer } from "./canvasCardEdit.ts";
@@ -25,6 +26,7 @@ import {
 } from "./canvasMarquee.ts";
 import { noteListCardDragEnded } from "./listCardDrag.ts";
 import { bindCanvasReveal } from "./bindCanvasReveal.ts";
+import { requestCanvasReveal } from "./flyToCard.ts";
 import { bindCanvasDrop, type SpawnGesture } from "./canvasDrop.ts";
 import {
   beginActionPointLinkDrag,
@@ -361,6 +363,15 @@ export function bindCanvasGestures(surface: HTMLElement, spawnGesture: { readonl
       return;
     }
     if (background && event.button === 0) {
+      const tagFrameTag = useDocument.getState().tagFramePlacementTag;
+      if (tagFrameTag) {
+        const pt = worldPoint(event.clientX, event.clientY);
+        const frameId = useDocument.getState().createFrameForTagOnCanvas(tagFrameTag, pt);
+        useDocument.getState().cancelTagFramePlacement();
+        if (frameId) requestCanvasReveal(frameId);
+        event.preventDefault();
+        return;
+      }
       if (useDocument.getState().canvasTool === "frame") {
         frameDraw = {
           id: event.pointerId,
@@ -717,16 +728,24 @@ export function bindCanvasGestures(surface: HTMLElement, spawnGesture: { readonl
     document.activeElement instanceof HTMLElement
     && !!document.activeElement.closest("textarea, input, select, [contenteditable='true']");
 
+  const spawnCardShortcut = (event: KeyboardEvent, intent: ComposerIntent): boolean => {
+    if (event.repeat || event.metaKey || event.ctrlKey || event.altKey) return false;
+    if (typingInField() || !hotspot.over || useDocument.getState().viewMode !== "list") return false;
+    event.preventDefault();
+    const id = useDocument.getState().createBlankCard("canvas", intent);
+    if (!id) return true;
+    const pt = worldPoint(hotspot.x, hotspot.y);
+    useDocument.getState().placeNewCardAtWorld(id, pt.x - CARD_WIDTH / 2, pt.y - DROP_OFFSET_Y);
+    return true;
+  };
+
   const onKeyDown = (event: KeyboardEvent) => {
     const typing = typingInField();
-    if ((event.key === "c" || event.key === "C") && !event.repeat && !event.metaKey && !event.ctrlKey && !event.altKey) {
-      if (typing || !hotspot.over || useDocument.getState().viewMode !== "list") return;
-      event.preventDefault();
-      const id = useDocument.getState().createBlankCard("canvas", "decision");
-      if (!id) return;
-      const pt = worldPoint(hotspot.x, hotspot.y);
-      useDocument.getState().placeNewCardAtWorld(id, pt.x - CARD_WIDTH / 2, pt.y - DROP_OFFSET_Y);
-      return;
+    if (event.key === "q" || event.key === "Q") {
+      if (spawnCardShortcut(event, "question")) return;
+    }
+    if (event.key === "d" || event.key === "D") {
+      if (spawnCardShortcut(event, "decision")) return;
     }
     if ((event.key === "f" || event.key === "F") && !event.repeat && !event.metaKey && !event.ctrlKey && !event.altKey) {
       if (typing || !hotspot.over || useDocument.getState().viewMode !== "list") return;
@@ -751,6 +770,11 @@ export function bindCanvasGestures(surface: HTMLElement, spawnGesture: { readonl
       return;
     }
     if (event.key === "Escape" && !typing) {
+      if (useDocument.getState().tagFramePlacementTag) {
+        useDocument.getState().cancelTagFramePlacement();
+        event.preventDefault();
+        return;
+      }
       if (frameDraw) {
         clearFrameDraw();
         event.preventDefault();

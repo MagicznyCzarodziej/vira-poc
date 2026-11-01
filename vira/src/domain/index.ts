@@ -1,4 +1,12 @@
 export {
+  accordionCollapseKey,
+  isAccordionCollapsed,
+  normalizeAccordionCollapsed,
+  toggleAccordionCollapsedKey,
+  type AccordionCollapseTarget,
+  type ListSidebarSection,
+} from "./accordionCollapse.ts";
+export {
   STORAGE_KEY,
   STORAGE_VERSION,
   ACTION_DROP_OFFSET_Y,
@@ -55,11 +63,14 @@ export { createFrame, recomputeNextFrameId } from "./frames.ts";
 export {
   applyInferredFrameParent,
   applyInferredFrameParents,
-  reinferAllFrameParents,
+  compareFramePaintOrder,
   childFrameIds,
   clearFrameParentReferences,
   descendantFrameIds,
+  frameNestingDepth,
   inferFrameParentId,
+  reinferAllFrameParents,
+  sortedFramePlacementIdsForPaint,
 } from "./frameNesting.ts";
 export {
   createActionPoint,
@@ -97,6 +108,11 @@ export {
   parseTags,
   tagStyle,
 } from "./tags.ts";
+export { cardHasTag, itemMatchesListTagFilter, liveItemIdsWithTag } from "./listTagFilter.ts";
+export {
+  planTagFrameOnCanvas,
+  type TagFramePlan,
+} from "./tagFrameLayout.ts";
 export {
   archiveStepAnswerField,
   cardNumber,

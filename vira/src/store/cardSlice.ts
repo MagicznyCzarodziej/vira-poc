@@ -161,6 +161,11 @@ export const createCardSlice: StateCreator<DocumentState, [], [], CardSlice> = (
       editing: null,
       editInitial: "",
       canvasTool: "default",
+      sidebarHidden: false,
+      accordionCollapsed: [],
+      listFilterTag: null,
+      tagFrameMenuOpen: false,
+      tagFramePlacementTag: null,
     });
     schedule(get);
   },
