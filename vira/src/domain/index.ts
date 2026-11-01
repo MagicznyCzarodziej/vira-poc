@@ -26,6 +26,9 @@ export type {
   FieldName,
   Frame,
   FramePlacement,
+  Note,
+  NoteColor,
+  NotePlacement,
   IssueRef,
   Placement,
   SavedDocument,
@@ -60,6 +63,33 @@ export {
 } from "./frameCanvas.ts";
 export { frameRectsIntersect, localOccluderRectsForFrame } from "./frameBorderOcclusion.ts";
 export { createFrame, recomputeNextFrameId } from "./frames.ts";
+export {
+  NOTE_COLORS,
+  NOTE_COLOR_MAP,
+  DEFAULT_NOTE_COLOR,
+  createNote,
+  normalizeNoteColor,
+  noteColorHex,
+  noteColorIsDark,
+  noteColorLabel,
+  recomputeNextNoteId,
+  type NoteBag,
+  type NoteColor,
+} from "./notes.ts";
+export {
+  NOTE_DEFAULT_HEIGHT,
+  NOTE_DEFAULT_WIDTH,
+  NOTE_MIN_HEIGHT,
+  NOTE_MIN_WIDTH,
+  clampNotePlacement,
+  moveNoteAtWorld,
+  placeNoteAtWorld,
+  removeNoteFromCanvasPlacements,
+  resizeNoteRectFromDrag,
+  setNoteBoundsAtWorld,
+  sortedNotePlacementIds,
+  duplicateNotePlacements,
+} from "./noteCanvas.ts";
 export {
   applyInferredFrameParent,
   applyInferredFrameParents,
@@ -161,6 +191,15 @@ export {
   truncateLabel,
   locateIssueRefSource,
 } from "./refs.ts";
+export {
+  applyIssueRefRevisionUpgrade,
+  commitIssueRefUpgrade,
+  findIssueRefTextHost,
+  issueRefUpgradeHeadRev,
+  readIssueRefHostText,
+  type IssueRefTextHost,
+  type IssueRefUpgradeSink,
+} from "./issueRefHost.ts";
 export { diffWordsOps } from "./diff.ts";
 export {
   collectCardHistoryEvents,

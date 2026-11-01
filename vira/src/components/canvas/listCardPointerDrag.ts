@@ -2,6 +2,15 @@ import { CARD_WIDTH, DROP_OFFSET_Y } from "../../domain/index.ts";
 import { useDocument } from "../../store/index.ts";
 import { isListCardDragField, noteListCardDragEnded } from "./listCardDrag.ts";
 import { clearListCardDragGhost, syncListCardDragGhost } from "./listCardPointerDragGhost.ts";
+import { syncIssueRefLinkDragGhost } from "./issueRefLinkDragGhost.ts";
+import {
+  beginIssueRefLinkDrag,
+  endIssueRefLinkDrag,
+  finishIssueRefLinkDrop,
+  issueRefLinkSourceFromTarget,
+  syncIssueRefLinkDropHighlight,
+  type IssueRefLinkSource,
+} from "../text/issueRefLinkDrag.ts";
 
 export const LIST_CARD_DRAG_THRESHOLD_PX = 5;
 
@@ -12,6 +21,8 @@ export type ListCardPointerDragSession = {
   startX: number;
   startY: number;
   dragging: boolean;
+  mode: "place" | "refLink";
+  refSource?: IssueRefLinkSource;
 };
 
 export type ListCardPointerDragDeps = {
@@ -76,9 +87,10 @@ export function bindListCardPointerDrag(root: HTMLElement, deps: ListCardPointer
 
   const clearSession = () => {
     if (session) releaseCapture(session);
-    session?.card.classList.remove("is-list-pointer-dragging");
+    session?.card.classList.remove("is-list-pointer-dragging", "is-issue-ref-link-dragging");
     document.body.classList.remove("list-card-pointer-drag-active");
     clearListCardDragGhost();
+    endIssueRefLinkDrag();
     session = null;
   };
 
@@ -88,6 +100,7 @@ export function bindListCardPointerDrag(root: HTMLElement, deps: ListCardPointer
     const id = card?.dataset.canvasDragId;
     if (!card || !id) return;
     if (isListCardDragField(event.target)) return;
+    const refSource = event.shiftKey ? issueRefLinkSourceFromTarget(event.target) : null;
     session = {
       id,
       card,
@@ -95,6 +108,8 @@ export function bindListCardPointerDrag(root: HTMLElement, deps: ListCardPointer
       startX: event.clientX,
       startY: event.clientY,
       dragging: false,
+      mode: refSource ? "refLink" : "place",
+      refSource: refSource ?? undefined,
     };
   };
 
@@ -104,17 +119,31 @@ export function bindListCardPointerDrag(root: HTMLElement, deps: ListCardPointer
       if (!session.dragging) {
         session.dragging = true;
         session.card.classList.add("is-list-pointer-dragging");
-        document.body.classList.add("list-card-pointer-drag-active");
+        if (session.mode === "refLink") {
+          session.card.classList.add("is-issue-ref-link-dragging");
+          beginIssueRefLinkDrag();
+        } else {
+          document.body.classList.add("list-card-pointer-drag-active");
+        }
         try {
           session.card.setPointerCapture(event.pointerId);
         } catch {
           /* inactive pointer */
         }
-        syncListCardDragGhost(session.card, event.clientX, event.clientY);
+        if (session.mode === "refLink" && session.refSource) {
+          syncIssueRefLinkDragGhost(session.refSource.refToken, event.clientX, event.clientY);
+        } else {
+          syncListCardDragGhost(session.card, event.clientX, event.clientY);
+        }
       }
     }
     if (session.dragging) {
-      syncListCardDragGhost(session.card, event.clientX, event.clientY);
+      if (session.mode === "refLink" && session.refSource) {
+        syncIssueRefLinkDragGhost(session.refSource.refToken, event.clientX, event.clientY);
+        syncIssueRefLinkDropHighlight(event.clientX, event.clientY);
+      } else {
+        syncListCardDragGhost(session.card, event.clientX, event.clientY);
+      }
       event.preventDefault();
     }
   };
@@ -123,6 +152,10 @@ export function bindListCardPointerDrag(root: HTMLElement, deps: ListCardPointer
     if (!(event instanceof PointerEvent) || !session || event.pointerId !== session.pointerId) return;
     const current = session;
     clearSession();
+    if (current.mode === "refLink" && current.dragging && current.refSource) {
+      finishIssueRefLinkDrop(current.refSource, event.clientX, event.clientY);
+      return;
+    }
     finishListCardPointerDrag(current, event.clientX, event.clientY, deps);
   };
 

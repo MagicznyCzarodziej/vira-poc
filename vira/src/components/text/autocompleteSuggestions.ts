@@ -51,6 +51,7 @@ function insertMention(ta: HTMLTextAreaElement, name: string, opts?: Autocomplet
 }
 
 function refSuggestContext(ta: HTMLTextAreaElement): IssueRefSuggestContext | undefined {
+  if (ta.dataset.noteId) return undefined;
   const field = ta.dataset.refField;
   const hostItemId = ta.dataset.refItemId || ta.dataset.id;
   const ctx: IssueRefSuggestContext = {};
@@ -150,7 +151,7 @@ export function suggestionButtons(ta: HTMLTextAreaElement, opts?: AutocompleteOp
   );
   if (issueButtons !== null) return issueButtons;
 
-  const tag = before.match(/#([\w.-]*)$/);
+  const tag = opts?.tags !== false ? before.match(/#([\w.-]*)$/) : null;
   if (tag) {
     const query = (tag[1] ?? "").toLowerCase();
     const hits = allKnownTags(items).filter((name) => name.toLowerCase().startsWith(query)).slice(0, 8);

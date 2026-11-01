@@ -8,6 +8,43 @@ export function bindCanvasReveal(surface: HTMLElement): () => void {
     const id = detail?.id;
     const doc = useDocument.getState();
     if (!id) return;
+    if (doc.notes[id]) {
+      const notePlacement = doc.notePlacements[id];
+      if (!notePlacement) return;
+      const bounds = {
+        minX: notePlacement.x,
+        minY: notePlacement.y,
+        maxX: notePlacement.x + notePlacement.width,
+        maxY: notePlacement.y + notePlacement.height,
+      };
+      const pop = () => {
+        const placed = surface.querySelector<HTMLElement>(`[data-canvas-placed="${id}"]`);
+        if (!placed) return;
+        placed.classList.remove("is-canvas-reveal-pop");
+        void placed.getBoundingClientRect();
+        placed.classList.add("is-canvas-reveal-pop");
+      };
+      if (detail.smooth !== false) {
+        flyViewportToCard(
+          surface,
+          bounds,
+          () => useDocument.getState().canvasViewport,
+          (next) => useDocument.getState().setViewport(next),
+          pop,
+        );
+        return;
+      }
+      const zoom = useDocument.getState().canvasViewport.zoom;
+      const centerX = (bounds.minX + bounds.maxX) / 2;
+      const centerY = (bounds.minY + bounds.maxY) / 2;
+      useDocument.getState().setViewport({
+        zoom,
+        scrollLeft: centerX * zoom - surface.clientWidth / 2,
+        scrollTop: centerY * zoom - surface.clientHeight / 2,
+      });
+      pop();
+      return;
+    }
     if (doc.frames[id]) {
       const framePlacement = doc.framePlacements[id];
       if (!framePlacement) return;

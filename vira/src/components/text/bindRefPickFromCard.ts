@@ -1,9 +1,10 @@
-import { isRefLinkableAnswer, isRefLinkableStep, type Card } from "../../domain/index.ts";
+import { refTokenFromRefPickElement } from "./issueRefLinkDrag.ts";
 import { armEditHandoff } from "../card/AutoTextarea.tsx";
 import { useDocument } from "../../store/index.ts";
 import { pickerOpen, usePanels } from "../../store/index.ts";
 import { insertRefToken } from "../panels/insertRefLink.ts";
 import { completeIssueRefAtCursor, isTypingIssueRef } from "./autocompleteSuggestions.ts";
+import { autocompleteOptsForTextarea } from "./textareaComposeSync.ts";
 import {
   clearRefPickSuppressOnInput,
   isRefPickSuppressed,
@@ -34,19 +35,6 @@ function syncComposeTa() {
     return;
   }
   composeTa = null;
-}
-
-function refTokenFromPickTarget(target: HTMLElement, items: Record<string, Card>): string | null {
-  const itemId = target.dataset.id;
-  const stepIndex = Number(target.dataset.step);
-  const field = target.dataset.refPick;
-  if (!itemId || !Number.isFinite(stepIndex) || (field !== "problem" && field !== "answer")) return null;
-  const step = items[itemId]?.steps[stepIndex];
-  if (!step || !isRefLinkableStep(step)) return null;
-  const stepNum = stepIndex + 1;
-  if (field === "problem") return `${itemId}/${stepNum}`;
-  if (isRefLinkableAnswer(step)) return `${itemId}/a${stepNum}`;
-  return `${itemId}/${stepNum}`;
 }
 
 function refPickTarget(event: Event): HTMLElement | null {
@@ -82,7 +70,7 @@ export function tryConsumeRefPick(event: Event): boolean {
   const editable = refPickTarget(event);
   if (!editable) return false;
 
-  const token = refTokenFromPickTarget(editable, useDocument.getState().items);
+  const token = refTokenFromRefPickElement(editable, useDocument.getState().items);
   if (!token) return false;
 
   const pickKey = `${token}:${editable.dataset.id}:${editable.dataset.step}:${editable.dataset.refPick}`;
@@ -105,7 +93,7 @@ export function tryConsumeRefPick(event: Event): boolean {
   const source = composeSource();
   if (!source) return false;
   armEditHandoff(true);
-  const ok = completeIssueRefAtCursor(source, token);
+  const ok = completeIssueRefAtCursor(source, token, autocompleteOptsForTextarea(source));
   armEditHandoff(false);
   if (ok) endRefPickSession();
   return ok;

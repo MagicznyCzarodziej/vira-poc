@@ -9,11 +9,20 @@ export function editTargetFromCanvasPointer(target: EventTarget | null): EditTar
   const el = target.closest<HTMLElement>("[data-editable][data-id]");
   if (!el) return null;
   const field = el.dataset.editable;
-  if (field !== "problem" && field !== "answer" && field !== "tags") return null;
+  if (field !== "problem" && field !== "answer" && field !== "tags" && field !== "noteBody") return null;
   const id = el.dataset.id;
   if (!id) return null;
   const stepRaw = el.dataset.step;
   const step = stepRaw != null && stepRaw !== "" ? Number(stepRaw) : 0;
+  if (field === "noteBody") {
+    if (!el.closest(".canvas-placed-note")) return null;
+    return {
+      id,
+      field: "noteBody",
+      step: 0,
+      surface: "canvas",
+    };
+  }
   const placementHost = el.closest<HTMLElement>(".canvas-placed-card");
   const canvasPlacementKey = placementHost?.dataset.canvasPlaced;
   if (!canvasPlacementKey) return null;

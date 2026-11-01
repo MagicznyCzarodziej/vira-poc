@@ -4,6 +4,8 @@ import { bindTextarea, handleMenuKey, openMenu } from "./mentionMenu.ts";
 export type AutocompleteOptions = {
   onTag?: (tag: string, ta: HTMLTextAreaElement) => void;
   onValue?: (value: string, cursor: number) => void;
+  /** When false, `#` is plain text (no menu or Enter-to-confirm tag). */
+  tags?: boolean;
 };
 
 export { menuIsOpen } from "./mentionMenu.ts";
@@ -19,7 +21,13 @@ export function bindAutocomplete(ta: HTMLTextAreaElement, opts?: AutocompleteOpt
     () => openMenu(ta, suggestionButtons(ta, opts)),
     (event) => {
       if (handleMenuKey(event)) return;
-      if (event.key === "Enter" && !event.shiftKey && !event.isComposing && confirmTagAtCursor(ta, opts)) {
+      if (
+        opts?.tags !== false
+        && event.key === "Enter"
+        && !event.shiftKey
+        && !event.isComposing
+        && confirmTagAtCursor(ta, opts)
+      ) {
         event.preventDefault();
         event.stopPropagation();
         event.stopImmediatePropagation();

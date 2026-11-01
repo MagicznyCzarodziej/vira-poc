@@ -18,6 +18,7 @@ function sessionAt(x: number, y: number): ListCardPointerDragSession {
     startX: x,
     startY: y,
     dragging: false,
+    mode: "place",
   };
 }
 

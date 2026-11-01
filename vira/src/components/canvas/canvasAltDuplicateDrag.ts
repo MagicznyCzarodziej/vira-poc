@@ -1,16 +1,24 @@
 import type { DocumentState } from "../../store/documentTypes.ts";
-import { isCanvasActionPointId, isCanvasFrameId } from "./canvasPlaced.ts";
+import { isCanvasActionPointId, isCanvasFrameId, isCanvasNoteId } from "./canvasPlaced.ts";
 
 export function cardPlacementKeysInDragGroup(
-  state: Pick<DocumentState, "canvasPlacements" | "items" | "actionPoints" | "frames">,
+  state: Pick<DocumentState, "canvasPlacements" | "items" | "actionPoints" | "frames" | "notes">,
   groupIds: readonly string[],
 ): string[] {
   return groupIds.filter(
     (id) =>
       !isCanvasActionPointId(state, id)
       && !isCanvasFrameId(state, id)
+      && !isCanvasNoteId(state, id)
       && state.canvasPlacements[id] != null,
   );
+}
+
+export function noteIdsInDragGroup(
+  state: Pick<DocumentState, "notes" | "notePlacements">,
+  groupIds: readonly string[],
+): string[] {
+  return groupIds.filter((id) => isCanvasNoteId(state, id) && state.notePlacements[id] != null);
 }
 
 export function remapCanvasDragGroupForAltDuplicate(

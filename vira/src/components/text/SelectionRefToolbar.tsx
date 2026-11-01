@@ -117,8 +117,15 @@ export function SelectionRefToolbar() {
               start: sel.start,
               end: sel.end,
               textSnapshot: ta.value,
-              canvas: !!ta.closest(".canvas-placed-card"),
-              mode: ta.matches("[data-composer-input]") ? "composer" : ta.matches("[data-followup-input]") ? "followup" : "inline",
+              canvas: !!ta.closest(".canvas-placed-card") || !!ta.closest(".canvas-placed-note"),
+              mode: ta.dataset.noteId
+                ? "note"
+                : ta.matches("[data-composer-input]")
+                  ? "composer"
+                  : ta.matches("[data-followup-input]")
+                    ? "followup"
+                    : "inline",
+              noteId: ta.dataset.noteId,
               itemId: ta.dataset.refItemId || ta.dataset.id,
               field: ta.dataset.refField === "answer" ? "answer" : ta.dataset.refField === "problem" ? "problem" : undefined,
               stepIndex: ta.dataset.refStep ? Number(ta.dataset.refStep) : undefined,

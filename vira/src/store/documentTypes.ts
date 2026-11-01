@@ -1,7 +1,21 @@
-import type { FieldName, FrameRect, FrameResizeHandle, IssueRef, SavedDocument } from "../domain/index.ts";
+import type {
+  FieldName,
+  FrameRect,
+  FrameResizeHandle,
+  IssueRef,
+  NoteColor,
+  SavedDocument,
+} from "../domain/index.ts";
 
 export type Surface = "list" | "canvas";
-export type EditField = "problem" | "answer" | "tags" | "followup" | "actionPoint" | "frameTitle";
+export type EditField =
+  | "problem"
+  | "answer"
+  | "tags"
+  | "followup"
+  | "actionPoint"
+  | "frameTitle"
+  | "noteBody";
 
 export type EditTarget = {
   id: string;
@@ -105,5 +119,22 @@ export type DocumentState = SavedDocument & {
   ) => void;
   bringFrameToFront: (id: string) => void;
   removeFrameFromCanvas: (id: string) => void;
+  createNoteOnCanvas: (x: number, y: number) => string;
+  setNoteBody: (noteId: string, body: string) => void;
+  setNoteColor: (noteId: string, color: NoteColor) => void;
+  moveNotePlacements: (moves: { id: string; x: number; y: number }[]) => void;
+  resizeNoteFromHandle: (
+    id: string,
+    handle: FrameResizeHandle,
+    start: FrameRect,
+    dx: number,
+    dy: number,
+  ) => void;
+  bringNoteToFront: (id: string) => void;
+  removeNoteFromCanvas: (id: string) => void;
+  duplicateNotesForDrag: (
+    noteIds: readonly string[],
+    positions: Readonly<Record<string, { x: number; y: number }>>,
+  ) => Record<string, string>;
   clearReveal: () => void;
 };

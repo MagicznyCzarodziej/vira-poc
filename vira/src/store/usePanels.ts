@@ -6,8 +6,9 @@ export type PickerSession = {
   start: number;
   end: number;
   textSnapshot: string;
-  mode: "inline" | "composer" | "followup";
+  mode: "inline" | "composer" | "followup" | "note";
   itemId?: string;
+  noteId?: string;
   field?: FieldName;
   stepIndex?: number;
   canvas?: boolean;

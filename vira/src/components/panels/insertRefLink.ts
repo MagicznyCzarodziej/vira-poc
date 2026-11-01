@@ -20,6 +20,17 @@ export function capturePickerSession(detail: OpenDetail): PickerSession | null {
       ? document.activeElement
       : null;
   boundTextarea = ta;
+  if (ta?.dataset.noteId) {
+    return {
+      label: detail.label,
+      start: detail.start ?? ta.selectionStart ?? 0,
+      end: detail.end ?? ta.selectionEnd ?? detail.start ?? ta.selectionStart ?? 0,
+      textSnapshot: detail.textSnapshot ?? ta.value ?? "",
+      mode: "note",
+      noteId: ta.dataset.noteId,
+      canvas: detail.canvas ?? !!ta.closest(".canvas-placed-note"),
+    };
+  }
   const mode = detail.mode
     ?? (ta?.matches("[data-composer-input]")
       ? "composer"
@@ -52,6 +63,10 @@ function setNativeValue(ta: HTMLTextAreaElement, value: string) {
 function findTextarea(pick: PickerSession): HTMLTextAreaElement | null {
   if (boundTextarea?.isConnected) return boundTextarea;
   if (pick.mode === "composer") return document.querySelector<HTMLTextAreaElement>("[data-composer-input]");
+  if (pick.mode === "note" && pick.noteId) {
+    const id = CSS.escape(pick.noteId);
+    return document.querySelector<HTMLTextAreaElement>(`textarea[data-note-id="${id}"]`);
+  }
   if (!pick.itemId) return null;
   const id = CSS.escape(pick.itemId);
   if (pick.mode === "followup") {
@@ -69,6 +84,9 @@ function findTextarea(pick: PickerSession): HTMLTextAreaElement | null {
 function applyPickedText(pick: PickerSession, next: string, markdownLen: number): void {
   if (pick.mode === "followup" && pick.itemId) {
     useDocument.getState().setFollowupDraft(pick.itemId, next);
+  }
+  if (pick.mode === "note" && pick.noteId) {
+    useDocument.getState().setNoteBody(pick.noteId, next);
   }
 
   const ta = findTextarea(pick);

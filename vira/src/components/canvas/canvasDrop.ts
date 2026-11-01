@@ -1,8 +1,9 @@
-import { CARD_WIDTH, DROP_OFFSET_Y } from "../../domain/index.ts";
+import { CARD_WIDTH, DROP_OFFSET_Y, NOTE_DEFAULT_HEIGHT, NOTE_DEFAULT_WIDTH } from "../../domain/index.ts";
 import type { ComposerIntent } from "../../store/documentTypes.ts";
 import { useDocument } from "../../store/index.ts";
 import {
   isCanvasCardSpawnPayload,
+  isCanvasNoteSpawnPayload,
   isCanvasSpawnPayload,
   spawnIntentFromPayload,
 } from "./canvasSpawnPayload.ts";
@@ -14,11 +15,15 @@ export {
   SPAWN,
   SPAWN_DECISION,
   SPAWN_FRAME,
+  SPAWN_NOTE,
   SPAWN_QUESTION,
   spawnIntentFromPayload,
   spawnPayloadForFrame,
   spawnPayloadForIntent,
+  spawnPayloadForNote,
 } from "./canvasSpawnPayload.ts";
+
+export type SpawnGestureKind = ComposerIntent | "note";
 
 export type SpawnGesture = {
   id: number;
@@ -27,7 +32,7 @@ export type SpawnGesture = {
   dist: number;
   drag: boolean;
   dropped: boolean;
-  intent: ComposerIntent;
+  kind: SpawnGestureKind;
 };
 
 export function bindCanvasDrop(
@@ -54,6 +59,16 @@ export function bindCanvasDrop(
     }
     if (isCanvasCardSpawnPayload(payload) && !(event.target as Element).closest("[data-canvas-surface]")) return;
     event.preventDefault();
+    if (isCanvasNoteSpawnPayload(payload)) {
+      if (!(event.target as Element).closest("[data-canvas-surface]")) return;
+      if (spawnGesture.current) spawnGesture.current.dropped = true;
+      const pt = worldPoint(event.clientX, event.clientY);
+      useDocument.getState().createNoteOnCanvas(
+        pt.x - NOTE_DEFAULT_WIDTH / 2,
+        pt.y - NOTE_DEFAULT_HEIGHT / 2,
+      );
+      return;
+    }
     if (isCanvasCardSpawnPayload(payload)) {
       if (spawnGesture.current) spawnGesture.current.dropped = true;
       const id = useDocument.getState().createBlankCard("canvas", spawnIntentFromPayload(payload));

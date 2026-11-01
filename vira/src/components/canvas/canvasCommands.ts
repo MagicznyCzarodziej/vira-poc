@@ -4,6 +4,8 @@ import {
   DROP_OFFSET_Y,
   FRAME_DEFAULT_HEIGHT,
   FRAME_DEFAULT_WIDTH,
+  NOTE_DEFAULT_HEIGHT,
+  NOTE_DEFAULT_WIDTH,
   clampZoom,
 } from "../../domain/index.ts";
 import { scrollForZoomAtPoint } from "./canvasWorldZoom.ts";
@@ -61,4 +63,20 @@ export function placeCenteredFrame(
   const x = (surface.scrollLeft + rect.width / 2) / zoom - FRAME_DEFAULT_WIDTH / 2;
   const y = (surface.scrollTop + rect.height / 2) / zoom - FRAME_DEFAULT_HEIGHT / 2;
   useDocument.getState().createFrameOnCanvas(x, y);
+}
+
+export function placeCenteredNote(
+  surfaceRef: RefObject<HTMLDivElement | null>,
+  spawnAt: { current: number },
+): void {
+  const now = Date.now();
+  if (now - spawnAt.current < 50) return;
+  spawnAt.current = now;
+  const surface = surfaceRef.current;
+  if (!surface) return;
+  const rect = surface.getBoundingClientRect();
+  const zoom = useDocument.getState().canvasViewport.zoom;
+  const x = (surface.scrollLeft + rect.width / 2) / zoom - NOTE_DEFAULT_WIDTH / 2;
+  const y = (surface.scrollTop + rect.height / 2) / zoom - NOTE_DEFAULT_HEIGHT / 2;
+  useDocument.getState().createNoteOnCanvas(x, y);
 }

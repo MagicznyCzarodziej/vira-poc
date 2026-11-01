@@ -119,14 +119,28 @@ export const createCanvasSlice: StateCreator<DocumentState, [], [], CanvasSlice>
     const actionPointPlacements = { ...get().actionPointPlacements };
     const framePlacements = { ...get().framePlacements };
     const frames = { ...get().frames };
+    const notePlacements = { ...get().notePlacements };
+    const notes = { ...get().notes };
     for (const id of ids) {
       if (get().actionPoints[id]) delete actionPointPlacements[id];
-      else if (get().frames[id]) {
+      else if (get().notes[id]) {
+        delete notePlacements[id];
+        delete notes[id];
+      } else if (get().frames[id]) {
         delete framePlacements[id];
         delete frames[id];
       } else delete canvasPlacements[id];
     }
-    set({ canvasPlacements, actionPointPlacements, framePlacements, frames, canvasSelection: [] });
+    set({
+      canvasPlacements,
+      actionPointPlacements,
+      framePlacements,
+      frames,
+      notePlacements,
+      notes,
+      canvasSelection: [],
+      editing: get().editing && ids.includes(get().editing!.id) ? null : get().editing,
+    });
     schedule(get);
   },
   canvasTool: defaultCanvasTool(),

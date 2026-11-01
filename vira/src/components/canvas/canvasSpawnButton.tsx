@@ -55,7 +55,7 @@ export function CanvasSpawnButton({
           dist: 0,
           drag: false,
           dropped: false,
-          intent,
+          kind: intent,
         };
       }}
       onPointerMove={(event) => {
@@ -67,7 +67,7 @@ export function CanvasSpawnButton({
       }}
       onPointerUp={(event) => {
         const gesture = spawnGesture.current;
-        if (!gesture || gesture.id !== event.pointerId || gesture.intent !== intent) return;
+        if (!gesture || gesture.id !== event.pointerId || gesture.kind !== intent) return;
         window.setTimeout(() => {
           if (gesture.drag || gesture.dropped) return;
           spawnGesture.current = null;
@@ -82,7 +82,7 @@ export function CanvasSpawnButton({
       }}
       onDragEnd={() => {
         const gesture = spawnGesture.current;
-        if (!gesture || gesture.intent !== intent) return;
+        if (!gesture || gesture.kind !== intent) return;
         const micro = gesture.drag && !gesture.dropped && gesture.dist <= 36;
         spawnGesture.current = null;
         if (micro) spawnCentered();

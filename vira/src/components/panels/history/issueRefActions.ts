@@ -1,50 +1,44 @@
-import { issueRefHrefNeedles, issueRefSameTarget } from "../../../domain/index.ts";
 import {
+  findIssueRefTextHost,
   formatIssueRefToken,
-  getAnswerText,
-  getProblemText,
-  isIssueRefStale,
+  issueRefSameTarget,
+  issueRefUpgradeHeadRev,
   parseIssueRef,
-  refTargetStep,
-  replaceIssueRefRevisionInText,
-  stepFieldHeadRev,
-  type Card,
-  type FieldName,
   type IssueRef,
+  type IssueRefTextHost,
 } from "../../../domain/index.ts";
 import { requestCanvasReveal } from "../../canvas/flyToCard.ts";
 import { useDocument } from "../../../store/index.ts";
 import { usePanels } from "../../../store/index.ts";
+import { commitIssueRefUpgrade } from "../../../domain/index.ts";
 import { revealCardInList } from "./revealCardInList.ts";
 
-type FieldSource = { itemId: string; stepIndex: number; field: FieldName };
+let rememberedSource: { token: string; source: IssueRefTextHost } | null = null;
 
-let rememberedSource: { token: string; source: FieldSource } | null = null;
-
-function sourceFrom(button: HTMLElement | null): FieldSource | null {
+function sourceFrom(button: HTMLElement | null): IssueRefTextHost | null {
+  const placedNote = button?.closest<HTMLElement>(".canvas-placed-note");
+  const noteId = placedNote?.dataset.canvasPlaced;
+  if (noteId && useDocument.getState().notes[noteId]) {
+    return { kind: "note", noteId };
+  }
+  const sticky = button?.closest<HTMLElement>(".canvas-sticky-note[data-note-id]");
+  const stickyId = sticky?.dataset.noteId;
+  if (stickyId && useDocument.getState().notes[stickyId]) {
+    return { kind: "note", noteId: stickyId };
+  }
   const editable = button?.closest<HTMLElement>("[data-editable]");
   const field = editable?.dataset.editable;
   const itemId = editable?.dataset.id;
   const stepIndex = Number(editable?.dataset.step);
+  if (field === "noteBody" && itemId && useDocument.getState().notes[itemId]) {
+    return { kind: "note", noteId: itemId };
+  }
   if ((field === "problem" || field === "answer") && itemId && Number.isFinite(stepIndex)) {
-    return { itemId, stepIndex, field };
+    return { kind: "card", itemId, stepIndex, field };
   }
-  return null;
-}
-
-function findSource(items: Record<string, Card>, parsed: IssueRef): FieldSource | null {
-  const needles = issueRefHrefNeedles(parsed);
-  if (!needles.length) return null;
-  for (const card of Object.values(items)) {
-    for (let stepIndex = 0; stepIndex < card.steps.length; stepIndex += 1) {
-      const step = card.steps[stepIndex];
-      if (!step) continue;
-      for (const field of ["problem", "answer"] as const) {
-        const text = field === "answer" ? (step.answer ?? "") : step.problem;
-        if (text && needles.some((needle) => text.includes(needle))) return { itemId: card.id, stepIndex, field };
-      }
-    }
-  }
+  const followup = button?.closest<HTMLElement>("[data-followup-input]");
+  const followupId = followup instanceof HTMLTextAreaElement ? followup.dataset.id : followup?.dataset.id;
+  if (followupId) return { kind: "followup", itemId: followupId };
   return null;
 }
 
@@ -52,27 +46,30 @@ function upgradePin(token: string, button: HTMLElement | null) {
   const parsed = parseIssueRef(token);
   if (!parsed || parsed.revision == null || parsed.stepIndex == null) return;
   const doc = useDocument.getState();
-  if (typeof doc.setFieldHeadText !== "function") return;
-  if (!isIssueRefStale(doc.items, parsed)) return;
-  const target = refTargetStep(doc.items, parsed);
-  if (!target) return;
-  const head = stepFieldHeadRev(target.step, target.field);
   const savedSource = rememberedSource && issueRefSameTarget(parseIssueRef(rememberedSource.token), parsed)
     ? rememberedSource.source
     : null;
-  const source = sourceFrom(button) ?? savedSource ?? findSource(doc.items, parsed);
-  if (!source) return;
-  const step = doc.items[source.itemId]?.steps[source.stepIndex];
-  if (!step) return;
-  const before = source.field === "answer"
-    ? (getAnswerText(step) ?? step.answer ?? "")
-    : (getProblemText(step) ?? step.problem ?? "");
-  const updated = replaceIssueRefRevisionInText(before, parsed, head);
-  if (updated === before) return;
-  doc.setFieldHeadText(source.itemId, source.stepIndex, source.field, updated);
+  const preferred =
+    sourceFrom(button)
+    ?? savedSource
+    ?? findIssueRefTextHost(doc.items, doc.notes, doc.followupDrafts, parsed);
+  if (!commitIssueRefUpgrade(
+    {
+      items: doc.items,
+      notes: doc.notes,
+      followupDrafts: doc.followupDrafts,
+      setNoteBody: (noteId, body) => useDocument.getState().setNoteBody(noteId, body),
+      setFollowupDraft: (itemId, value) => useDocument.getState().setFollowupDraft(itemId, value),
+      setFieldHeadText: (itemId, stepIndex, field, text) =>
+        useDocument.getState().setFieldHeadText(itemId, stepIndex, field, text),
+    },
+    parsed,
+    preferred,
+  )) return;
+  const head = issueRefUpgradeHeadRev(doc.items, parsed);
   const openId = usePanels.getState().drawerRefId;
   const openParsed = openId ? parseIssueRef(openId) : null;
-  if (openParsed && issueRefSameTarget(openParsed, parsed)) {
+  if (openParsed && head != null && issueRefSameTarget(openParsed, parsed)) {
     usePanels.getState().openDrawer(formatIssueRefToken({ ...parsed, revision: head }));
   }
 }
@@ -134,7 +131,10 @@ export function bindIssueRefActions(): () => void {
     }
     event.preventDefault();
     event.stopPropagation();
-    const source = sourceFrom(button) ?? findSource(useDocument.getState().items, ref);
+    const doc = useDocument.getState();
+    const source =
+      sourceFrom(button)
+      ?? findIssueRefTextHost(doc.items, doc.notes, doc.followupDrafts, ref);
     rememberedSource = source ? { token, source } : null;
     usePanels.getState().openDrawer(token);
   };

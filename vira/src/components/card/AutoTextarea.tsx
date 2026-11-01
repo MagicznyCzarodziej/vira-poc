@@ -20,6 +20,7 @@ export function AutoTextarea({
   onEnterCommit,
   onCancel,
   onTag,
+  tags = true,
   dataset,
 }: {
   initial: string;
@@ -28,6 +29,8 @@ export function AutoTextarea({
   onEnterCommit?: (value: string) => void;
   onCancel: () => void;
   onTag?: (tag: string) => void;
+  /** When false, `#` stays in the text (sticky notes). */
+  tags?: boolean;
   dataset?: Record<string, string>;
 }) {
   const dataAttrs = dataset ?? {};
@@ -48,13 +51,14 @@ export function AutoTextarea({
     ta.style.height = "auto";
     ta.style.height = `${ta.scrollHeight}px`;
     return bindAutocomplete(ta, {
+      tags,
       onTag: (tag) => onTagRef.current?.(tag),
       onValue: (next, cursor) => {
         caret.current = cursor;
         setValue(next);
       },
     });
-  }, []);
+  }, [tags]);
 
   useLayoutEffect(() => {
     const ta = ref.current;
@@ -95,7 +99,7 @@ export function AutoTextarea({
         if (menuIsOpen()) return;
         const ta = ref.current;
         const cursor = ta?.selectionStart ?? value.length;
-        if (ta && isTypingTag(value, cursor)) {
+        if (tags && ta && isTypingTag(value, cursor)) {
           event.preventDefault();
           const match = value.slice(0, cursor).match(/#([\w.-]*)$/);
           const name = match?.[1]?.trim().toLowerCase();

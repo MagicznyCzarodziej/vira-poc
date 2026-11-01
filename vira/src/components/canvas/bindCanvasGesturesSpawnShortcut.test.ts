@@ -42,6 +42,17 @@ describe("bindCanvasGestures spawn shortcuts", () => {
     unbind();
   });
 
+  it("places a sticky note at the pointer with N", () => {
+    const surface = mountCanvasSurface();
+    const unbind = bindCanvasGestures(surface, { current: null });
+    window.dispatchEvent(new PointerEvent("pointermove", { clientX: 400, clientY: 300, bubbles: true }));
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "n", bubbles: true }));
+
+    expect(useDocument.getState().editing?.field).toBe("noteBody");
+    expect(Object.keys(useDocument.getState().notePlacements)).toHaveLength(1);
+    unbind();
+  });
+
   it("does not spawn when the pointer is outside the canvas", () => {
     const surface = mountCanvasSurface();
     const unbind = bindCanvasGestures(surface, { current: null });

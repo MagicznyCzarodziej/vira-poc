@@ -6,10 +6,13 @@ import {
   CARD_WIDTH,
   FRAME_DEFAULT_HEIGHT,
   FRAME_DEFAULT_WIDTH,
+  NOTE_DEFAULT_HEIGHT,
+  NOTE_DEFAULT_WIDTH,
 } from "../../domain/index.ts";
 import { CardView } from "../CardView.tsx";
 import { FrameView } from "../frame/FrameView.tsx";
-import type { Frame } from "../../domain/types.ts";
+import { NoteView } from "../note/NoteView.tsx";
+import type { Frame, Note } from "../../domain/types.ts";
 
 let ghostEl: HTMLDivElement | null = null;
 let ghostRoot: Root | null = null;
@@ -20,7 +23,14 @@ const previewFrame: Frame = {
   createdAt: "1970-01-01T00:00:00.000Z",
 };
 
-function prepareCanvasSpawnDragGhost(kind: "card" | "frame"): HTMLDivElement {
+const previewNote: Note = {
+  id: "note-preview",
+  body: "",
+  color: "white",
+  createdAt: "1970-01-01T00:00:00.000Z",
+};
+
+function prepareCanvasSpawnDragGhost(kind: "card" | "frame" | "note"): HTMLDivElement {
   if (!ghostEl) {
     ghostEl = document.createElement("div");
     ghostEl.className = "canvas-spawn-drag-ghost";
@@ -37,14 +47,28 @@ function prepareCanvasSpawnDragGhost(kind: "card" | "frame"): HTMLDivElement {
             height: FRAME_DEFAULT_HEIGHT,
             surface: "canvas",
           })
-        : createElement(CardView, { item: canvasSpawnPreviewCard(), surface: "panel" }),
+        : kind === "note"
+          ? createElement(NoteView, {
+              note: previewNote,
+              width: NOTE_DEFAULT_WIDTH,
+              height: NOTE_DEFAULT_HEIGHT,
+              surface: "canvas",
+            })
+          : createElement(CardView, { item: canvasSpawnPreviewCard(), surface: "panel" }),
     );
   });
   return ghostEl;
 }
 
-export function setCanvasSpawnDragImage(event: DragEvent, kind: "card" | "frame" = "card"): void {
+export function setCanvasSpawnDragImage(event: DragEvent, kind: "card" | "frame" | "note" = "card"): void {
   const ghost = prepareCanvasSpawnDragGhost(kind);
+  if (kind === "note") {
+    const note = ghost.querySelector(".canvas-sticky-note");
+    const w = note?.getBoundingClientRect().width || NOTE_DEFAULT_WIDTH;
+    const h = note?.getBoundingClientRect().height || NOTE_DEFAULT_HEIGHT;
+    event.dataTransfer?.setDragImage(ghost, Math.round(w / 2), Math.round(h / 2));
+    return;
+  }
   if (kind === "frame") {
     const frame = ghost.querySelector(".canvas-frame-inner");
     const w = frame?.getBoundingClientRect().width || FRAME_DEFAULT_WIDTH;

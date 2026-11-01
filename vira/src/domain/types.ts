@@ -70,6 +70,22 @@ export type FramePlacement = Placement & {
   parentFrameId?: string | null;
 };
 
+import type { NoteColor } from "./noteColors.ts";
+
+export type { NoteColor };
+
+export type Note = {
+  id: string;
+  body: string;
+  color: NoteColor;
+  createdAt: string;
+};
+
+export type NotePlacement = Placement & {
+  width: number;
+  height: number;
+};
+
 export type SavedDocument = {
   version: 1;
   nextId: number;
@@ -80,6 +96,9 @@ export type SavedDocument = {
   nextFrameId: number;
   frames: Record<string, Frame>;
   framePlacements: Record<string, FramePlacement>;
+  nextNoteId: number;
+  notes: Record<string, Note>;
+  notePlacements: Record<string, NotePlacement>;
   viewMode: ViewMode;
   showAllDates: boolean;
   listFilterNotOnCanvas: boolean;

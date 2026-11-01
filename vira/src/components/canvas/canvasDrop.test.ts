@@ -3,13 +3,16 @@ import {
   SPAWN,
   SPAWN_DECISION,
   SPAWN_FRAME,
+  SPAWN_NOTE,
   SPAWN_QUESTION,
   isCanvasCardSpawnPayload,
   isCanvasFrameSpawnPayload,
+  isCanvasNoteSpawnPayload,
   isCanvasSpawnPayload,
   spawnIntentFromPayload,
   spawnPayloadForFrame,
   spawnPayloadForIntent,
+  spawnPayloadForNote,
 } from "./canvasSpawnPayload.ts";
 
 describe("canvas spawn payloads", () => {
@@ -29,6 +32,7 @@ describe("canvas spawn payloads", () => {
     expect(isCanvasSpawnPayload(SPAWN_DECISION)).toBe(true);
     expect(isCanvasSpawnPayload(SPAWN_QUESTION)).toBe(true);
     expect(isCanvasSpawnPayload(SPAWN_FRAME)).toBe(true);
+    expect(isCanvasSpawnPayload(SPAWN_NOTE)).toBe(true);
     expect(isCanvasCardSpawnPayload(SPAWN_DECISION)).toBe(true);
     expect(isCanvasCardSpawnPayload(SPAWN_FRAME)).toBe(false);
     expect(isCanvasFrameSpawnPayload(SPAWN_FRAME)).toBe(true);
@@ -38,5 +42,11 @@ describe("canvas spawn payloads", () => {
 
   it("maps frame spawn to drag payload", () => {
     expect(spawnPayloadForFrame()).toBe(SPAWN_FRAME);
+  });
+
+  it("maps note spawn to drag payload", () => {
+    expect(spawnPayloadForNote()).toBe(SPAWN_NOTE);
+    expect(isCanvasNoteSpawnPayload(SPAWN_NOTE)).toBe(true);
+    expect(isCanvasCardSpawnPayload(SPAWN_NOTE)).toBe(false);
   });
 });

@@ -7,18 +7,21 @@ import {
   sortedCardPlacementKeys,
   localOccluderRectsForFrame,
   sortedFramePlacementIdsForPaint,
+  sortedNotePlacementIds,
 } from "../../domain/index.ts";
 import { useDocument } from "../../store/index.ts";
 import { ActionPointView } from "../action/ActionPointView.tsx";
 import { CardView } from "../CardView.tsx";
 import { FrameView } from "../frame/FrameView.tsx";
-import { IconCard, IconLightbulb } from "../Icons.tsx";
+import { NoteView } from "../note/NoteView.tsx";
+import { IconCard, IconLightbulb, IconStickyNote } from "../Icons.tsx";
 import { applyCanvasWorldScale } from "./canvasWorldZoom.ts";
 import { bindCanvasGestures } from "./bindCanvasGestures.ts";
 import { bindCanvasRefLinks } from "./bindCanvasRefLinks.ts";
 import { zoomCanvas } from "./canvasCommands.ts";
 import { CanvasFrameToolButton } from "./CanvasFrameToolButton.tsx";
 import { CanvasTagFrameControl } from "./CanvasTagFrameControl.tsx";
+import { CanvasNoteSpawnButton } from "./CanvasNoteSpawnButton.tsx";
 import { CanvasSpawnButton } from "./canvasSpawnButton.tsx";
 import type { SpawnGesture } from "./canvasDrop.ts";
 import { FakeScrollbars } from "./FakeScrollbars.tsx";
@@ -33,6 +36,8 @@ export function CanvasWorkspace() {
   const apPlacements = useDocument((state) => state.actionPointPlacements);
   const frames = useDocument((state) => state.frames);
   const framePlacements = useDocument((state) => state.framePlacements);
+  const notes = useDocument((state) => state.notes);
+  const notePlacements = useDocument((state) => state.notePlacements);
   const viewport = useDocument((state) => state.canvasViewport);
   const userSet = useDocument((state) => state.canvasViewportUserSet);
   const revealId = useDocument((state) => state.revealId);
@@ -43,8 +48,10 @@ export function CanvasWorkspace() {
   const ids = sortedCardPlacementKeys(placements, items);
   const apIds = sortedActionPointPlacementIds(apPlacements, actionPoints).filter((id) => actionPoints[id]);
   const frameIds = sortedFramePlacementIdsForPaint(framePlacements, frames).filter((id) => frames[id]);
+  const noteIds = sortedNotePlacementIds(notePlacements, notes).filter((id) => notes[id]);
   const cardZBase = frameIds.length + 1;
   const apZBase = cardZBase + ids.length;
+  const noteZBase = apZBase + apIds.length;
   const centered = useRef(false);
   const lineRef = useRef<SVGSVGElement>(null);
 
@@ -72,7 +79,7 @@ export function CanvasWorkspace() {
     }
     surface.scrollLeft = Math.min(Math.max(0, Math.round(left)), maxLeft);
     surface.scrollTop = Math.min(Math.max(0, Math.round(top)), maxTop);
-  }, [viewport, userSet, ids.length, apIds.length, frameIds.length]);
+  }, [viewport, userSet, ids.length, apIds.length, frameIds.length, noteIds.length]);
 
   useEffect(() => {
     const surface = surfaceRef.current;
@@ -113,8 +120,8 @@ export function CanvasWorkspace() {
           <div className="spatial-canvas" data-canvas-surface role="region" aria-label="Decision canvas" ref={surfaceRef}>
             <div className="canvas-scroll-content" data-canvas-scroll-content>
               <div className="canvas-world">
-                {ids.length === 0 && apIds.length === 0 && frameIds.length === 0 && (
-                  <p className="canvas-hint">Drag from the list · Q question · D decision · F frame · drag to select · Shift+click to add · Space+pan · ⌘/Ctrl+scroll zoom</p>
+                {ids.length === 0 && apIds.length === 0 && frameIds.length === 0 && noteIds.length === 0 && (
+                  <p className="canvas-hint">Drag from the list · Q question · D decision · N note · F frame · Alt+drag duplicate · Shift+click to add · Space+pan · ⌘/Ctrl+scroll zoom</p>
                 )}
                 {frameIds.map((id, index) => {
                   const frame = frames[id];
@@ -157,6 +164,28 @@ export function CanvasWorkspace() {
                       onAnimationEnd={() => useDocument.getState().clearReveal()}
                     >
                       <ActionPointView actionPoint={ap} surface="canvas" />
+                    </div>
+                  );
+                })}
+                {noteIds.map((id, index) => {
+                  const note = notes[id];
+                  const pos = notePlacements[id];
+                  if (!note || !pos) return null;
+                  return (
+                    <div
+                      key={id}
+                      className={`canvas-placed-note${revealId === id ? " is-canvas-reveal-pop" : ""}${selectedSet.has(id) ? " is-canvas-selected" : ""}`}
+                      data-canvas-placed={id}
+                      style={{
+                        left: pos.x,
+                        top: pos.y,
+                        width: pos.width,
+                        height: pos.height,
+                        zIndex: noteZBase + index,
+                      }}
+                      onAnimationEnd={() => useDocument.getState().clearReveal()}
+                    >
+                      <NoteView note={note} width={pos.width} height={pos.height} surface="canvas" />
                     </div>
                   );
                 })}
@@ -210,6 +239,9 @@ export function CanvasWorkspace() {
           <IconLightbulb />
         </CanvasSpawnButton>
         <CanvasTagFrameControl />
+        <CanvasNoteSpawnButton spawnGesture={spawnGesture} spawnAt={spawnAt} surfaceRef={surfaceRef}>
+          <IconStickyNote />
+        </CanvasNoteSpawnButton>
       </div>
       <div className="canvas-zoom-controls" aria-label="Canvas zoom">
         <button type="button" className="canvas-zoom-btn" data-action="canvas-zoom-out" aria-label="Zoom out" onClick={() => zoomBy(1 / 1.15)}>−</button>

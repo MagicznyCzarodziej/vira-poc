@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   cardPlacementKeysInDragGroup,
+  noteIdsInDragGroup,
   remapCanvasDragGroupForAltDuplicate,
 } from "./canvasAltDuplicateDrag.ts";
 
@@ -19,6 +20,16 @@ describe("cardPlacementKeysInDragGroup", () => {
       "canvas-1",
       "canvas-2",
     ]);
+  });
+});
+
+describe("noteIdsInDragGroup", () => {
+  it("keeps note ids with placements", () => {
+    const state = {
+      notes: { "note-1": { id: "note-1", body: "", color: "lemon", createdAt: "" } },
+      notePlacements: { "note-1": { x: 0, y: 0, width: 200, height: 160 } },
+    };
+    expect(noteIdsInDragGroup(state, ["note-1", "missing"])).toEqual(["note-1"]);
   });
 });
 

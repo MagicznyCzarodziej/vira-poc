@@ -12,12 +12,16 @@ import { normalizeAccordionCollapsed } from "./accordionCollapse.ts";
 import { clampFramePlacement } from "./frameCanvas.ts";
 import { applyInferredFrameParent } from "./frameNesting.ts";
 import { recomputeNextFrameId } from "./frames.ts";
+import { clampNotePlacement } from "./noteCanvas.ts";
+import { normalizeNoteColor, recomputeNextNoteId } from "./notes.ts";
 import type {
   ActionPoint,
   Card,
   CardCanvasPlacement,
   Frame,
   FramePlacement,
+  Note,
+  NotePlacement,
   Placement,
   SavedDocument,
   Viewport,
@@ -66,6 +70,24 @@ function normalizeFramePlacements(
   }
   for (const id of Object.keys(out)) {
     applyInferredFrameParent(out, frames, id);
+  }
+  return out;
+}
+
+function normalizeNotePlacements(
+  raw: Record<string, NotePlacement>,
+  notes: Record<string, Note>,
+): Record<string, NotePlacement> {
+  const out: Record<string, NotePlacement> = {};
+  for (const [id, placement] of Object.entries(raw)) {
+    if (!placement || !notes[id]) continue;
+    const clamped = clampNotePlacement(
+      Number(placement.x) || 0,
+      Number(placement.y) || 0,
+      Number(placement.width) || 240,
+      Number(placement.height) || 180,
+    );
+    out[id] = { ...clamped, order: placement.order };
   }
   return out;
 }
@@ -127,6 +149,17 @@ export function normalizeDocument(data: SavedDocument): SavedDocument {
     };
   }
   const framePlacements = normalizeFramePlacements(data.framePlacements ?? {}, frames);
+  const notes: Record<string, Note> = {};
+  for (const [id, raw] of Object.entries(data.notes ?? {})) {
+    if (!raw || typeof raw !== "object") continue;
+    notes[id] = {
+      id: raw.id || id,
+      body: typeof raw.body === "string" ? raw.body : "",
+      color: normalizeNoteColor(raw.color),
+      createdAt: typeof raw.createdAt === "string" ? raw.createdAt : new Date(0).toISOString(),
+    };
+  }
+  const notePlacements = normalizeNotePlacements(data.notePlacements ?? {}, notes);
   return {
     version: 1,
     nextId: recomputeNextId(items),
@@ -137,6 +170,9 @@ export function normalizeDocument(data: SavedDocument): SavedDocument {
     nextFrameId: Math.max(recomputeNextFrameId(frames), Number(data.nextFrameId) || 1),
     frames,
     framePlacements,
+    nextNoteId: Math.max(recomputeNextNoteId(notes), Number(data.nextNoteId) || 1),
+    notes,
+    notePlacements,
     viewMode: isViewMode(data.viewMode) ? data.viewMode : "list",
     showAllDates: data.showAllDates === true,
     listFilterNotOnCanvas: data.listFilterNotOnCanvas === true,

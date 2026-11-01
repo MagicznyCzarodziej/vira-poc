@@ -125,6 +125,7 @@
     .canvas-spawn-btn .icon-frame-with-tag svg,
     .canvas-spawn-btn .icon-tag svg,
     .canvas-spawn-btn .icon-lightbulb svg,
+    .canvas-spawn-btn .icon-sticky-note svg,
     .canvas-tool-btn .icon-frame svg {
       display: block;
       width: 1.55rem;

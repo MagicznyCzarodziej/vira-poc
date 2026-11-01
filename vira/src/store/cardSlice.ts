@@ -12,12 +12,11 @@ import {
   parseFigJamStickyCsv,
   recomputeNextActionPointId,
   recomputeNextId,
-  locateIssueRefSource,
-  replaceIssueRefRevisionInText,
   setStepFieldHeadText,
   toggleAnswerTentative,
   type FieldName,
 } from "../domain/index.ts";
+import { commitIssueRefUpgrade } from "../domain/index.ts";
 import type { DocumentState } from "./documentTypes.ts";
 import { bagOf, schedule } from "./documentPersistence.ts";
 
@@ -151,6 +150,9 @@ export const createCardSlice: StateCreator<DocumentState, [], [], CardSlice> = (
       frames: {},
       framePlacements: {},
       nextFrameId: 1,
+      notes: {},
+      notePlacements: {},
+      nextNoteId: 1,
       nextCanvasPlacementId: 1,
       canvasPlacements: {},
       canvasViewport: { scrollLeft: 0, scrollTop: 0, zoom: 1 },
@@ -181,20 +183,19 @@ export const createCardSlice: StateCreator<DocumentState, [], [], CardSlice> = (
     schedule(get);
   },
   upgradeIssueRef: (parsed, source) => {
-    if (parsed.revision == null || parsed.stepIndex == null) return false;
-    const target = get().items[parsed.itemId]?.steps[parsed.stepIndex];
-    if (!target) return false;
-    const field: FieldName = parsed.focusAnswer ? "answer" : "problem";
-    const head = field === "answer" ? target.answerRev : target.problemRev;
-    const located = source ?? locateIssueRefSource(get().items, parsed);
-    if (!located) return false;
-    const card = get().items[located.itemId];
-    const step = card?.steps[located.stepIndex];
-    if (!card || !step) return false;
-    const before = located.field === "answer" ? (step.answer ?? "") : step.problem;
-    const updated = replaceIssueRefRevisionInText(before, parsed, head);
-    if (updated === before) return false;
-    get().setFieldHeadText(located.itemId, located.stepIndex, located.field, updated);
-    return true;
+    const state = get();
+    const preferred = source ? ({ kind: "card" as const, ...source }) : null;
+    return commitIssueRefUpgrade(
+      {
+        items: state.items,
+        notes: state.notes,
+        followupDrafts: state.followupDrafts,
+        setNoteBody: (noteId, body) => get().setNoteBody(noteId, body),
+        setFollowupDraft: (itemId, value) => get().setFollowupDraft(itemId, value),
+        setFieldHeadText: (itemId, stepIndex, field, text) => get().setFieldHeadText(itemId, stepIndex, field, text),
+      },
+      parsed,
+      preferred,
+    );
   },
 });

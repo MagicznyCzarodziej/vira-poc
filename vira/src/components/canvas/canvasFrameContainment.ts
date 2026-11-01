@@ -100,7 +100,14 @@ export function innermostFrameIdAtWorldPoint(
 export function canvasPlacementIdsOwnedByFrameHost(
   state: Pick<
     DocumentState,
-    "canvasPlacements" | "items" | "actionPointPlacements" | "actionPoints" | "framePlacements" | "frames"
+    | "canvasPlacements"
+    | "items"
+    | "actionPointPlacements"
+    | "actionPoints"
+    | "framePlacements"
+    | "frames"
+    | "notePlacements"
+    | "notes"
   >,
   frameHostId: string,
   options: { excludeIds?: ReadonlySet<string> } = {},
@@ -125,13 +132,28 @@ export function canvasPlacementIdsOwnedByFrameHost(
     }
   }
 
+  for (const [id, placement] of Object.entries(state.notePlacements ?? {})) {
+    if (exclude.has(id)) continue;
+    if (!state.notes[id]) continue;
+    if (innermostFrameIdAtWorldPoint(state.framePlacements, state.frames, placement.x, placement.y) === frameHostId) {
+      out.push(id);
+    }
+  }
+
   return out;
 }
 
 export function canvasPlacementIdsInsideFrame(
   state: Pick<
     DocumentState,
-    "canvasPlacements" | "items" | "actionPointPlacements" | "actionPoints" | "framePlacements" | "frames"
+    | "canvasPlacements"
+    | "items"
+    | "actionPointPlacements"
+    | "actionPoints"
+    | "framePlacements"
+    | "frames"
+    | "notePlacements"
+    | "notes"
   >,
   frame: FrameRect,
   options: {
@@ -190,6 +212,8 @@ export function expandCanvasDragGroupWithFrameContents(
     | "actionPoints"
     | "framePlacements"
     | "frames"
+    | "notePlacements"
+    | "notes"
   >,
   groupIds: readonly string[],
   groupStart: Record<string, { x: number; y: number }>,
@@ -220,6 +244,7 @@ export function expandCanvasDragGroupWithFrameContents(
       if (!groupStart[childId]) {
         const pos = state.canvasPlacements[childId]
           ?? state.actionPointPlacements[childId]
+          ?? state.notePlacements[childId]
           ?? state.framePlacements[childId];
         if (pos) groupStart[childId] = { x: pos.x, y: pos.y };
       }

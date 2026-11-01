@@ -123,6 +123,16 @@ export const createEditSlice: StateCreator<DocumentState, [], [], EditSlice> = (
       });
       return;
     }
+    if (target.field === "noteBody") {
+      const note = get().notes[target.id];
+      if (!note) return;
+      set({
+        editing: target,
+        editInitial: note.body,
+        focusNonce: get().focusNonce + 1,
+      });
+      return;
+    }
     const card = get().items[target.id];
     if (!card) return;
     set({
@@ -137,7 +147,10 @@ export const createEditSlice: StateCreator<DocumentState, [], [], EditSlice> = (
       if (next) get().beginEdit(next);
       return;
     }
-    const peeled = editing.field === "tags" ? { text: value, tag: null } : peelTrailingTag(value);
+    const peeled =
+      editing.field === "tags" || editing.field === "noteBody"
+        ? { text: value, tag: null }
+        : peelTrailingTag(value);
     if (editing.field === "actionPoint") {
       get().setActionPointTitle(editing.id, peeled.text.trim() || "Action");
       if (next) {
@@ -151,6 +164,17 @@ export const createEditSlice: StateCreator<DocumentState, [], [], EditSlice> = (
     }
     if (editing.field === "frameTitle") {
       get().setFrameTitle(editing.id, peeled.text.trim() || "Frame");
+      if (next) {
+        get().beginEdit(next);
+      } else {
+        suppressRefPickAfterInsert();
+        set({ editing: null, focusNonce: get().focusNonce + 1 });
+      }
+      schedule(get);
+      return;
+    }
+    if (editing.field === "noteBody") {
+      get().setNoteBody(editing.id, peeled.text);
       if (next) {
         get().beginEdit(next);
       } else {
